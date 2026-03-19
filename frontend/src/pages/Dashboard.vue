@@ -25,10 +25,10 @@
         </div>
       </div>
 
-      <!-- 每月趨勢（ASCII 長條圖） -->
+      <!-- 每月趨勢（視覺化長條圖） -->
       <div class="card">
         <h2>每月收支趨勢</h2>
-        <div v-if="store.summary.monthly_trend.length === 0" class="empty-state">尚無資料</div>
+        <div v-if="store.summary.monthly_trend.length === 0" class="empty-state">目前尚無月度資料</div>
         <div v-else class="chart-container">
           <div
             v-for="item in store.summary.monthly_trend"
@@ -63,7 +63,7 @@
       <!-- 各類別支出 -->
       <div class="card">
         <h2>支出類別分析</h2>
-        <div v-if="store.summary.expense_by_category.length === 0" class="empty-state">尚無支出資料</div>
+        <div v-if="store.summary.expense_by_category.length === 0" class="empty-state">目前尚無類別支出資料</div>
         <table v-else>
           <thead>
             <tr>
@@ -100,13 +100,19 @@
       </div>
     </template>
 
-    <div v-else class="empty-state">無資料，請先新增記帳記錄並執行 seed_data.py</div>
+    <div v-else class="empty-state">目前尚無財務資料，請先新增記帳記錄</div>
+
+    <!-- 版本資訊 (點 3: 使用版本號常數) -->
+    <div class="version-footer">
+      Version {{ VERSION }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted } from 'vue'
 import { useDashboardStore } from '@/stores/dashboardStore'
+import { VERSION } from '@/constants/version'
 
 const store = useDashboardStore()
 
@@ -235,5 +241,14 @@ function pct(val, total) {
   line-height: 1.8;
   white-space: pre-line;
   color: #444;
+}
+
+.version-footer {
+  margin-top: 40px;
+  padding: 20px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  border-top: 1px solid #eee;
 }
 </style>

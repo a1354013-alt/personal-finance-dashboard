@@ -5,7 +5,7 @@ AI 摘要路由
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, validator, Field # 點 2: 匯入 validator, Field
 from collections import defaultdict
 
 from db.database import get_db
@@ -50,10 +50,20 @@ def ai_finance_summary(db: Session = Depends(get_db)):
 # ── /api/ai/stock-explain ────────────────────────────────────────────────────
 
 class StockExplainRequest(BaseModel):
-    stock_code: str
+    # 點 2: 對 stock_code 加入驗證
+    stock_code: str = Field(..., description="股票代碼")
     net_income: float
     free_cash_flow: float
     revenue_growth: float
+
+    @validator('stock_code')
+    def stock_code_must_not_be_empty(cls, v):
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError('股票代碼不可為空')
+        if len(stripped) > 20:
+            raise ValueError('股票代碼長度過長')
+        return stripped
 
 
 @router.post("/stock-explain")

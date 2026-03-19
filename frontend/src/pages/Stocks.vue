@@ -5,7 +5,9 @@
     <!-- 自選股清單 -->
     <div class="card">
       <h2>自選股清單（Watchlist）</h2>
-      <!-- 點 5: 使用拆分後的 watchlistLoading -->
+      <!-- 點 1 (v0.3.1): 使用拆分後的 watchlistError -->
+      <div v-if="stockStore.watchlistError" class="error-msg">{{ stockStore.watchlistError }}</div>
+      
       <div v-if="stockStore.watchlistLoading" class="loading-text">載入中...</div>
       <div v-else-if="stockStore.watchlist.length === 0" class="empty-state">尚無自選股</div>
       <table v-else>
@@ -37,7 +39,9 @@
         規則：net_income &gt; 0 ｜ free_cash_flow &gt; 0 ｜ revenue_growth &gt; 0
       </p>
 
-      <!-- 點 5: 使用拆分後的 filterLoading -->
+      <!-- 點 1 (v0.3.1): 使用拆分後的 filterError -->
+      <div v-if="stockStore.filterError" class="error-msg">{{ stockStore.filterError }}</div>
+
       <div v-if="stockStore.filterLoading" class="loading-text">載入中...</div>
       <div v-else-if="stockStore.filterResults.length === 0" class="empty-state">尚無篩選結果</div>
 
@@ -153,7 +157,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useStockStore } from '@/stores/stockStore'
-// 點 6: 更新為獨立 API 模組引用路徑
 import { getAiStockExplain } from '@/api/stocks'
 
 const stockStore = useStockStore()
@@ -177,7 +180,7 @@ onMounted(() => {
 async function handleAiExplain() {
   aiError.value = ''
   aiResult.value = null
-  if (!explainForm.value.stock_code) {
+  if (!explainForm.value.stock_code || !explainForm.value.stock_code.trim()) {
     aiError.value = '請輸入股票代碼'
     return
   }

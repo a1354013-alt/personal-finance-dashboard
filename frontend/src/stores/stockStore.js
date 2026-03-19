@@ -6,10 +6,13 @@ export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
   const filterResults = ref([])
   
-  // 點 5: 將單一 loading 拆為 watchlistLoading 與 filterLoading
+  // 點 5 (v0.3.0): 拆分 loading
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
-  const error = ref(null)
+  
+  // 點 1 (v0.3.1): 拆分錯誤狀態管理，避免覆蓋
+  const watchlistError = ref(null)
+  const filterError = ref(null)
 
   // 通過篩選的股票
   const passedStocks = computed(() =>
@@ -23,11 +26,11 @@ export const useStockStore = defineStore('stock', () => {
 
   async function fetchWatchlist() {
     watchlistLoading.value = true
-    error.value = null
+    watchlistError.value = null
     try {
       watchlist.value = await getWatchlist()
     } catch (e) {
-      error.value = e.message
+      watchlistError.value = e.message
     } finally {
       watchlistLoading.value = false
     }
@@ -35,19 +38,20 @@ export const useStockStore = defineStore('stock', () => {
 
   async function fetchFilterResults() {
     filterLoading.value = true
-    error.value = null
+    filterError.value = null
     try {
       filterResults.value = await getFilterResults()
     } catch (e) {
-      error.value = e.message
+      filterError.value = e.message
     } finally {
       filterLoading.value = false
     }
   }
 
   return {
-    watchlist, filterResults, error,
+    watchlist, filterResults,
     watchlistLoading, filterLoading,
+    watchlistError, filterError,
     passedStocks, failedStocks,
     fetchWatchlist, fetchFilterResults,
   }

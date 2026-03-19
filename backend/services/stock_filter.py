@@ -7,7 +7,7 @@
 from typing import List, Tuple
 
 
-# ── 個別規則函式 (點 7: 修正為使用者可理解的中文語句) ───────────────────────
+# ── 個別規則函式 (點 4: 優化提示文案，使文字與實際規則完全一致) ───────────────
 
 def rule_net_income_positive(net_income: float) -> Tuple[bool, str]:
     """規則 1：淨利潤必須大於 0"""
@@ -20,14 +20,14 @@ def rule_free_cash_flow_positive(free_cash_flow: float) -> Tuple[bool, str]:
     """規則 2：自由現金流必須大於 0"""
     if free_cash_flow > 0:
         return True, ""
-    return False, "自由現金流為負"
+    return False, "自由現金流小於等於 0"
 
 
 def rule_revenue_growth_positive(revenue_growth: float) -> Tuple[bool, str]:
     """規則 3：營收成長率必須大於 0"""
     if revenue_growth > 0:
         return True, ""
-    return False, "營收未成長"
+    return False, "營收成長率小於等於 0%"
 
 
 # ── 所有規則清單 ────────────────────────────────────────────────────────────

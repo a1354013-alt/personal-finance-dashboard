@@ -5,6 +5,7 @@ import { getExpenses, createExpense, deleteExpense } from '@/api/expenses'
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref([])
   const loading = ref(false)
+  const submitting = ref(false) // 點 2: 拆分 loading 與 submitting 狀態
   const error = ref(null)
 
   // 計算總收入
@@ -34,21 +35,21 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   async function addExpense(data) {
-    loading.value = true
+    submitting.value = true // 點 2: 使用 submitting 避免與 fetchExpenses 衝突
     error.value = null
     try {
       await createExpense(data)
-      // 點 4: addExpense 成功後移除 unshift 邏輯，改為重新呼叫 fetchExpenses 以確保與後端排序一致
       await fetchExpenses()
     } catch (e) {
       error.value = e.message
       throw e
     } finally {
-      loading.value = false
+      submitting.value = false
     }
   }
 
   async function removeExpense(id) {
+    error.value = null
     try {
       await deleteExpense(id)
       expenses.value = expenses.value.filter(e => e.id !== id)
@@ -59,7 +60,7 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   return {
-    expenses, loading, error,
+    expenses, loading, submitting, error,
     totalIncome, totalExpense,
     fetchExpenses, addExpense, removeExpense,
   }

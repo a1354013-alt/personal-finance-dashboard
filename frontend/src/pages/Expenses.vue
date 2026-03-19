@@ -5,7 +5,7 @@
     <!-- 新增表單 -->
     <div class="card">
       <h2>新增記錄</h2>
-      <div v-if="formError" class="error-msg">{{ formError }}</div>
+      <div v-if="formError || store.error" class="error-msg">{{ formError || store.error }}</div>
       <div class="form-row">
         <div class="form-group">
           <label>金額 *</label>
@@ -31,8 +31,8 @@
           <input v-model="form.note" type="text" placeholder="選填" />
         </div>
         <div class="form-group" style="justify-content:flex-end;">
-          <button class="btn btn-primary" :disabled="store.loading" @click="handleAdd">
-            {{ store.loading ? '新增中...' : '+ 新增' }}
+          <button class="btn btn-primary" :disabled="store.submitting" @click="handleAdd">
+            {{ store.submitting ? '新增中...' : '+ 新增' }}
           </button>
         </div>
       </div>
@@ -65,7 +65,7 @@
       </h2>
 
       <div v-if="store.loading" class="loading-text">載入中...</div>
-      <div v-else-if="store.expenses.length === 0" class="empty-state">尚無記錄</div>
+      <div v-else-if="store.expenses.length === 0" class="empty-state">目前尚無記錄</div>
 
       <table v-else>
         <thead>
@@ -154,17 +154,17 @@ async function handleAdd() {
     // 重置表單
     form.value = { amount: null, type: 'expense', category: '', date: today, note: '' }
   } catch (e) {
-    formError.value = e.message
+    // 錯誤會自動顯示在 store.error
   }
 }
 
 async function handleDelete(id) {
   if (!confirm('確定要刪除這筆記錄嗎？')) return
-  // 點 9: handleDelete 加入 try/catch 並將錯誤顯示給使用者
+  // 點 3: 刪除失敗改為頁面內錯誤顯示 (與現有風格一致)
   try {
     await store.removeExpense(id)
   } catch (e) {
-    alert('刪除失敗：' + e.message)
+    // 錯誤已由 store.error 接管，會自動顯示在頁面上方的 error-msg
   }
 }
 
