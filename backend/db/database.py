@@ -2,14 +2,13 @@
 資料庫連線設定 - 使用 SQLite + SQLAlchemy
 """
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base  # 點 10: 從 sqlalchemy.orm 匯入
 
 DATABASE_URL = "sqlite:///./finance.db"
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}  # SQLite 需要此設定
+    connect_args={"check_same_thread": False}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -37,9 +37,9 @@ export const useExpenseStore = defineStore('expense', () => {
     loading.value = true
     error.value = null
     try {
-      const newRecord = await createExpense(data)
-      expenses.value.unshift(newRecord)
-      return newRecord
+      await createExpense(data)
+      // 點 4: addExpense 成功後移除 unshift 邏輯，改為重新呼叫 fetchExpenses 以確保與後端排序一致
+      await fetchExpenses()
     } catch (e) {
       error.value = e.message
       throw e

@@ -160,7 +160,12 @@ async function handleAdd() {
 
 async function handleDelete(id) {
   if (!confirm('確定要刪除這筆記錄嗎？')) return
-  await store.removeExpense(id)
+  // 點 9: handleDelete 加入 try/catch 並將錯誤顯示給使用者
+  try {
+    await store.removeExpense(id)
+  } catch (e) {
+    alert('刪除失敗：' + e.message)
+  }
 }
 
 function handleFilter() {

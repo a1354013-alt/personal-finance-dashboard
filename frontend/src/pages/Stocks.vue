@@ -5,7 +5,8 @@
     <!-- 自選股清單 -->
     <div class="card">
       <h2>自選股清單（Watchlist）</h2>
-      <div v-if="stockStore.loading" class="loading-text">載入中...</div>
+      <!-- 點 5: 使用拆分後的 watchlistLoading -->
+      <div v-if="stockStore.watchlistLoading" class="loading-text">載入中...</div>
       <div v-else-if="stockStore.watchlist.length === 0" class="empty-state">尚無自選股</div>
       <table v-else>
         <thead>
@@ -36,7 +37,8 @@
         規則：net_income &gt; 0 ｜ free_cash_flow &gt; 0 ｜ revenue_growth &gt; 0
       </p>
 
-      <div v-if="stockStore.loading" class="loading-text">載入中...</div>
+      <!-- 點 5: 使用拆分後的 filterLoading -->
+      <div v-if="stockStore.filterLoading" class="loading-text">載入中...</div>
       <div v-else-if="stockStore.filterResults.length === 0" class="empty-state">尚無篩選結果</div>
 
       <template v-else>
@@ -151,7 +153,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useStockStore } from '@/stores/stockStore'
-import { getAiStockExplain } from '@/api/dashboard'
+// 點 6: 更新為獨立 API 模組引用路徑
+import { getAiStockExplain } from '@/api/stocks'
 
 const stockStore = useStockStore()
 

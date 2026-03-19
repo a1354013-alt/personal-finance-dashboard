@@ -1,29 +1,18 @@
 """
 AI 摘要服務
-
 目前使用 template 字串生成摘要，程式結構已預留 LLM 替換介面。
-替換方式：將 _call_llm() 函式改為呼叫 OpenAI / Gemini 等 API 即可，
-其餘呼叫端程式碼無需修改。
 """
-from typing import Optional
+from typing import Optional  # 點 11: 匯入 Optional
 
 
-# ── LLM 介面（預留替換點）────────────────────────────────────────────────────
+# ── LLM 介面 (點 11: 修正回傳型別為 Optional[str]) ───────────────────────────
 
-def _call_llm(prompt: str) -> str:
+def _call_llm(prompt: str) -> Optional[str]:
     """
     預留 LLM 呼叫介面。
     目前回傳 None，由呼叫端 fallback 到 template。
-    替換範例（OpenAI）：
-        from openai import OpenAI
-        client = OpenAI()
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return resp.choices[0].message.content
     """
-    return None  # 尚未串接真實 LLM
+    return None
 
 
 # ── Dashboard 財務摘要 ────────────────────────────────────────────────────────

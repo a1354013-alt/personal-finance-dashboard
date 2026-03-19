@@ -1,6 +1,6 @@
 """
 股票模組路由
-  - /api/stocks/watchlist  自選股清單（含 mock 股價）
+  - /api/stocks/watchlist  自選股清單
   - /api/stocks/filter     股票篩選引擎
 """
 from fastapi import APIRouter, Depends
@@ -14,34 +14,15 @@ from services.stock_filter import evaluate_stock
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 
 
-# ── Mock 自選股資料（初始化時寫入 DB）────────────────────────────────────────
-
-MOCK_WATCHLIST = [
-    {"stock_code": "2330", "name": "台積電",   "price": 850.0,  "date": "2024-03-15"},
-    {"stock_code": "2317", "name": "鴻海",     "price": 168.5,  "date": "2024-03-15"},
-    {"stock_code": "2454", "name": "聯發科",   "price": 1120.0, "date": "2024-03-15"},
-    {"stock_code": "2382", "name": "廣達",     "price": 285.0,  "date": "2024-03-15"},
-    {"stock_code": "AAPL", "name": "Apple",    "price": 172.3,  "date": "2024-03-15"},
-    {"stock_code": "NVDA", "name": "NVIDIA",   "price": 875.4,  "date": "2024-03-15"},
-]
-
-
-def seed_watchlist(db: Session):
-    """若 watchlist 為空則填入 mock 資料"""
-    if db.query(WatchlistORM).count() == 0:
-        for item in MOCK_WATCHLIST:
-            db.add(WatchlistORM(**item))
-        db.commit()
-
-
 @router.get("/watchlist", response_model=List[WatchlistItemResponse])
 def get_watchlist(db: Session = Depends(get_db)):
-    """取得自選股清單（含 mock 股價）"""
-    seed_watchlist(db)
+    """
+    點 3: 取得自選股清單 (完全移除 seed_watchlist 呼叫，確保 GET 不產生資料庫寫入行為)
+    """
     return db.query(WatchlistORM).all()
 
 
-# ── Mock 股票基本面資料（用於篩選引擎示範）──────────────────────────────────
+# ── Mock 股票基本面資料 ──────────────────────────────────────────────────────
 
 MOCK_FUNDAMENTALS = [
     {"stock_code": "2330", "net_income": 500_000, "free_cash_flow": 300_000, "revenue_growth": 12.5},
@@ -56,8 +37,7 @@ MOCK_FUNDAMENTALS = [
 @router.get("/filter", response_model=List[StockFilterResult])
 def filter_stocks():
     """
-    對所有 mock 股票執行篩選引擎，回傳每支股票的通過狀態與失敗原因。
-    前端可依 passed 欄位分類顯示。
+    對所有 mock 股票執行篩選引擎。
     """
     results = []
     for stock in MOCK_FUNDAMENTALS:

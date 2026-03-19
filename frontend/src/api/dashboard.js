@@ -9,11 +9,3 @@ export function getDashboardSummary() {
 export function getAiSummary() {
   return api.get('/ai/summary')
 }
-
-/**
- * 取得 AI 股票解說
- * @param {Object} data - { stock_code, net_income, free_cash_flow, revenue_growth }
- */
-export function getAiStockExplain(data) {
-  return api.post('/ai/stock-explain', data)
-}

@@ -6,7 +6,6 @@ AI 摘要路由
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List, Optional
 from collections import defaultdict
 
 from db.database import get_db
@@ -23,9 +22,13 @@ router = APIRouter(prefix="/api/ai", tags=["AI"])
 def ai_finance_summary(db: Session = Depends(get_db)):
     """
     根據資料庫中的記帳資料自動生成財務摘要文字。
-    目前使用 template 生成，預留 LLM 替換介面。
     """
     records = db.query(ExpenseORM).all()
+    
+    # 點 8: 當無任何 expense 資料時直接回傳提示訊息
+    if not records:
+        return {"summary": "目前尚無財務資料，請先新增收入或支出記錄以生成財務摘要。"}
+
     total_income = sum(r.amount for r in records if r.type == "income")
     total_expense = sum(r.amount for r in records if r.type == "expense")
 
@@ -57,7 +60,6 @@ class StockExplainRequest(BaseModel):
 def ai_stock_explain(payload: StockExplainRequest):
     """
     對指定股票基本面數據執行篩選並生成解說文字。
-    目前使用 template 生成，預留 LLM 替換介面。
     """
     result = evaluate_stock(
         stock_code=payload.stock_code,

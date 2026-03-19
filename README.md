@@ -13,38 +13,38 @@
 1. **記帳系統**
    - 支援新增收入與支出（金額、類別、類型、日期、備註）。
    - 提供列表查詢與依類型篩選功能。
-2. **股票模組**
+2. **股票模組 (點 13: Mock 資料來源)**
    - 內建自選股清單（Watchlist）。
    - 提供股票基本面資料展示。
-3. **股票篩選引擎**
+   - **注意**：本模組目前使用內建 Mock 資料，未串接真實證券 API。
+3. **股票篩選引擎 (點 13: Mock 規則與中文提示)**
    - Rule-based 篩選系統，包含三大規則：
-     - `net_income > 0`
-     - `free_cash_flow > 0`
-     - `revenue_growth > 0`
-   - 顯示通過與未通過的股票，並列出具體失敗原因。
+     - `net_income > 0` (淨利潤)
+     - `free_cash_flow > 0` (自由現金流)
+     - `revenue_growth > 0` (營收成長率)
+   - 顯示通過與未通過的股票，並提供使用者可理解的中文失敗原因。
 4. **AI 摘要模組**
-   - 根據記帳資料自動生成財務摘要。
+   - 根據記帳資料自動生成財務摘要（具備無資料防呆提示）。
    - 根據股票基本面數據生成 AI 分析解說。
    - （目前使用 Template 實作，已預留 LLM 替換介面）
 
-## 專案結構
+## 專案結構 (點 13: 修正與實際一致)
 
 ```text
 personal-finance-dashboard/
 ├── backend/                  # FastAPI 後端
 │   ├── db/                   # 資料庫設定 (database.py)
-│   ├── models/               # SQLAlchemy ORM 與 Pydantic Schema
-│   ├── routers/              # API 路由 (expenses, stocks, dashboard, ai)
-│   ├── services/             # 業務邏輯 (stock_filter, ai_summary)
+│   ├── models/               # SQLAlchemy ORM 與 Pydantic Schema (expense.py, stock.py)
+│   ├── routers/              # API 路由 (expenses.py, stocks.py, dashboard.py, ai.py)
+│   ├── services/             # 業務邏輯 (stock_filter.py, ai_summary.py)
 │   ├── main.py               # FastAPI 主程式
 │   ├── seed_data.py          # 測試資料填充腳本
 │   └── requirements.txt      # 後端套件依賴
 └── frontend/                 # Vue3 前端
     ├── src/
-    │   ├── api/              # Axios API 封裝
-    │   ├── components/       # 共用元件
-    │   ├── pages/            # 頁面 (Dashboard, Expenses, Stocks)
-    │   ├── stores/           # Pinia 狀態管理
+    │   ├── api/              # Axios API 封裝 (expenses.js, stocks.js, dashboard.js)
+    │   ├── pages/            # 頁面 (Dashboard.vue, Expenses.vue, Stocks.vue)
+    │   ├── stores/           # Pinia 狀態管理 (expenseStore.js, stockStore.js, dashboardStore.js)
     │   ├── router/           # Vue Router 設定
     │   ├── App.vue           # 根元件與導覽列
     │   └── main.js           # 前端入口
@@ -76,4 +76,4 @@ npm run dev
 
 ---
 
-> ⚠️ **注意**：本專案為 DEMO 用途，前端若不啟動開發伺服器，也可透過建置靜態檔案後由後端伺服器提供服務，但為求開發便利，目前保留了 Vite proxy 的配置。
+> ⚠️ **注意**：本專案為 DEMO 用途。股票資料與篩選結果均為 Mock 數據。

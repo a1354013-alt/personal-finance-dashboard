@@ -3,7 +3,6 @@ Dashboard 摘要路由 - /api/dashboard/summary
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from collections import defaultdict
 
 from db.database import get_db
@@ -15,12 +14,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 @router.get("/summary")
 def get_summary(db: Session = Depends(get_db)):
     """
-    回傳 Dashboard 所需的彙整資料：
-      - total_income: 總收入
-      - total_expense: 總支出
-      - net_balance: 淨餘額
-      - expense_by_category: 各類別支出統計
-      - monthly_trend: 每月收支趨勢（最近 6 個月）
+    回傳 Dashboard 所需的彙整資料。
     """
     # 全部記錄
     all_records = db.query(ExpenseORM).all()
@@ -39,11 +33,12 @@ def get_summary(db: Session = Depends(get_db)):
         for k, v in sorted(category_map.items(), key=lambda x: -x[1])
     ]
 
-    # 每月趨勢（依 date 欄位 YYYY-MM-DD 取前 7 碼 YYYY-MM）
+    # 每月趨勢
     monthly_income: dict = defaultdict(float)
     monthly_expense: dict = defaultdict(float)
     for r in all_records:
-        month_key = r.date[:7] if r.date and len(r.date) >= 7 else "unknown"
+        # r.date 是 date 物件，取前 7 碼 YYYY-MM
+        month_key = r.date.strftime("%Y-%m")
         if r.type == "income":
             monthly_income[month_key] += r.amount
         else:

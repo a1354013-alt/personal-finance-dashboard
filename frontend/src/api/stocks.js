@@ -17,3 +17,11 @@ export function getFilterResults() {
 export function filterSingleStock(data) {
   return api.post('/stocks/filter', data)
 }
+
+/**
+ * 點 6: 取得 AI 股票解說 (從 dashboard.js 移至此處獨立模組)
+ * @param {Object} data - { stock_code, net_income, free_cash_flow, revenue_growth }
+ */
+export function getAiStockExplain(data) {
+  return api.post('/ai/stock-explain', data)
+}

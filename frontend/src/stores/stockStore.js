@@ -5,7 +5,10 @@ import { getWatchlist, getFilterResults } from '@/api/stocks'
 export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
   const filterResults = ref([])
-  const loading = ref(false)
+  
+  // 點 5: 將單一 loading 拆為 watchlistLoading 與 filterLoading
+  const watchlistLoading = ref(false)
+  const filterLoading = ref(false)
   const error = ref(null)
 
   // 通過篩選的股票
@@ -19,31 +22,32 @@ export const useStockStore = defineStore('stock', () => {
   )
 
   async function fetchWatchlist() {
-    loading.value = true
+    watchlistLoading.value = true
     error.value = null
     try {
       watchlist.value = await getWatchlist()
     } catch (e) {
       error.value = e.message
     } finally {
-      loading.value = false
+      watchlistLoading.value = false
     }
   }
 
   async function fetchFilterResults() {
-    loading.value = true
+    filterLoading.value = true
     error.value = null
     try {
       filterResults.value = await getFilterResults()
     } catch (e) {
       error.value = e.message
     } finally {
-      loading.value = false
+      filterLoading.value = false
     }
   }
 
   return {
-    watchlist, filterResults, loading, error,
+    watchlist, filterResults, error,
+    watchlistLoading, filterLoading,
     passedStocks, failedStocks,
     fetchWatchlist, fetchFilterResults,
   }
