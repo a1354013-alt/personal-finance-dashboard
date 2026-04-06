@@ -60,7 +60,7 @@
         </div>
       </div>
 
-      <!-- 各類別支出 -->
+      <!-- 各類別支出分析 -->
       <div class="card">
         <h2>支出類別分析</h2>
         <div v-if="store.summary.expense_by_category.length === 0" class="empty-state">目前尚無類別支出資料</div>
@@ -90,19 +90,34 @@
         </table>
       </div>
 
-      <!-- AI 財務摘要 -->
+      <!-- AI 財務摘要與建議 (v0.6.0) -->
       <div class="card">
-        <h2>🤖 AI 財務摘要</h2>
-        <div v-if="!store.aiSummary">
-          <button class="btn btn-primary" @click="store.fetchAiSummary()">生成摘要</button>
+        <h2>🤖 AI 財務分析與建議</h2>
+        
+        <!-- 財務摘要 -->
+        <div class="ai-section mb-16">
+          <h3 class="ai-subtitle">財務摘要</h3>
+          <div v-if="!store.aiSummary">
+            <button class="btn btn-primary" @click="store.fetchAiSummary()">生成摘要</button>
+          </div>
+          <div v-else class="ai-summary-text">{{ store.aiSummary }}</div>
         </div>
-        <div v-else class="ai-summary-text">{{ store.aiSummary }}</div>
+
+        <!-- 預算建議 -->
+        <div class="ai-section">
+          <h3 class="ai-subtitle">預算分析建議</h3>
+          <div v-if="adviceLoading" class="loading-text">正在分析預算執行進度...</div>
+          <div v-else-if="!budgetAdvice">
+            <button class="btn btn-secondary" @click="fetchBudgetAdvice">獲取預算建議</button>
+          </div>
+          <div v-else class="ai-summary-text advice-box">{{ budgetAdvice }}</div>
+        </div>
       </div>
     </template>
 
     <div v-else class="empty-state">目前尚無財務資料，請先新增記帳記錄</div>
 
-    <!-- 版本資訊 (點 3: 使用版本號常數) -->
+    <!-- 版本資訊 -->
     <div class="version-footer">
       Version {{ VERSION }}
     </div>
@@ -110,20 +125,39 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import api from '@/api/index'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { VERSION } from '@/constants/version'
 
 const store = useDashboardStore()
+const budgetAdvice = ref('')
+const adviceLoading = ref(false)
 
-onMounted(() => store.fetchSummary())
+const fetchBudgetAdvice = async () => {
+  adviceLoading.value = true
+  try {
+    const res = await api.get('/api/ai/budget-advice')
+    budgetAdvice.value = res.advice
+  } catch (e) {
+    budgetAdvice.value = '暫時無法產生預算建議'
+  } finally {
+    adviceLoading.value = false
+  }
+}
 
-// 格式化金額
+onMounted(() => {
+  store.fetchSummary()
+  // 自動載入預算建議
+  fetchBudgetAdvice()
+})
+
+// 格式化金額顯示
 function fmt(val) {
   return `NT$ ${Number(val).toLocaleString('zh-TW', { minimumFractionDigits: 0 })}`
 }
 
-// 計算長條圖寬度（最大 300px）
+// 計算長條圖視覺寬度
 function barWidth(val) {
   const max = Math.max(
     ...store.summary.monthly_trend.map(m => Math.max(m.income, m.expense))
@@ -131,7 +165,7 @@ function barWidth(val) {
   return max > 0 ? Math.round((val / max) * 300) : 0
 }
 
-// 計算百分比
+// 計算佔比百分比
 function pct(val, total) {
   return total > 0 ? (val / total) * 100 : 0
 }
@@ -156,7 +190,7 @@ function pct(val, total) {
   margin-bottom: 8px;
 }
 
-/* 長條圖 */
+/* 長條圖樣式 */
 .chart-container { padding: 8px 0; }
 
 .chart-row {
@@ -216,7 +250,7 @@ function pct(val, total) {
 .income-dot  { background: #27ae60; }
 .expense-dot { background: #e74c3c; }
 
-/* 進度條 */
+/* 進度條樣式 */
 .progress-bar-wrap {
   display: flex;
   align-items: center;
@@ -231,7 +265,11 @@ function pct(val, total) {
   max-width: 200px;
 }
 
-/* AI 摘要 */
+/* AI 摘要文字區塊 */
+.ai-section { margin-bottom: 24px; }
+.ai-subtitle { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+
 .ai-summary-text {
   background: #f8f9fa;
   border-left: 4px solid #1a73e8;
@@ -241,6 +279,10 @@ function pct(val, total) {
   line-height: 1.8;
   white-space: pre-line;
   color: #444;
+}
+
+.advice-box {
+  border-left-color: #f39c12;
 }
 
 .version-footer {

@@ -1,13 +1,18 @@
 <template>
   <div id="app-wrapper">
-    <!-- 頂部導覽列 -->
-    <nav class="navbar">
-      <div class="navbar-brand">💰 Personal Finance Dashboard</div>
+    <!-- 頂部導覽列 (僅登入後顯示) -->
+    <nav class="navbar" v-if="authStore.isAuthenticated">
+      <div class="navbar-brand">💰 Finance Dashboard v{{ VERSION }}</div>
       <ul class="navbar-links">
         <li><router-link to="/" exact-active-class="active">Dashboard</router-link></li>
         <li><router-link to="/expenses" active-class="active">記帳</router-link></li>
+        <li><router-link to="/budgets" active-class="active">預算</router-link></li>
         <li><router-link to="/stocks" active-class="active">股票</router-link></li>
       </ul>
+      <div class="navbar-user">
+        <span class="user-email" v-if="authStore.user">{{ authStore.user.email }}</span>
+        <button class="btn btn-logout" @click="handleLogout">登出</button>
+      </div>
     </nav>
 
     <!-- 頁面內容 -->
@@ -18,7 +23,32 @@
 </template>
 
 <script setup>
-// App.vue 僅負責佈局，無業務邏輯
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
+import { VERSION } from '@/constants/version'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+// App 初始化時恢復認證狀態
+onMounted(async () => {
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.fetchMe()
+    } catch (e) {
+      console.error('Session expired')
+      router.push('/login')
+    }
+  }
+})
+
+function handleLogout() {
+  if (confirm('確定要登出嗎？')) {
+    authStore.logout()
+    router.push('/login')
+  }
+}
 </script>
 
 <style>
@@ -73,6 +103,27 @@ body {
 .navbar-links a.active {
   background: #16213e;
   color: #fff;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-email {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.btn-logout {
+  background: #e74c3c;
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
 }
 
 /* ── 主內容區 ── */
@@ -227,4 +278,23 @@ tr:hover td { background: #fafafa; }
   padding: 40px 0;
   font-size: 14px;
 }
+
+/* ── 進度條 (v0.6.0) ── */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.bg-success { background-color: #28a745; }
+.bg-warning { background-color: #ffc107; }
+.bg-danger  { background-color: #dc3545; }
 </style>

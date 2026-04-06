@@ -1,61 +1,69 @@
 """
-記帳系統路由 - /api/expenses
+記帳系統路由 - /api/expenses (v0.4.1)
+提供收入與支出的 CRUD 操作，具備使用者資料隔離。
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import date
 
 from db.database import get_db
 from models.expense import ExpenseORM, ExpenseCreate, ExpenseResponse
+from models.user import UserORM
+from services.auth import get_current_user
 
 router = APIRouter(prefix="/api/expenses", tags=["Expenses"])
 
 
 @router.get("", response_model=List[ExpenseResponse])
-def list_expenses(
-    type: Optional[str] = Query(None, description="篩選類型：income / expense"),
-    category: Optional[str] = Query(None, description="篩選類別"),
+def get_expenses(
+    type: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
 ):
-    """取得記帳列表，支援依 type 與 category 篩選"""
-    query = db.query(ExpenseORM)
+    """取得當前使用者的記帳清單"""
+    query = db.query(ExpenseORM).filter(ExpenseORM.user_id == current_user.id)
     if type:
         query = query.filter(ExpenseORM.type == type)
-    if category:
-        query = query.filter(ExpenseORM.category == category)
     return query.order_by(ExpenseORM.date.desc()).all()
 
 
-@router.post("", response_model=ExpenseResponse, status_code=201)
-def create_expense(payload: ExpenseCreate, db: Session = Depends(get_db)):
-    """新增一筆收入或支出記錄"""
-    record = ExpenseORM(
+@router.post("", response_model=ExpenseResponse)
+def create_expense(
+    payload: ExpenseCreate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """建立新的記帳記錄"""
+    new_expense = ExpenseORM(
+        user_id=current_user.id,
         amount=payload.amount,
         category=payload.category,
         type=payload.type,
         date=payload.date,
-        note=payload.note,
+        note=payload.note
     )
-    db.add(record)
+    db.add(new_expense)
     db.commit()
-    db.refresh(record)
-    return record
+    db.refresh(new_expense)
+    return new_expense
 
 
-@router.get("/{expense_id}", response_model=ExpenseResponse)
-def get_expense(expense_id: int, db: Session = Depends(get_db)):
-    """取得單筆記帳記錄"""
-    record = db.query(ExpenseORM).filter(ExpenseORM.id == expense_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="記錄不存在")
-    return record
-
-
-@router.delete("/{expense_id}", status_code=204)
-def delete_expense(expense_id: int, db: Session = Depends(get_db)):
-    """刪除一筆記帳記錄"""
-    record = db.query(ExpenseORM).filter(ExpenseORM.id == expense_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="記錄不存在")
-    db.delete(record)
+@router.delete("/{expense_id}")
+def delete_expense(
+    expense_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """刪除指定的記帳記錄"""
+    expense = db.query(ExpenseORM).filter(
+        ExpenseORM.id == expense_id,
+        ExpenseORM.user_id == current_user.id
+    ).first()
+    
+    if not expense:
+        raise HTTPException(status_code=404, detail="找不到該筆記錄")
+    
+    db.delete(expense)
     db.commit()
+    return {"message": "刪除成功"}

@@ -1,13 +1,11 @@
 """
-股票篩選引擎 (Rule-Based Filtering System)
-規則設計原則：
-  - 每條規則為一個獨立函式，回傳 (passed: bool, reason: str)
-  - evaluate_stock 彙整所有規則，回傳 passed 與 fail_reasons
+股票篩選引擎服務 (v0.4.1)
+提供 Rule-based 股票篩選邏輯與結果評估。
 """
 from typing import List, Tuple
 
 
-# ── 個別規則函式 (點 4: 優化提示文案，使文字與實際規則完全一致) ───────────────
+# ── 個別規則函式 ─────────────────────────────────────────────────────────────
 
 def rule_net_income_positive(net_income: float) -> Tuple[bool, str]:
     """規則 1：淨利潤必須大於 0"""
@@ -39,7 +37,7 @@ RULES = [
 ]
 
 
-# ── 核心評估函式 ──────────────────────────────────────────────────────────────
+# ── 核心評估函式 ─────────────────────────────────────────────────────────────
 
 def evaluate_stock(
     stock_code: str,
@@ -58,8 +56,8 @@ def evaluate_stock(
         "revenue_growth": revenue_growth,
     }
 
-    for rule_key, rule_fn in RULES:
-        passed, reason = rule_fn(values[rule_key])
+    for _, rule_fn in RULES:
+        passed, reason = rule_fn(values[_])
         if not passed:
             fail_reasons.append(reason)
 

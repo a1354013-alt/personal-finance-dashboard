@@ -1,38 +1,44 @@
 """
-AI 摘要路由
-  - /api/ai/summary        財務摘要
-  - /api/ai/stock-explain  股票篩選結果解說
+AI 摘要路由 - /api/ai (v0.6.0)
+提供財務摘要、股票分析解說與預算建議。
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, validator, Field # 點 2: 匯入 validator, Field
+from pydantic import BaseModel, field_validator, Field
 from collections import defaultdict
+from datetime import datetime
 
 from db.database import get_db
 from models.expense import ExpenseORM
-from services.ai_summary import generate_finance_summary, generate_stock_explanation
+from models.budget import BudgetORM
+from models.user import UserORM
+from services.auth import get_current_user
+from services.ai_summary import (
+    generate_finance_summary, 
+    generate_stock_explanation,
+    generate_budget_advice
+)
 from services.stock_filter import evaluate_stock
 
 router = APIRouter(prefix="/api/ai", tags=["AI"])
 
 
-# ── /api/ai/summary ──────────────────────────────────────────────────────────
-
 @router.get("/summary")
-def ai_finance_summary(db: Session = Depends(get_db)):
+def ai_finance_summary(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
     """
-    根據資料庫中的記帳資料自動生成財務摘要文字。
+    根據當前使用者的記帳資料自動生成財務摘要文字。
     """
-    records = db.query(ExpenseORM).all()
+    records = db.query(ExpenseORM).filter(ExpenseORM.user_id == current_user.id).all()
     
-    # 點 8: 當無任何 expense 資料時直接回傳提示訊息
     if not records:
         return {"summary": "目前尚無財務資料，請先新增收入或支出記錄以生成財務摘要。"}
 
     total_income = sum(r.amount for r in records if r.type == "income")
     total_expense = sum(r.amount for r in records if r.type == "expense")
 
-    # 找最高支出類別
     category_map: dict = defaultdict(float)
     for r in records:
         if r.type == "expense":
@@ -47,17 +53,15 @@ def ai_finance_summary(db: Session = Depends(get_db)):
     return {"summary": summary}
 
 
-# ── /api/ai/stock-explain ────────────────────────────────────────────────────
-
 class StockExplainRequest(BaseModel):
-    # 點 2: 對 stock_code 加入驗證
     stock_code: str = Field(..., description="股票代碼")
     net_income: float
     free_cash_flow: float
     revenue_growth: float
 
-    @validator('stock_code')
-    def stock_code_must_not_be_empty(cls, v):
+    @field_validator('stock_code')
+    @classmethod
+    def stock_code_must_not_be_empty(cls, v: str) -> str:
         stripped = v.strip()
         if not stripped:
             raise ValueError('股票代碼不可為空')
@@ -67,7 +71,10 @@ class StockExplainRequest(BaseModel):
 
 
 @router.post("/stock-explain")
-def ai_stock_explain(payload: StockExplainRequest):
+def ai_stock_explain(
+    payload: StockExplainRequest,
+    current_user: UserORM = Depends(get_current_user)
+):
     """
     對指定股票基本面數據執行篩選並生成解說文字。
     """
@@ -90,4 +97,43 @@ def ai_stock_explain(payload: StockExplainRequest):
         "passed": result["passed"],
         "fail_reasons": result["fail_reasons"],
         "explanation": explanation,
+    }
+
+
+@router.get("/budget-advice")
+def get_budget_advice_api(
+    db: Session = Depends(get_db), 
+    current_user: UserORM = Depends(get_current_user)
+):
+    """獲取預算分析與 AI 建議 (v0.6.0)"""
+    now = datetime.now()
+    month_start = datetime(now.year, now.month, 1).date()
+    
+    budgets = db.query(BudgetORM).filter(BudgetORM.user_id == current_user.id).all()
+    expenses = db.query(ExpenseORM).filter(
+        ExpenseORM.user_id == current_user.id,
+        ExpenseORM.date >= month_start,
+        ExpenseORM.type == "expense"
+    ).all()
+    
+    expense_map = defaultdict(float)
+    for e in expenses:
+        expense_map[e.category] += e.amount
+        
+    budget_status = []
+    for b in budgets:
+        spent = expense_map[b.category]
+        percent = (spent / b.monthly_limit * 100) if b.monthly_limit > 0 else 0
+        budget_status.append({
+            "category": b.category,
+            "monthly_limit": b.monthly_limit,
+            "current_spent": spent,
+            "percent_used": percent,
+            "over_budget": spent > b.monthly_limit
+        })
+        
+    advice = generate_budget_advice(budget_status)
+    return {
+        "budget_status": budget_status,
+        "advice": advice
     }

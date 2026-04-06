@@ -1,93 +1,75 @@
-# Personal Finance Dashboard (v0.3.1)
+# Personal Finance Dashboard (v0.6.0)
 
-這是一個完整且精簡的個人財務儀表板 DEMO 專案，展示了前後端分離的系統架構與功能實作。
+這是一個完整且精簡的個人財務管理系統 DEMO 專案，結合了記帳系統、預算管理、真實股票行情同步、股票篩選引擎以及 AI 財務建議模組。
 
-## 系統架構
+## 🚀 版本更新：v0.6.0 (Budget System & AI Advice)
+- **預算管理系統**：新增每月預算限額設定，自動追蹤各類別支出使用率與超支警示。
+- **AI 財務建議**：根據收支與預算執行進度，由 AI (Template-based) 產生個人化理財與預算建議。
+- **Dashboard 強化**：儀表板新增預算分析建議區塊。
+- **穩定性修正 (v0.5.2)**：修正股票同步訊息、清理開發註解、優化 Loading 狀態管理。
 
-- **前端**：Vue 3 + Vite + Pinia + Axios
-- **後端**：Python FastAPI
-- **資料庫**：SQLite (SQLAlchemy ORM)
-- **版本**：v0.3.1
-
-## 功能模組
-
-1. **記帳系統**
-   - 支援新增收入與支出（金額、類別、類型、日期、備註）。
-   - 提供列表查詢與依類型篩選功能。
-2. **股票模組 (Mock/Demo 資料流程)**
-   - 內建自選股清單（Watchlist）。
-   - 提供股票基本面資料展示。
-   - **注意**：本模組目前使用內建 Mock 資料，未串接真實證券 API。
-3. **股票篩選引擎 (Mock/Demo 規則)**
-   - Rule-based 篩選系統，包含三大規則：
-     - `net_income > 0` (淨利潤)
-     - `free_cash_flow > 0` (自由現金流)
-     - `revenue_growth > 0` (營收成長率)
-   - 顯示通過與未通過的股票，並提供使用者可理解的中文失敗原因。
-4. **AI 摘要模組 (Mock/Demo 資料流程)**
-   - 根據記帳資料自動生成財務摘要（具備無資料防呆提示）。
-   - 根據股票基本面數據生成 AI 分析解說。
-   - （目前使用 Template 實作，已預留 LLM 替換介面）
-
-## 專案結構
-
+## 📂 專案結構
 ```text
 personal-finance-dashboard/
-├── backend/                  # FastAPI 後端
-│   ├── db/                   # 資料庫設定 (database.py)
-│   ├── models/               # 資料模型 (expense.py, stock.py)
-│   ├── routers/              # API 路由 (expenses.py, stocks.py, dashboard.py, ai.py)
-│   ├── services/             # 業務邏輯 (stock_filter.py, ai_summary.py)
-│   ├── main.py               # FastAPI 主程式
-│   ├── seed_data.py          # 測試資料填充腳本
-│   └── requirements.txt      # 後端套件依賴
-└── frontend/                 # Vue3 前端
-    ├── src/
-    │   ├── api/              # API 模組 (index.js, expenses.js, stocks.js, dashboard.js)
-    │   ├── constants/        # 常數定義 (version.js)
-    │   ├── pages/            # 頁面元件 (Dashboard.vue, Expenses.vue, Stocks.vue)
-    │   ├── stores/           # 狀態管理 (expenseStore.js, stockStore.js, dashboardStore.js)
-    │   ├── router/           # 路由設定 (index.js)
-    │   ├── App.vue           # 根元件
-    │   └── main.js           # 前端入口
-    ├── index.html
-    ├── package.json          # 專案設定 (v0.3.1)
-    └── vite.config.js        # Vite 設定
+├── backend/                # FastAPI 後端
+│   ├── db/                 # 資料庫連線與初始化
+│   ├── models/             # SQLAlchemy ORM 與 Pydantic 模型 (User, Expense, Stock, Budget)
+│   ├── routers/            # API 路由 (Auth, Expenses, Stocks, Budgets, Dashboard, AI)
+│   ├── services/           # 業務邏輯 (Auth, StockData, StockFilter, AISummary)
+│   ├── main.py             # 程式入口
+│   └── seed_data.py        # 測試資料填充腳本
+├── frontend/               # Vue 3 前端
+│   ├── src/
+│   │   ├── api/            # Axios API 呼叫封裝 (Auth, Expenses, Stocks, Budgets)
+│   │   ├── stores/         # Pinia 狀態管理 (Auth, Expense, Stock, Dashboard)
+│   │   ├── pages/          # 頁面元件 (Login, Register, Dashboard, Expenses, Stocks, Budgets)
+│   │   └── constants/      # 全域常數 (版本號等)
+│   └── vite.config.js      # Vite 配置 (含 API Proxy)
+└── README.md
 ```
 
-## Release Notes
+## 🛠️ 快速啟動
 
-### v0.3.1 (Hotfix)
-- **錯誤狀態拆分**：將 `stockStore` 的錯誤狀態拆分為 `watchlistError` 與 `filterError`，避免並發請求時錯誤訊息覆蓋。
-- **驗證補強**：後端 `StockExplainRequest` 加入 `stock_code` 非空與長度驗證。
-- **版本號管理**：建立前端版本號常數檔 `version.js` 並統一全站版本標示。
-
-### v0.3.0 (收尾修正)
-- **狀態管理優化**：拆分 `expenseStore` 的 `loading` 與 `submitting` 狀態。
-- **文案優化**：股票篩選失敗原因改為精確中文提示，統一空資料產品化文案。
-- **錯誤處理**：記帳刪除失敗由 `alert` 改為頁面內錯誤顯示。
-
-## 本地執行指南
-
-### 1. 啟動後端 (FastAPI)
-
+### 1. 後端啟動
 ```bash
 cd backend
+# 安裝依賴 (建議使用虛擬環境)
 pip install -r requirements.txt
-python seed_data.py  # 建立資料庫與寫入測試資料
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# 初始化資料庫與測試資料
+python seed_data.py
+# 啟動伺服器
+uvicorn main:app --reload
 ```
-- API 文件：[http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 2. 啟動前端 (Vite)
-
+### 2. 前端啟動
 ```bash
 cd frontend
-npm install
-npm run dev
+# 安裝依賴
+pnpm install
+# 啟動開發伺服器
+pnpm dev
 ```
-- 預設執行於：[http://localhost:5173](http://localhost:5173)
 
----
+## 🔐 測試帳號
+- **Email**: `demo@example.com`
+- **Password**: `demo1234`
 
-> ⚠️ **注意**：本專案為 DEMO 用途。股票資料、篩選結果與 AI 解說均為 Mock 數據流程。
+## 📈 股票資料說明 (Stock Data)
+- **真實資料**：目前「最新價格」、「成交量」與「最後更新日期」均透過 `yfinance` 抓取真實市場行情。
+- **台股支援**：輸入 4 位數台股代碼（如 `2330`）系統會自動補全為 `2330.TW` 進行抓取。
+- **同步機制**：使用者可手動點擊「同步最新價格」觸發更新，抓取失敗時會回傳錯誤提示。
+- **Mock 流程**：股票篩選引擎的基本面數據與 AI 股票解說目前仍為 Demo/Mock 流程。
+
+## 📝 版本更新日誌 (Release Notes)
+- **v0.6.0**：正式導入預算管理系統與 AI 預算建議功能。
+- **v0.5.2**：穩定性修正。優化股票同步訊息、清理開發註解、優化 Loading 狀態管理。
+- **v0.5.1**：優化 API 回傳處理、台股代碼辨識、移除 alert 改用頁面提示。
+- **v0.5.0**：正式導入真實股票資料流程 (yfinance) 與 Watchlist 完整 CRUD。
+- **v0.4.1**：認證流程穩定性優化與 API 結構重整。
+- **v0.4.0**：引入 JWT 認證系統與使用者資料隔離。
+
+## ⚠️ 限制與說明
+- 本專案為 DEMO 用途，不建議直接用於生產環境。
+- AI 摘要與建議目前使用預設 Template 生成，可於 `backend/services/ai_summary.py` 中替換為真實 LLM API。
+- 股票資料抓取受限於 yfinance 的穩定性與網路環境。
+- 預算統計以「自然月」為單位進行計算。

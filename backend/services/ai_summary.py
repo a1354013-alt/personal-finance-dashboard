@@ -1,11 +1,9 @@
 """
-AI 摘要服務
+AI 摘要服務 (v0.6.0)
 目前使用 template 字串生成摘要，程式結構已預留 LLM 替換介面。
 """
-from typing import Optional  # 點 11: 匯入 Optional
+from typing import Optional, List, Dict
 
-
-# ── LLM 介面 (點 11: 修正回傳型別為 Optional[str]) ───────────────────────────
 
 def _call_llm(prompt: str) -> Optional[str]:
     """
@@ -14,8 +12,6 @@ def _call_llm(prompt: str) -> Optional[str]:
     """
     return None
 
-
-# ── Dashboard 財務摘要 ────────────────────────────────────────────────────────
 
 def generate_finance_summary(
     total_income: float,
@@ -39,7 +35,6 @@ def generate_finance_summary(
     if llm_result:
         return llm_result
 
-    # Template fallback
     status = "結餘" if net >= 0 else "赤字"
     return (
         f"【{period}財務摘要】\n"
@@ -50,8 +45,6 @@ def generate_finance_summary(
         f"建議{'持續保持良好財務習慣。' if net >= 0 else '注意控制支出，避免超支。'}"
     )
 
-
-# ── 股票解說 ──────────────────────────────────────────────────────────────────
 
 def generate_stock_explanation(
     stock_code: str,
@@ -75,7 +68,6 @@ def generate_stock_explanation(
     if llm_result:
         return llm_result
 
-    # Template fallback
     if passed:
         return (
             f"【{stock_code} 分析】\n"
@@ -92,3 +84,33 @@ def generate_stock_explanation(
             f"該股票未通過篩選，原因如下：{reasons_text}。"
             f"建議持續追蹤基本面改善情況後再行評估。"
         )
+
+
+def generate_budget_advice(budget_status: List[Dict]) -> str:
+    """
+    根據預算執行狀況產生建議 (v0.6.0)
+    """
+    if not budget_status:
+        return "目前尚無預算設定。建議針對『餐飲』或『購物』等高頻率支出類別設定每月限額，幫助您更有效地控制支出。"
+
+    over_budgets = [b for b in budget_status if b.get('over_budget', False)]
+    near_limits = [b for b in budget_status if not b.get('over_budget', False) and b.get('percent_used', 0) > 80]
+    
+    prompt = f"請根據以下預算執行狀況生成一段繁體中文理財建議：\n{budget_status}\n"
+    llm_result = _call_llm(prompt)
+    if llm_result:
+        return llm_result
+
+    advices = []
+    if over_budgets:
+        categories = "、".join([b['category'] for b in over_budgets])
+        advices.append(f"⚠️ 警示：您的【{categories}】類別已超出預算！請立即檢視本月剩餘天數，並嚴格限制相關支出。")
+        
+    if near_limits:
+        categories = "、".join([b['category'] for b in near_limits])
+        advices.append(f"💡 提醒：【{categories}】類別的使用率已超過 80%，接近預算上限，請留意後續消費。")
+        
+    if not advices:
+        return "✅ 本月預算執行狀況良好，所有類別皆在控制範圍內。請繼續保持良好的消費習慣！"
+        
+    return " ".join(advices)
