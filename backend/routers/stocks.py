@@ -1,5 +1,5 @@
 """
-股票模組路由 - /api/stocks (v0.5.1)
+股票模組路由 - /api/stocks
 提供使用者自選股清單、真實價格同步與股票篩選功能。
 """
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -38,7 +38,7 @@ def get_watchlist(
             "id": item.id,
             "user_id": item.user_id,
             "stock_code": item.stock_code,
-            "name": item.name,
+            "name": item.name if item.name else item.stock_code,
             "price": latest_price.close if latest_price else None,
             "date": latest_price.trade_date if latest_price else None,
             "volume": latest_price.volume if latest_price else None,
@@ -55,7 +55,6 @@ def add_to_watchlist(
     current_user: UserORM = Depends(get_current_user)
 ):
     """新增自選股"""
-    # 使用服務端的格式化邏輯 (點 3)
     stock_code = StockDataService._format_stock_code(request.stock_code)
     
     # 檢查是否已存在 (去重邏輯)
@@ -67,16 +66,19 @@ def add_to_watchlist(
     if existing:
         raise HTTPException(status_code=400, detail="此股票已在自選股清單中")
     
+    # 嘗試從 yfinance 獲取股票名稱
+    stock_info = StockDataService.fetch_stock_info(stock_code)
+    stock_name = stock_info.get("shortName") or stock_info.get("longName") if stock_info else None
+
     new_item = WatchlistORM(
         user_id=current_user.id,
-        stock_code=stock_code
+        stock_code=stock_code,
+        name=stock_name
     )
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
     
-    # 嘗試同步一次最新價格 (點 6)
-    # 若同步失敗，仍回傳成功新增但標示同步狀態
     sync_success = _sync_stock_price_internal(stock_code, db)
     
     return {
@@ -131,7 +133,7 @@ def sync_single_stock_price(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
 ):
-    """手動同步單一股票價格 (點 5)"""
+    """手動同步單一股票價格"""
     formatted_code = StockDataService._format_stock_code(stock_code)
     
     # 權限驗證：必須在該使用者的自選股清單中
@@ -178,8 +180,6 @@ def _sync_stock_price_internal(stock_code: str, db: Session) -> bool:
     return True
 
 
-# ── 既有功能：Mock 股票基本面篩選 ───────────────────────────────────────────
-
 MOCK_FUNDAMENTALS = [
     {"stock_code": "2330.TW", "net_income": 500_000, "free_cash_flow": 300_000, "revenue_growth": 12.5},
     {"stock_code": "2317.TW", "net_income": 80_000,  "free_cash_flow": -5_000,  "revenue_growth": 3.2},
@@ -197,7 +197,6 @@ def filter_watchlist_stocks(
 ):
     """
     對當前使用者的自選股執行篩選引擎。
-    此功能仍依賴 Mock Fundamentals。
     """
     watchlist = db.query(WatchlistORM).filter(WatchlistORM.user_id == current_user.id).all()
     watchlist_codes = {s.stock_code for s in watchlist}

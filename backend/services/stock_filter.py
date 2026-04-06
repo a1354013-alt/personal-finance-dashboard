@@ -1,5 +1,5 @@
 """
-股票篩選引擎服務 (v0.4.1)
+股票篩選引擎服務
 提供 Rule-based 股票篩選邏輯與結果評估。
 """
 from typing import List, Tuple

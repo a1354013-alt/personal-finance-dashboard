@@ -14,8 +14,8 @@ router = APIRouter(prefix="/api/budgets", tags=["Budgets"])
 def get_budgets(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
-    """取得使用者所有預算，並計算當月使用率 (v0.6.0)"""
+): # 確保用戶隔離
+    """取得使用者所有預算，並計算當月使用率"""
     budgets = db.query(BudgetORM).filter(BudgetORM.user_id == current_user.id).all()
     
     # 計算當月各類別總支出
@@ -46,8 +46,8 @@ def create_budget(
     budget: BudgetCreate,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
-    """新增預算設定 (v0.6.0)"""
+): # 確保用戶隔離
+    """新增預算設定"""
     # 檢查是否已存在同類別預算
     existing = db.query(BudgetORM).filter(
         BudgetORM.user_id == current_user.id,
@@ -76,8 +76,8 @@ def delete_budget(
     budget_id: int,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
-    """刪除預算設定 (v0.6.0)"""
+): # 確保用戶隔離
+    """刪除預算設定"""
     budget = db.query(BudgetORM).filter(
         BudgetORM.id == budget_id,
         BudgetORM.user_id == current_user.id

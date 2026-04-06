@@ -1,5 +1,5 @@
 """
-記帳系統路由 - /api/expenses (v0.4.1)
+記帳系統路由 - /api/expenses
 提供收入與支出的 CRUD 操作，具備使用者資料隔離。
 """
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,7 +20,7 @@ def get_expenses(
     type: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """取得當前使用者的記帳清單"""
     query = db.query(ExpenseORM).filter(ExpenseORM.user_id == current_user.id)
     if type:
@@ -33,7 +33,7 @@ def create_expense(
     payload: ExpenseCreate,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """建立新的記帳記錄"""
     new_expense = ExpenseORM(
         user_id=current_user.id,
@@ -54,7 +54,7 @@ def delete_expense(
     expense_id: int,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """刪除指定的記帳記錄"""
     expense = db.query(ExpenseORM).filter(
         ExpenseORM.id == expense_id,

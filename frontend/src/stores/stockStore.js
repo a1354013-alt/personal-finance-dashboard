@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import * as stockApi from '@/api/stocks'
 
 /**
- * 股票模組 Store (v0.6.0)
+ * 股票模組 Store
  * 管理自選股清單、篩選結果與同步狀態。
  */
 export const useStockStore = defineStore('stock', () => {
@@ -41,7 +41,7 @@ export const useStockStore = defineStore('stock', () => {
 
   /** 新增自選股 */
   async function addToWatchlist(stockCode) {
-    // 修正：僅由 fetchWatchlist 控制 watchlistLoading，避免狀態重疊
+
     try {
       const res = await stockApi.addToWatchlist(stockCode)
       await fetchWatchlist()
@@ -67,7 +67,7 @@ export const useStockStore = defineStore('stock', () => {
     try {
       const res = await stockApi.syncAllPrices()
       await fetchWatchlist()
-      return res // 回傳後端 message 內容
+      return res
     } catch (e) {
       throw e.message
     } finally {

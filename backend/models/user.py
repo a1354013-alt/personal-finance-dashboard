@@ -1,5 +1,5 @@
 """
-使用者資料模型 (v0.6.0)
+使用者資料模型
 定義使用者實體與認證相關模型。
 """
 from sqlalchemy import Column, Integer, String, DateTime

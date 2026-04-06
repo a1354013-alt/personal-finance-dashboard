@@ -1,5 +1,5 @@
 """
-儀表板統計路由 - /api/dashboard (v0.6.0)
+儀表板統計路由 - /api/dashboard
 提供使用者個人財務數據統計。
 """
 from fastapi import APIRouter, Depends
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 def get_summary(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """
     回傳當前使用者 Dashboard 所需的彙整資料，包含預算超支檢查。
     """
@@ -60,7 +60,7 @@ def get_summary(
         for m in all_months[-6:]
     ]
 
-    # 預算超支檢查 (v0.6.0)
+    # 預算超支檢查
     budgets = db.query(BudgetORM).filter(BudgetORM.user_id == current_user.id).all()
     over_budget_categories = []
     

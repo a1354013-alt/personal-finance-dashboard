@@ -5,7 +5,7 @@ import { getExpenses, createExpense, deleteExpense } from '@/api/expenses'
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref([])
   const loading = ref(false)
-  const submitting = ref(false) // 點 2: 拆分 loading 與 submitting 狀態
+  const submitting = ref(false)
   const error = ref(null)
 
   // 計算總收入
@@ -35,7 +35,7 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   async function addExpense(data) {
-    submitting.value = true // 點 2: 使用 submitting 避免與 fetchExpenses 衝突
+    submitting.value = true
     error.value = null
     try {
       await createExpense(data)

@@ -1,5 +1,5 @@
 """
-認證路由 - /api/auth (v0.4.1)
+認證路由 - /api/auth
 提供使用者註冊、登入與狀態查詢。
 """
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -81,6 +81,6 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
     }
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: UserORM = Depends(get_current_user)):
+def get_me(current_user: UserORM = Depends(get_current_user)): # 確保用戶隔離
     """獲取當前登入使用者資料"""
     return current_user

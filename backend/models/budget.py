@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class BudgetORM(Base):
-    """預算資料模型 (v0.6.0)"""
+    """預算資料模型"""
     __tablename__ = "budgets"
 
     id = Column(Integer, primary_key=True, index=True)

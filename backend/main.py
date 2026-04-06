@@ -1,5 +1,5 @@
 """
-FastAPI 主程式 (v0.6.0)
+FastAPI 主程式
 配置 API 路由、中介軟體與資料庫初始化。
 """
 from fastapi import FastAPI
@@ -19,7 +19,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Personal Finance Dashboard API",
     description="提供記帳、股票篩選與 AI 財務摘要功能的後端服務 (含 JWT 認證與真實股票資料)",
-    version="0.6.0"
+    version="0.6.1"
 )
 
 # CORS 配置
@@ -44,7 +44,7 @@ def read_root():
     return {
         "message": "Personal Finance Dashboard API is running",
         "docs": "/docs",
-        "version": "0.6.0"
+        "version": "0.6.1"
     }
 
 @app.get("/health")

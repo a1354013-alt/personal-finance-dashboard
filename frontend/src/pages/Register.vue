@@ -51,7 +51,7 @@ const form = ref({
 const successMsg = ref('')
 
 async function handleRegister() {
-  // 點 3: 送出前先清除舊的狀態訊息
+
   authStore.error = null
   successMsg.value = ''
 
@@ -62,7 +62,7 @@ async function handleRegister() {
   
   const success = await authStore.register(form.value.email, form.value.password)
   if (success) {
-    // 註冊成功後顯示提示並導向登入頁
+
     successMsg.value = '註冊成功！即將為您跳轉至登入頁面...'
     setTimeout(() => {
       router.push('/login')

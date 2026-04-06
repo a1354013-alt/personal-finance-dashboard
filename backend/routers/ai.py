@@ -1,5 +1,5 @@
 """
-AI 摘要路由 - /api/ai (v0.6.0)
+AI 摘要路由 - /api/ai
 提供財務摘要、股票分析解說與預算建議。
 """
 from fastapi import APIRouter, Depends
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/ai", tags=["AI"])
 def ai_finance_summary(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """
     根據當前使用者的記帳資料自動生成財務摘要文字。
     """
@@ -74,7 +74,7 @@ class StockExplainRequest(BaseModel):
 def ai_stock_explain(
     payload: StockExplainRequest,
     current_user: UserORM = Depends(get_current_user)
-):
+): # 確保用戶隔離
     """
     對指定股票基本面數據執行篩選並生成解說文字。
     """
@@ -104,8 +104,8 @@ def ai_stock_explain(
 def get_budget_advice_api(
     db: Session = Depends(get_db), 
     current_user: UserORM = Depends(get_current_user)
-):
-    """獲取預算分析與 AI 建議 (v0.6.0)"""
+): # 確保用戶隔離
+    """獲取預算分析與 AI 建議"""
     now = datetime.now()
     month_start = datetime(now.year, now.month, 1).date()
     

@@ -1,5 +1,5 @@
 """
-股票資料模型 (v0.5.0)
+股票資料模型
 包含自選股 (Watchlist) 與市場價格歷史 (StockPrice)。
 """
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
@@ -13,7 +13,7 @@ from db.database import Base
 # ── SQLAlchemy ORM 模型 ──────────────────────────────────────────────────────
 
 class WatchlistORM(Base):
-    """使用者自選股清單 (點 5, 6)"""
+    """使用者自選股清單"""
     __tablename__ = "watchlist"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -24,12 +24,12 @@ class WatchlistORM(Base):
     # 建立與使用者的關聯
     user = relationship("UserORM", back_populates="watchlist")
 
-    # 限制同一使用者不可重複加入相同股票 (點 6)
+    # 限制同一使用者不可重複加入相同股票
     __table_args__ = (UniqueConstraint('user_id', 'stock_code', name='_user_stock_uc'),)
 
 
 class StockPriceORM(Base):
-    """市場價格歷史資料 (點 3, 4)"""
+    """市場價格歷史資料"""
     __tablename__ = "stock_prices"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -49,7 +49,7 @@ class StockPriceORM(Base):
 # ── Pydantic Schemas (用於 API 驗證與回傳) ───────────────────────────────────
 
 class WatchlistCreate(BaseModel):
-    """建立自選股請求 (點 5)"""
+    """建立自選股請求"""
     stock_code: str
 
     @field_validator('stock_code')
@@ -73,7 +73,7 @@ class WatchlistItemResponse(BaseModel):
     price: Optional[float] = None
     date: Optional[str] = None
     volume: Optional[float] = None
-    # 新增欄位：標示價格同步狀態 (點 6)
+    # 新增欄位：標示價格同步狀態
     price_sync_status: Optional[str] = "success"
 
     model_config = {"from_attributes": True}

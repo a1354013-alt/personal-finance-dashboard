@@ -1,5 +1,5 @@
 """
-AI 摘要服務 (v0.6.0)
+AI 摘要服務
 目前使用 template 字串生成摘要，程式結構已預留 LLM 替換介面。
 """
 from typing import Optional, List, Dict
@@ -88,7 +88,7 @@ def generate_stock_explanation(
 
 def generate_budget_advice(budget_status: List[Dict]) -> str:
     """
-    根據預算執行狀況產生建議 (v0.6.0)
+    根據預算執行狀況產生建議
     """
     if not budget_status:
         return "目前尚無預算設定。建議針對『餐飲』或『購物』等高頻率支出類別設定每月限額，幫助您更有效地控制支出。"

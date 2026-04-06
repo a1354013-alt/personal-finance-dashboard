@@ -137,7 +137,7 @@ const adviceLoading = ref(false)
 const fetchBudgetAdvice = async () => {
   adviceLoading.value = true
   try {
-    const res = await api.get('/api/ai/budget-advice')
+    const res = await api.get('/ai/budget-advice')
     budgetAdvice.value = res.advice
   } catch (e) {
     budgetAdvice.value = '暫時無法產生預算建議'

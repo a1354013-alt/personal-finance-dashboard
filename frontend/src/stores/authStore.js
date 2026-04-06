@@ -1,5 +1,5 @@
 /**
- * 認證狀態管理 (v0.4.1)
+ * 認證狀態管理
  */
 import { defineStore } from 'pinia'
 import authApi from '@/api/auth'
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         const res = await authApi.login(email, password)
-        // 點 4: 統一由 api instance 回傳資料 (axios 攔截器已處理 .data)
+
         this.token = res.access_token
         this.user = res.user
         
@@ -68,7 +68,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * 同步當前使用者狀態 (點 6)
+     * 同步當前使用者狀態
      */
     async fetchMe() {
       if (!this.token) return
@@ -78,7 +78,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('user', JSON.stringify(this.user))
         return true
       } catch (err) {
-        // 點 6: 若驗證失敗則清除狀態
+
         this.logout()
         return false
       }

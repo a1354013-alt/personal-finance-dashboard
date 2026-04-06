@@ -123,7 +123,7 @@ const store = useExpenseStore()
 const filterType = ref('')
 const formError = ref('')
 
-const today = new Date().toISOString().split('T')[0]
+const today = new Date().toISOString().split('T')[0] // 獲取今日日期，用於表單預設值
 
 const form = ref({
   amount: null,
@@ -151,20 +151,20 @@ async function handleAdd() {
   }
   try {
     await store.addExpense({ ...form.value })
-    // 重置表單
+
     form.value = { amount: null, type: 'expense', category: '', date: today, note: '' }
   } catch (e) {
-    // 錯誤會自動顯示在 store.error
+
   }
 }
 
 async function handleDelete(id) {
   if (!confirm('確定要刪除這筆記錄嗎？')) return
-  // 點 3: 刪除失敗改為頁面內錯誤顯示 (與現有風格一致)
+
   try {
     await store.removeExpense(id)
   } catch (e) {
-    // 錯誤已由 store.error 接管，會自動顯示在頁面上方的 error-msg
+
   }
 }
 

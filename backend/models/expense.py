@@ -1,5 +1,5 @@
 """
-記帳資料模型 (v0.5.0)
+記帳資料模型
 定義 Expense ORM 模型與 Pydantic Schemas。
 """
 from sqlalchemy import Column, Integer, Float, String, Date, Text, ForeignKey
@@ -13,11 +13,11 @@ from datetime import date
 # ── SQLAlchemy ORM 模型 ──────────────────────────────────────────────────────
 
 class ExpenseORM(Base):
-    """記帳資料表 (點 5)"""
+    """記帳資料表"""
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False) # 關聯使用者
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Float, nullable=False)
     category = Column(String(50), nullable=False)
     type = Column(String(10), nullable=False)   # "income" | "expense"

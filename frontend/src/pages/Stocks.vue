@@ -1,6 +1,6 @@
 <template>
   <div class="stocks-page p-4">
-    <h1 class="text-2xl font-bold mb-6">股票投資模組 (v0.6.0)</h1>
+    <h1 class="text-2xl font-bold mb-6">股票投資模組</h1>
 
     <!-- 操作提示訊息 -->
     <div v-if="actionMessage" class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg flex justify-between items-center">

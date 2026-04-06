@@ -1,6 +1,6 @@
 <template>
   <div class="budgets-page p-4">
-    <h1 class="text-2xl font-bold mb-6">預算管理 (v0.6.0)</h1>
+    <h1 class="text-2xl font-bold mb-6">預算管理</h1>
 
     <!-- 訊息提示 -->
     <div v-if="message" class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg flex justify-between items-center">

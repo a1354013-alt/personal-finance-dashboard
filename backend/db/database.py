@@ -1,5 +1,5 @@
 """
-資料庫連線配置 (v0.4.1)
+資料庫連線配置
 使用 SQLAlchemy 建立 SQLite 連線與 Session 管理。
 """
 from sqlalchemy import create_engine
@@ -11,7 +11,7 @@ DATABASE_URL = "sqlite:///./finance.db"
 # 建立資料庫引擎
 engine = create_engine(
     DATABASE_URL, 
-    connect_args={"check_same_thread": False} # SQLite 專用配置
+    connect_args={"check_same_thread": False}
 )
 
 # 建立 Session 類別
