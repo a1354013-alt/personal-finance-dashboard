@@ -154,7 +154,8 @@ This logic is centralized in `backend/services/budget_summary.py` and reused by:
 
 - `backend/finance.db` is ignored and should not be committed as a delivery artifact.
 - `python seed_data.py --reset` is the supported reproducible reset path.
-- The app initializes tables for a clean database, but does not try to repair a stale schema in place.
+- Relative SQLite paths are normalized against the `backend` directory so the database location does not drift with the current shell working directory.
+- The app initializes tables for a clean database and fails fast if an existing SQLite file is missing required tables, instead of silently patching an old schema in place.
 
 ### Stock watchlist sync status
 
@@ -164,7 +165,7 @@ Watchlist rows expose exactly three sync states:
 - `pending`
 - `failed`
 
-Frontend rendering matches these states directly. If a stock has no price data after loading the watchlist, it is shown as `pending`, not as a healthy synced state.
+Frontend rendering matches these states directly. Failed sync status is persisted per watchlist item together with the latest sync error, so add-to-watchlist feedback and later refreshes stay consistent.
 
 ### Mock stock screening scope
 
@@ -176,3 +177,11 @@ Fundamental screening is still mock-based for a limited set of bundled symbols. 
 - Stock prices depend on `yfinance`; transient upstream failures can still produce `failed` sync states.
 - Fundamental screening remains mock-backed rather than fully live.
 - `.env` loading is included for local development, but production deployment still needs explicit secret and environment management.
+
+## Release Checklist
+
+- Run `python seed_data.py --reset` inside `backend`.
+- Run `python -m pytest` inside `backend`.
+- Run `npm run build` inside `frontend`.
+- Confirm the UI can sign in with `demo@example.com / demo1234`.
+- Confirm dashboard, expenses, budgets, and stocks pages load without console or API contract errors.

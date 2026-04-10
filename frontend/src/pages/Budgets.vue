@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1>Budgets</h1>
-      <p>Monthly budget tracking uses the same expense window everywhere: current month, expense type only.</p>
+      <p>Monthly budget status is calculated from current-month expense records only.</p>
     </div>
 
     <div v-if="message" class="success-msg">{{ message }}</div>
@@ -70,9 +70,7 @@
             <span v-if="budget.percent_used > 100" class="over-limit">
               Over by {{ formatCurrency(budget.current_spent - budget.monthly_limit) }}
             </span>
-            <span v-else>
-              Remaining {{ formatCurrency(budget.monthly_limit - budget.current_spent) }}
-            </span>
+            <span v-else>Remaining {{ formatCurrency(budget.monthly_limit - budget.current_spent) }}</span>
           </div>
         </article>
       </div>
@@ -83,6 +81,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import * as budgetApi from '@/api/budgets'
+import { EXPENSE_CATEGORIES } from '@/constants/categories'
 
 const budgets = ref([])
 const loading = ref(false)
@@ -90,7 +89,7 @@ const isSubmitting = ref(false)
 const message = ref('')
 const error = ref('')
 
-const categories = ['Food', 'Transport', 'Housing', 'Utilities', 'Healthcare', 'Entertainment', 'Travel', 'Other']
+const categories = EXPENSE_CATEGORIES
 
 const newBudget = ref({
   category: '',

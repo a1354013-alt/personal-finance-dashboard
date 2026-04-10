@@ -5,14 +5,28 @@ from pathlib import Path
 from typing import Iterator
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE_URL = "sqlite:///./finance.db"
-DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+EXPECTED_TABLES = {"users", "expenses", "budgets", "watchlist", "stock_prices"}
 
+
+def normalize_database_url(database_url: str) -> str:
+    if not database_url.startswith("sqlite:///"):
+        return database_url
+
+    sqlite_path = database_url.replace("sqlite:///", "", 1)
+    path_obj = Path(sqlite_path)
+    if not path_obj.is_absolute():
+        path_obj = (BACKEND_DIR / path_obj).resolve()
+    return f"sqlite:///{path_obj.as_posix()}"
+
+
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
 Base = declarative_base()
 
 
@@ -36,16 +50,7 @@ def get_db() -> Iterator:
 def resolve_sqlite_path(database_url: str = DATABASE_URL) -> Path | None:
     if not database_url.startswith("sqlite:///"):
         return None
-
-    relative_path = database_url.replace("sqlite:///", "", 1)
-    return Path(relative_path).resolve()
-
-
-def database_exists(database_url: str = DATABASE_URL) -> bool:
-    sqlite_path = resolve_sqlite_path(database_url)
-    if sqlite_path is None:
-        return True
-    return sqlite_path.exists()
+    return Path(database_url.replace("sqlite:///", "", 1)).resolve()
 
 
 def init_db() -> None:
@@ -55,10 +60,18 @@ def init_db() -> None:
     from models.user import UserORM  # noqa: F401
 
     sqlite_path = resolve_sqlite_path()
-    if sqlite_path is not None and sqlite_path.exists():
+    if sqlite_path is None or not sqlite_path.exists():
+        Base.metadata.create_all(bind=engine)
         return
 
-    Base.metadata.create_all(bind=engine)
+    existing_tables = set(inspect(engine).get_table_names())
+    missing_tables = EXPECTED_TABLES - existing_tables
+    if missing_tables:
+        missing = ", ".join(sorted(missing_tables))
+        raise RuntimeError(
+            "Existing database schema is incompatible with the current application. "
+            f"Missing tables: {missing}. Run `python seed_data.py --reset` to recreate it."
+        )
 
 
 def reset_sqlite_db(database_url: str = DATABASE_URL) -> Path:

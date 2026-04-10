@@ -1,62 +1,67 @@
-"""
-記帳資料模型
-定義 Expense ORM 模型與 Pydantic Schemas。
-"""
-from sqlalchemy import Column, Integer, Float, String, Date, Text, ForeignKey
-from sqlalchemy.orm import relationship
-from db.database import Base
-from pydantic import BaseModel, field_validator
-from typing import Optional
+from __future__ import annotations
+
 from datetime import date
+from typing import Optional
 
+from pydantic import BaseModel, field_validator
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
-# ── SQLAlchemy ORM 模型 ──────────────────────────────────────────────────────
+from db.database import Base
+
 
 class ExpenseORM(Base):
-    """記帳資料表"""
     __tablename__ = "expenses"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Float, nullable=False)
     category = Column(String(50), nullable=False)
-    type = Column(String(10), nullable=False)   # "income" | "expense"
+    type = Column(String(10), nullable=False)
     date = Column(Date, nullable=False)
     note = Column(Text, nullable=True)
 
-    # 建立與使用者的關聯
     user = relationship("UserORM", back_populates="expenses")
 
-
-# ── Pydantic Schemas (用於 API 驗證與回傳) ───────────────────────────────────
 
 class ExpenseCreate(BaseModel):
     amount: float
     category: str
-    type: str       # "income" | "expense"
+    type: str
     date: date
     note: Optional[str] = None
 
     @field_validator("type")
     @classmethod
-    def validate_type(cls, v: str) -> str:
-        if v not in ("income", "expense"):
-            raise ValueError("type 必須為 'income' 或 'expense'")
-        return v
+    def validate_type(cls, value: str) -> str:
+        if value not in {"income", "expense"}:
+            raise ValueError("type must be either 'income' or 'expense'.")
+        return value
 
     @field_validator("amount")
     @classmethod
-    def validate_amount(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("amount 必須大於 0")
-        return v
+    def validate_amount(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("amount must be greater than 0.")
+        return value
 
     @field_validator("category")
     @classmethod
-    def validate_category(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("category 不能為空或僅包含空白")
-        return v.strip()
+    def validate_category(cls, value: str) -> str:
+        category = value.strip()
+        if not category:
+            raise ValueError("category is required.")
+        if len(category) > 50:
+            raise ValueError("category must be 50 characters or fewer.")
+        return category
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        note = value.strip()
+        return note or None
 
 
 class ExpenseResponse(BaseModel):

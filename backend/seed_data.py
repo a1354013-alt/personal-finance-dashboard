@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
@@ -85,7 +85,14 @@ def seed(reset: bool = False) -> None:
             db.add(BudgetORM(user_id=demo_user.id, **item))
 
         for item in MOCK_WATCHLIST:
-            db.add(WatchlistORM(user_id=demo_user.id, **item))
+            db.add(
+                WatchlistORM(
+                    user_id=demo_user.id,
+                    price_sync_status="success",
+                    last_sync_attempt_at=datetime.now(timezone.utc),
+                    **item,
+                )
+            )
 
         for item in MOCK_PRICES:
             db.add(StockPriceORM(**item))

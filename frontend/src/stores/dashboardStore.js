@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getDashboardSummary, getAiSummary } from '@/api/dashboard'
+import { getAiSummary, getDashboardSummary } from '@/api/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref(null)
@@ -13,8 +13,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     error.value = null
     try {
       summary.value = await getDashboardSummary()
-    } catch (e) {
-      error.value = e.message
+    } catch (error) {
+      summary.value = null
+      error.value = error.message || 'Unable to load dashboard summary.'
     } finally {
       loading.value = false
     }
@@ -24,13 +25,17 @@ export const useDashboardStore = defineStore('dashboard', () => {
     try {
       const result = await getAiSummary()
       aiSummary.value = result.summary
-    } catch (e) {
-      aiSummary.value = '無法取得 AI 摘要'
+    } catch (_error) {
+      aiSummary.value = 'Unable to generate the AI summary right now.'
     }
   }
 
   return {
-    summary, aiSummary, loading, error,
-    fetchSummary, fetchAiSummary,
+    summary,
+    aiSummary,
+    loading,
+    error,
+    fetchSummary,
+    fetchAiSummary
   }
 })

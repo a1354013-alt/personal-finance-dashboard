@@ -107,7 +107,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import api from '@/api/index'
+import { getBudgetAdvice } from '@/api/dashboard'
 import { VERSION } from '@/constants/version'
 import { useDashboardStore } from '@/stores/dashboardStore'
 
@@ -126,7 +126,7 @@ function percent(value, total) {
 async function fetchBudgetAdvice() {
   adviceLoading.value = true
   try {
-    const response = await api.get('/ai/budget-advice')
+    const response = await getBudgetAdvice()
     budgetAdvice.value = response.advice
   } catch (_error) {
     budgetAdvice.value = 'Unable to load budget advice.'

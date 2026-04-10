@@ -50,8 +50,9 @@
               <td>{{ item.date || '-' }}</td>
               <td>
                 <span class="badge" :class="statusBadgeClass(item.price_sync_status)">
-                  {{ statusLabel(item.price_sync_status, item.price) }}
+                  {{ statusLabel(item.price_sync_status) }}
                 </span>
+                <div v-if="item.last_sync_error" class="status-detail">{{ item.last_sync_error }}</div>
               </td>
               <td>
                 <button class="btn btn-danger" @click="handleDeleteWatchlist(item.id)">Delete</button>
@@ -116,10 +117,9 @@ function formatPrice(value) {
   return `NT$ ${Number(value).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function statusLabel(status, price) {
+function statusLabel(status) {
   if (status === 'success') return 'success'
   if (status === 'failed') return 'failed'
-  if (!price) return 'pending'
   return 'pending'
 }
 
@@ -204,6 +204,13 @@ onMounted(refreshStocksView)
   margin: 6px 0;
   color: #66788a;
   font-size: 14px;
+}
+
+.status-detail {
+  margin-top: 6px;
+  color: #66788a;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .stocks-grid {

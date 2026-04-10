@@ -18,6 +18,7 @@ os.environ["ENV"] = "development"
 
 from db.database import engine, init_db, reset_sqlite_db  # noqa: E402
 from main import app  # noqa: E402
+from routers import stocks as stocks_router  # noqa: E402
 
 client = TestClient(app)
 
@@ -35,17 +36,11 @@ def clean_db():
         TEST_DB_PATH.unlink()
 
 
-def register_and_login(email: str):
-    register_response = client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "password123"},
-    )
+def register_and_login(email: str) -> str:
+    register_response = client.post("/api/auth/register", json={"email": email, "password": "password123"})
     assert register_response.status_code == 201
 
-    login_response = client.post(
-        "/api/auth/login",
-        json={"email": email, "password": "password123"},
-    )
+    login_response = client.post("/api/auth/login", json={"email": email, "password": "password123"})
     assert login_response.status_code == 200
     return login_response.json()["access_token"]
 
@@ -137,3 +132,24 @@ def test_budgets_create_list_delete_and_dashboard_summary():
 
     delete_budget = client.delete(f"/api/budgets/{budget_id}", headers=auth_headers(token))
     assert delete_budget.status_code == 204
+
+
+def test_watchlist_status_is_persisted_and_user_isolated(monkeypatch: pytest.MonkeyPatch):
+    token_a = register_and_login("stocks-a@example.com")
+    token_b = register_and_login("stocks-b@example.com")
+
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": "NVIDIA"}))
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_real_price", classmethod(lambda cls, code: None))
+
+    add_response = client.post("/api/stocks/watchlist", headers=auth_headers(token_a), json={"stock_code": "NVDA"})
+    assert add_response.status_code == 201
+    assert add_response.json()["price_sync_status"] == "failed"
+    assert add_response.json()["last_sync_error"]
+
+    watchlist_a = client.get("/api/stocks/watchlist", headers=auth_headers(token_a))
+    watchlist_b = client.get("/api/stocks/watchlist", headers=auth_headers(token_b))
+    assert watchlist_a.status_code == 200
+    assert watchlist_b.status_code == 200
+    assert len(watchlist_a.json()) == 1
+    assert watchlist_a.json()[0]["price_sync_status"] == "failed"
+    assert watchlist_b.json() == []

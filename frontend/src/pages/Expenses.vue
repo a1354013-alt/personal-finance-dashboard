@@ -1,170 +1,196 @@
 <template>
   <div>
-    <h1 style="font-size:22px; font-weight:700; margin-bottom:20px;">📒 記帳系統</h1>
+    <div class="page-header">
+      <h1>Expenses</h1>
+      <p>Track income and spending with a single consistent contract across the form, store, and API.</p>
+    </div>
 
-    <!-- 新增表單 -->
-    <div class="card">
-      <h2>新增記錄</h2>
+    <section class="card">
+      <h2>Add Record</h2>
+
       <div v-if="formError || store.error" class="error-msg">{{ formError || store.error }}</div>
+
+      <form class="form-row" @submit.prevent="handleAdd">
+        <div class="form-group">
+          <label for="expense-amount">Amount</label>
+          <input id="expense-amount" v-model.number="form.amount" type="number" min="0.01" step="0.01" placeholder="1500" />
+        </div>
+
+        <div class="form-group">
+          <label for="expense-type">Type</label>
+          <select id="expense-type" v-model="form.type">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-category">Category</label>
+          <select id="expense-category" v-model="form.category">
+            <option value="" disabled>Select a category</option>
+            <option v-for="category in activeCategories" :key="category" :value="category">{{ category }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="expense-date">Date</label>
+          <input id="expense-date" v-model="form.date" type="date" />
+        </div>
+
+        <div class="form-group note-group">
+          <label for="expense-note">Note</label>
+          <input id="expense-note" v-model.trim="form.note" type="text" placeholder="Optional note" />
+        </div>
+
+        <button class="btn btn-primary" :disabled="store.submitting">
+          {{ store.submitting ? 'Saving...' : 'Add Record' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Filters</h2>
+
       <div class="form-row">
         <div class="form-group">
-          <label>金額 *</label>
-          <input v-model.number="form.amount" type="number" min="0.01" step="0.01" placeholder="例：1500" />
-        </div>
-        <div class="form-group">
-          <label>類型 *</label>
-          <select v-model="form.type">
-            <option value="income">收入</option>
-            <option value="expense">支出</option>
+          <label for="filter-type">Type</label>
+          <select id="filter-type" v-model="filterType" @change="handleFilter">
+            <option value="">All</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>類別 *</label>
-          <input v-model="form.category" type="text" placeholder="例：餐飲、薪資" />
-        </div>
-        <div class="form-group">
-          <label>日期 *</label>
-          <input v-model="form.date" type="date" />
-        </div>
-        <div class="form-group" style="min-width:200px;">
-          <label>備註</label>
-          <input v-model="form.note" type="text" placeholder="選填" />
-        </div>
-        <div class="form-group" style="justify-content:flex-end;">
-          <button class="btn btn-primary" :disabled="store.submitting" @click="handleAdd">
-            {{ store.submitting ? '新增中...' : '+ 新增' }}
-          </button>
-        </div>
+
+        <button class="btn btn-secondary" @click="resetFilter">Reset Filter</button>
       </div>
-    </div>
+    </section>
 
-    <!-- 篩選列 -->
-    <div class="card" style="padding:14px 24px;">
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-group">
-          <label>篩選類型</label>
-          <select v-model="filterType" @change="handleFilter">
-            <option value="">全部</option>
-            <option value="income">收入</option>
-            <option value="expense">支出</option>
-          </select>
+    <section class="card">
+      <h2>Records</h2>
+
+      <div v-if="store.loading" class="loading-text">Loading records...</div>
+      <div v-else-if="store.expenses.length === 0" class="empty-state">No records yet.</div>
+
+      <template v-else>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Note</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in store.expenses" :key="item.id">
+              <td>{{ item.date }}</td>
+              <td>
+                <span class="badge" :class="item.type === 'income' ? 'badge-success' : 'badge-danger'">
+                  {{ item.type }}
+                </span>
+              </td>
+              <td>{{ item.category }}</td>
+              <td :class="item.type === 'income' ? 'amount-income' : 'amount-expense'">
+                {{ item.type === 'income' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
+              </td>
+              <td>{{ item.note || '-' }}</td>
+              <td>
+                <button class="btn btn-danger" @click="handleDelete(item.id)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="summary-row">
+          <span>Total Income <strong class="amount-income">{{ formatCurrency(store.totalIncome) }}</strong></span>
+          <span>Total Expense <strong class="amount-expense">{{ formatCurrency(store.totalExpense) }}</strong></span>
+          <span>
+            Net
+            <strong :class="store.totalIncome - store.totalExpense >= 0 ? 'amount-income' : 'amount-expense'">
+              {{ formatCurrency(store.totalIncome - store.totalExpense) }}
+            </strong>
+          </span>
         </div>
-        <div class="form-group" style="justify-content:flex-end;">
-          <button class="btn btn-secondary" @click="resetFilter">重置</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 記錄列表 -->
-    <div class="card">
-      <h2>
-        記帳列表
-        <span style="font-size:12px; color:#999; font-weight:400; margin-left:8px;">
-          共 {{ store.expenses.length }} 筆
-        </span>
-      </h2>
-
-      <div v-if="store.loading" class="loading-text">載入中...</div>
-      <div v-else-if="store.expenses.length === 0" class="empty-state">目前尚無記錄</div>
-
-      <table v-else>
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>類型</th>
-            <th>類別</th>
-            <th>金額</th>
-            <th>備註</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in store.expenses" :key="item.id">
-            <td>{{ item.date }}</td>
-            <td>
-              <span :class="['badge', item.type === 'income' ? 'badge-income' : 'badge-expense']">
-                {{ item.type === 'income' ? '收入' : '支出' }}
-              </span>
-            </td>
-            <td>{{ item.category }}</td>
-            <td :style="{ color: item.type === 'income' ? '#27ae60' : '#e74c3c', fontWeight: 600 }">
-              {{ item.type === 'income' ? '+' : '-' }}{{ Number(item.amount).toLocaleString() }}
-            </td>
-            <td style="color:#888;">{{ item.note || '-' }}</td>
-            <td>
-              <button class="btn btn-danger" style="padding:4px 10px; font-size:12px;" @click="handleDelete(item.id)">
-                刪除
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 小計 -->
-      <div v-if="store.expenses.length > 0" class="summary-row">
-        <span>收入小計：<strong style="color:#27ae60;">{{ fmtAmt(store.totalIncome) }}</strong></span>
-        <span>支出小計：<strong style="color:#e74c3c;">{{ fmtAmt(store.totalExpense) }}</strong></span>
-        <span>
-          淨餘額：
-          <strong :style="{ color: store.totalIncome - store.totalExpense >= 0 ? '#27ae60' : '#e74c3c' }">
-            {{ fmtAmt(store.totalIncome - store.totalExpense) }}
-          </strong>
-        </span>
-      </div>
-    </div>
+      </template>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/categories'
 import { useExpenseStore } from '@/stores/expenseStore'
 
 const store = useExpenseStore()
 const filterType = ref('')
 const formError = ref('')
-
-const today = new Date().toISOString().split('T')[0] // 獲取今日日期，用於表單預設值
+const today = new Date().toISOString().split('T')[0]
 
 const form = ref({
   amount: null,
   type: 'expense',
   category: '',
   date: today,
-  note: '',
+  note: ''
 })
 
-onMounted(() => store.fetchExpenses())
+const activeCategories = computed(() => (form.value.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES))
+
+watch(
+  () => form.value.type,
+  () => {
+    form.value.category = ''
+  }
+)
+
+onMounted(() => {
+  store.fetchExpenses()
+})
+
+function formatCurrency(value) {
+  return `NT$ ${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
 
 async function handleAdd() {
   formError.value = ''
+
   if (!form.value.amount || form.value.amount <= 0) {
-    formError.value = '請輸入有效金額（必須大於 0）'
+    formError.value = 'Amount must be greater than 0.'
     return
   }
-  if (!form.value.category.trim()) {
-    formError.value = '請輸入類別'
+
+  if (!form.value.category) {
+    formError.value = 'Please select a category.'
     return
   }
+
   if (!form.value.date) {
-    formError.value = '請選擇日期'
+    formError.value = 'Please select a date.'
     return
   }
+
   try {
     await store.addExpense({ ...form.value })
-
-    form.value = { amount: null, type: 'expense', category: '', date: today, note: '' }
-  } catch (e) {
-
+    form.value = {
+      amount: null,
+      type: 'expense',
+      category: '',
+      date: today,
+      note: ''
+    }
+    filterType.value = ''
+  } catch (_error) {
+    // Store error is already shown above.
   }
 }
 
 async function handleDelete(id) {
-  if (!confirm('確定要刪除這筆記錄嗎？')) return
-
   try {
     await store.removeExpense(id)
-  } catch (e) {
-
+  } catch (_error) {
+    // Store error is already shown above.
   }
 }
 
@@ -176,20 +202,30 @@ function resetFilter() {
   filterType.value = ''
   store.fetchExpenses()
 }
-
-function fmtAmt(val) {
-  return `NT$ ${Number(val).toLocaleString('zh-TW')}`
-}
 </script>
 
 <style scoped>
+.note-group {
+  min-width: 240px;
+}
+
 .summary-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
-  padding: 12px 0 0;
-  border-top: 1px solid #eee;
-  margin-top: 8px;
-  font-size: 14px;
-  color: #555;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e7edf3;
+  color: #546575;
+}
+
+.amount-income {
+  color: #1f8f5f;
+  font-weight: 700;
+}
+
+.amount-expense {
+  color: #d04d48;
+  font-weight: 700;
 }
 </style>
