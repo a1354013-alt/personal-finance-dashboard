@@ -1,96 +1,87 @@
 <template>
-  <div class="budgets-page p-4">
-    <h1 class="text-2xl font-bold mb-6">預算管理</h1>
-
-    <!-- 訊息提示 -->
-    <div v-if="message" class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg flex justify-between items-center">
-      <span>{{ message }}</span>
-      <button @click="message = ''" class="font-bold ml-2">×</button>
-    </div>
-    <div v-if="error" class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg flex justify-between items-center">
-      <span>{{ error }}</span>
-      <button @click="error = ''" class="font-bold ml-2">×</button>
+  <div>
+    <div class="page-header">
+      <h1>Budgets</h1>
+      <p>Monthly budget tracking uses the same expense window everywhere: current month, expense type only.</p>
     </div>
 
-    <!-- 新增預算表單 -->
-    <section class="bg-white p-6 rounded-xl shadow-sm border mb-8">
-      <h2 class="text-xl font-semibold mb-4">設定預算限額</h2>
-      <form @submit.prevent="handleAddBudget" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">消費類別</label>
-          <select 
-            v-model="newBudget.category" 
-            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            required
-          >
-            <option value="" disabled>請選擇類別</option>
-            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+    <div v-if="message" class="success-msg">{{ message }}</div>
+    <div v-if="error" class="error-msg">{{ error }}</div>
+
+    <section class="card">
+      <h2>Create or Update Budget</h2>
+      <form class="form-row" @submit.prevent="handleAddBudget">
+        <div class="form-group">
+          <label for="budget-category">Category</label>
+          <select id="budget-category" v-model="newBudget.category" required>
+            <option value="" disabled>Select a category</option>
+            <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
           </select>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">每月預算限額</label>
-          <input 
-            v-model.number="newBudget.monthly_limit" 
-            type="number" 
+
+        <div class="form-group">
+          <label for="budget-limit">Monthly Limit</label>
+          <input
+            id="budget-limit"
+            v-model.number="newBudget.monthly_limit"
+            type="number"
             step="0.01"
-            class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            placeholder="例如 5000"
+            min="0.01"
+            placeholder="9000"
             required
           />
         </div>
-        <div class="flex items-end">
-          <button 
-            type="submit" 
-            :disabled="isSubmitting"
-            class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
-          >
-            {{ isSubmitting ? '處理中...' : '設定預算' }}
-          </button>
-        </div>
+
+        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+          {{ isSubmitting ? 'Saving...' : 'Save Budget' }}
+        </button>
       </form>
     </section>
 
-    <!-- 預算清單 -->
-    <section class="bg-white p-6 rounded-xl shadow-sm border">
-      <h2 class="text-xl font-semibold mb-6">預算執行進度 (當月)</h2>
-      <div v-if="loading" class="text-center py-10 text-gray-500">載入中...</div>
-      <div v-else-if="budgets.length === 0" class="text-center py-10 text-gray-400 bg-gray-50 rounded-lg border border-dashed">
-        目前尚無預算設定
-      </div>
-      <div v-else class="space-y-6">
-        <div v-for="budget in budgets" :key="budget.id" class="p-4 bg-gray-50 rounded-lg border">
-          <div class="flex justify-between items-center mb-2">
+    <section class="card">
+      <h2>Current Month Status</h2>
+
+      <div v-if="loading" class="loading-text">Loading budgets...</div>
+      <div v-else-if="budgets.length === 0" class="empty-state">No budgets yet.</div>
+
+      <div v-else class="budget-list">
+        <article v-for="budget in budgets" :key="budget.id" class="budget-item">
+          <div class="budget-topline">
             <div>
-              <span class="font-bold text-lg text-indigo-700">{{ budget.category }}</span>
-              <span class="ml-2 text-sm text-gray-500">預算: ${{ budget.monthly_limit }}</span>
+              <strong>{{ budget.category }}</strong>
+              <div class="budget-meta">
+                Limit {{ formatCurrency(budget.monthly_limit) }} · Spent {{ formatCurrency(budget.current_spent) }}
+              </div>
             </div>
-            <button @click="handleDeleteBudget(budget.id)" class="text-red-500 hover:text-red-700 text-sm">刪除</button>
+
+            <button class="btn btn-danger" @click="handleDeleteBudget(budget.id)">Delete</button>
           </div>
-          
-          <!-- 進度條 -->
-          <div class="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-2">
-            <div 
-              class="absolute top-0 left-0 h-full transition-all duration-500"
-              :class="budget.percent_used > 100 ? 'bg-red-500' : 'bg-green-500'"
-              :style="{ width: Math.min(budget.percent_used, 100) + '%' }"
-            ></div>
+
+          <div class="progress-track">
+            <div
+              class="progress-fill"
+              :class="progressClass(budget.percent_used)"
+              :style="{ width: `${Math.min(budget.percent_used, 100)}%` }"
+            />
           </div>
-          
-          <div class="flex justify-between text-sm">
-            <span :class="budget.percent_used > 100 ? 'text-red-600 font-bold' : 'text-gray-600'">
-              已使用: ${{ budget.current_spent }} ({{ budget.percent_used.toFixed(1) }}%)
+
+          <div class="budget-footer">
+            <span>{{ budget.percent_used.toFixed(1) }}% used</span>
+            <span v-if="budget.percent_used > 100" class="over-limit">
+              Over by {{ formatCurrency(budget.current_spent - budget.monthly_limit) }}
             </span>
-            <span v-if="budget.percent_used > 100" class="text-red-600 font-bold animate-pulse">⚠️ 已超支!</span>
-            <span v-else class="text-gray-500">剩餘: ${{ (budget.monthly_limit - budget.current_spent).toFixed(1) }}</span>
+            <span v-else>
+              Remaining {{ formatCurrency(budget.monthly_limit - budget.current_spent) }}
+            </span>
           </div>
-        </div>
+        </article>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import * as budgetApi from '@/api/budgets'
 
 const budgets = ref([])
@@ -99,50 +90,131 @@ const isSubmitting = ref(false)
 const message = ref('')
 const error = ref('')
 
-const categories = ['餐飲', '交通', '購物', '娛樂', '醫療', '居住', '投資', '其他']
+const categories = ['Food', 'Transport', 'Housing', 'Utilities', 'Healthcare', 'Entertainment', 'Travel', 'Other']
 
 const newBudget = ref({
   category: '',
   monthly_limit: null
 })
 
-const fetchBudgets = async () => {
+function formatCurrency(value) {
+  return `NT$ ${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+function progressClass(percentUsed) {
+  if (percentUsed > 100) return 'progress-fill-danger'
+  if (percentUsed >= 80) return 'progress-fill-warning'
+  return 'progress-fill-success'
+}
+
+async function fetchBudgets() {
   loading.value = true
+  error.value = ''
+
   try {
     budgets.value = await budgetApi.getBudgets()
   } catch (err) {
-    error.value = '無法取得預算資料'
+    error.value = err.message || 'Unable to load budgets.'
   } finally {
     loading.value = false
   }
 }
 
-const handleAddBudget = async () => {
+async function handleAddBudget() {
   isSubmitting.value = true
   message.value = ''
   error.value = ''
+
   try {
     await budgetApi.createBudget(newBudget.value)
-    message.value = '預算設定成功'
+    message.value = 'Budget saved successfully.'
     newBudget.value = { category: '', monthly_limit: null }
     await fetchBudgets()
   } catch (err) {
-    error.value = '設定失敗，請稍後再試'
+    error.value = err.message || 'Unable to save budget.'
   } finally {
     isSubmitting.value = false
   }
 }
 
-const handleDeleteBudget = async (id) => {
-  if (!confirm('確定要刪除此預算設定嗎？')) return
+async function handleDeleteBudget(id) {
+  message.value = ''
+  error.value = ''
+
   try {
     await budgetApi.deleteBudget(id)
-    message.value = '已刪除預算設定'
+    message.value = 'Budget deleted.'
     await fetchBudgets()
   } catch (err) {
-    error.value = '刪除失敗'
+    error.value = err.message || 'Unable to delete budget.'
   }
 }
 
 onMounted(fetchBudgets)
 </script>
+
+<style scoped>
+.budget-list {
+  display: grid;
+  gap: 16px;
+}
+
+.budget-item {
+  padding: 16px;
+  border: 1px solid #e4ebf2;
+  border-radius: 12px;
+  background: #f9fbfd;
+}
+
+.budget-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.budget-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #66788a;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e8eef4;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+}
+
+.progress-fill-success {
+  background: #1f8f5f;
+}
+
+.progress-fill-warning {
+  background: #d6a300;
+}
+
+.progress-fill-danger {
+  background: #d04d48;
+}
+
+.budget-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #546575;
+}
+
+.over-limit {
+  color: #9a2c2c;
+  font-weight: 700;
+}
+</style>

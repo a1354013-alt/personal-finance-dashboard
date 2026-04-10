@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from db.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
@@ -13,7 +13,7 @@ class BudgetORM(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     category = Column(String, nullable=False)
     monthly_limit = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # 關聯
     user = relationship("UserORM", back_populates="budgets")
@@ -33,5 +33,4 @@ class BudgetResponse(BudgetBase):
     percent_used: Optional[float] = 0.0  # 用於回傳目前使用率
     current_spent: Optional[float] = 0.0 # 目前已支出
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

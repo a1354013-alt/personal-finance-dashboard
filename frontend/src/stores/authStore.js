@@ -1,84 +1,84 @@
-/**
- * 認證狀態管理
- */
 import { defineStore } from 'pinia'
-import authApi from '@/api/auth'
+import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('user')) || null,
+    user: JSON.parse(localStorage.getItem('user') || 'null'),
     token: localStorage.getItem('token') || null,
     loading: false,
     error: null
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token
+    isAuthenticated: (state) => Boolean(state.token)
   },
 
   actions: {
-    /**
-     * 登入
-     */
+    persistSession() {
+      if (this.token) {
+        localStorage.setItem('token', this.token)
+      } else {
+        localStorage.removeItem('token')
+      }
+
+      if (this.user) {
+        localStorage.setItem('user', JSON.stringify(this.user))
+      } else {
+        localStorage.removeItem('user')
+      }
+    },
+
     async login(email, password) {
       this.loading = true
       this.error = null
-      try {
-        const res = await authApi.login(email, password)
 
-        this.token = res.access_token
-        this.user = res.user
-        
-        localStorage.setItem('token', this.token)
-        localStorage.setItem('user', JSON.stringify(this.user))
+      try {
+        const response = await loginRequest({ email, password })
+        this.token = response.access_token
+        this.user = response.user
+        this.persistSession()
         return true
-      } catch (err) {
-        this.error = err.message || '登入失敗'
+      } catch (error) {
+        this.error = error.message || 'Login failed.'
         return false
       } finally {
         this.loading = false
       }
     },
 
-    /**
-     * 註冊
-     */
     async register(email, password) {
       this.loading = true
       this.error = null
+
       try {
-        await authApi.register(email, password)
+        await registerRequest({ email, password })
         return true
-      } catch (err) {
-        this.error = err.message || '註冊失敗'
+      } catch (error) {
+        this.error = error.message || 'Registration failed.'
         return false
       } finally {
         this.loading = false
       }
     },
 
-    /**
-     * 登出
-     */
     logout() {
       this.token = null
       this.user = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      this.error = null
+      this.persistSession()
     },
 
-    /**
-     * 同步當前使用者狀態
-     */
     async fetchMe() {
-      if (!this.token) return
-      try {
-        const res = await authApi.me()
-        this.user = res
-        localStorage.setItem('user', JSON.stringify(this.user))
-        return true
-      } catch (err) {
+      if (!this.token) {
+        return false
+      }
 
+      try {
+        const user = await getMe()
+        this.user = user
+        this.persistSession()
+        return true
+      } catch (_error) {
         this.logout()
         return false
       }

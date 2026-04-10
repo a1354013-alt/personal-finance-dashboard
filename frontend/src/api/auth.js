@@ -1,9 +1,13 @@
 import api from './index'
 
-/**
- * 認證模組 API (v0.6.1)
- */
+export function login(data) {
+  return api.post('/auth/login', data)
+}
 
-export const login = (data) => api.post('/auth/login', data)
-export const register = (data) => api.post('/auth/register', data)
-export const getMe = () => api.get('/auth/me')
+export function register(data) {
+  return api.post('/auth/register', data)
+}
+
+export function getMe() {
+  return api.get('/auth/me')
+}

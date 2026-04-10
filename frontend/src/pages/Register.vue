@@ -1,34 +1,36 @@
 <template>
   <div class="auth-container">
     <div class="card auth-card">
-      <h2>🆕 使用者註冊</h2>
-      <p style="font-size:13px; color:#888; margin-bottom:20px;">歡迎加入！請填寫以下資訊建立帳號。</p>
+      <h2>Create Account</h2>
+      <p class="auth-subtitle">Passwords must be at least 8 characters long.</p>
 
       <form @submit.prevent="handleRegister">
         <div class="form-group">
-          <label>Email</label>
-          <input v-model="form.email" type="email" required placeholder="example@mail.com" />
+          <label for="register-email">Email</label>
+          <input id="register-email" v-model.trim="form.email" type="email" required placeholder="you@example.com" />
         </div>
+
         <div class="form-group">
-          <label>密碼</label>
-          <input v-model="form.password" type="password" required placeholder="請輸入密碼" />
+          <label for="register-password">Password</label>
+          <input id="register-password" v-model="form.password" type="password" required placeholder="At least 8 characters" />
         </div>
+
         <div class="form-group">
-          <label>確認密碼</label>
-          <input v-model="form.confirmPassword" type="password" required placeholder="再次輸入密碼" />
+          <label for="register-confirm-password">Confirm Password</label>
+          <input id="register-confirm-password" v-model="form.confirmPassword" type="password" required placeholder="Repeat your password" />
         </div>
-        
-        <!-- 註冊狀態提示 -->
-        <div v-if="successMsg" class="success-msg" style="margin-top:10px;">{{ successMsg }}</div>
-        <div v-if="authStore.error" class="error-msg" style="margin-top:10px;">{{ authStore.error }}</div>
-        
-        <button class="btn btn-primary" style="width:100%; margin-top:20px;" :disabled="authStore.loading">
-          {{ authStore.loading ? '註冊中...' : '註冊' }}
+
+        <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
+        <div v-if="authStore.error" class="error-msg">{{ authStore.error }}</div>
+
+        <button class="btn btn-primary auth-submit" :disabled="authStore.loading">
+          {{ authStore.loading ? 'Creating account...' : 'Register' }}
         </button>
       </form>
 
-      <div style="margin-top:20px; text-align:center; font-size:14px;">
-        已有帳號？ <router-link to="/login">登入</router-link>
+      <div class="auth-footer">
+        <span>Already have an account?</span>
+        <router-link to="/login">Sign In</router-link>
       </div>
     </div>
   </div>
@@ -51,22 +53,20 @@ const form = ref({
 const successMsg = ref('')
 
 async function handleRegister() {
-
   authStore.error = null
   successMsg.value = ''
 
   if (form.value.password !== form.value.confirmPassword) {
-    authStore.error = '兩次密碼輸入不一致'
+    authStore.error = 'Passwords do not match.'
     return
   }
-  
+
   const success = await authStore.register(form.value.email, form.value.password)
   if (success) {
-
-    successMsg.value = '註冊成功！即將為您跳轉至登入頁面...'
+    successMsg.value = 'Account created. Redirecting to sign in...'
     setTimeout(() => {
       router.push('/login')
-    }, 2000)
+    }, 1200)
   }
 }
 </script>
@@ -78,16 +78,36 @@ async function handleRegister() {
   align-items: center;
   min-height: 70vh;
 }
+
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 30px;
 }
+
+.auth-subtitle {
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.auth-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
 .success-msg {
-  background: #dcfce7;
   color: #166534;
-  padding: 10px;
-  border-radius: 6px;
   font-size: 13px;
+  padding: 8px 12px;
+  background: #dcfce7;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 </style>

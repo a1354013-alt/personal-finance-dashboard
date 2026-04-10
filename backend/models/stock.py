@@ -4,7 +4,7 @@
 """
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from db.database import Base
@@ -40,7 +40,7 @@ class StockPriceORM(Base):
     low = Column(Float, nullable=True)
     close = Column(Float, nullable=False)
     volume = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # 確保同一股票同一天的資料唯一
     __table_args__ = (UniqueConstraint('stock_code', 'trade_date', name='_stock_date_uc'),)
@@ -74,7 +74,7 @@ class WatchlistItemResponse(BaseModel):
     date: Optional[str] = None
     volume: Optional[float] = None
     # 新增欄位：標示價格同步狀態
-    price_sync_status: Optional[str] = "success"
+    price_sync_status: Optional[str] = "pending"
 
     model_config = {"from_attributes": True}
 

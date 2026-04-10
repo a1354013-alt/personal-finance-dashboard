@@ -1,146 +1,135 @@
 <template>
   <div>
-    <h1 style="font-size:22px; font-weight:700; margin-bottom:20px;">📊 Dashboard</h1>
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Version {{ VERSION }}. Summary, budget alerts, and AI advice share the same backend contract.</p>
+    </div>
 
-    <!-- 載入中 -->
-    <div v-if="store.loading" class="loading-text">載入中...</div>
+    <div v-if="store.loading" class="loading-text">Loading dashboard...</div>
     <div v-else-if="store.error" class="error-msg">{{ store.error }}</div>
 
     <template v-else-if="store.summary">
-      <!-- 統計卡片 -->
       <div class="stats-grid">
         <div class="card stat-card">
-          <div class="card-label">總收入</div>
-          <div class="stat-value income">{{ fmt(store.summary.total_income) }}</div>
+          <div class="card-label">Total Income</div>
+          <div class="stat-value income">{{ formatCurrency(store.summary.total_income) }}</div>
         </div>
         <div class="card stat-card">
-          <div class="card-label">總支出</div>
-          <div class="stat-value expense">{{ fmt(store.summary.total_expense) }}</div>
+          <div class="card-label">Total Expense</div>
+          <div class="stat-value expense">{{ formatCurrency(store.summary.total_expense) }}</div>
         </div>
         <div class="card stat-card">
-          <div class="card-label">淨餘額</div>
+          <div class="card-label">Net Balance</div>
           <div class="stat-value balance" :class="store.summary.net_balance >= 0 ? 'income' : 'expense'">
-            {{ fmt(store.summary.net_balance) }}
+            {{ formatCurrency(store.summary.net_balance) }}
           </div>
         </div>
       </div>
 
-      <!-- 每月趨勢（視覺化長條圖） -->
-      <div class="card">
-        <h2>每月收支趨勢</h2>
-        <div v-if="store.summary.monthly_trend.length === 0" class="empty-state">目前尚無月度資料</div>
-        <div v-else class="chart-container">
-          <div
-            v-for="item in store.summary.monthly_trend"
-            :key="item.month"
-            class="chart-row"
-          >
-            <span class="chart-label">{{ item.month }}</span>
-            <div class="chart-bars">
-              <div class="bar-wrap">
-                <div
-                  class="bar income-bar"
-                  :style="{ width: barWidth(item.income) + 'px' }"
-                ></div>
-                <span class="bar-val">{{ fmt(item.income) }}</span>
-              </div>
-              <div class="bar-wrap">
-                <div
-                  class="bar expense-bar"
-                  :style="{ width: barWidth(item.expense) + 'px' }"
-                ></div>
-                <span class="bar-val">{{ fmt(item.expense) }}</span>
-              </div>
+      <section class="card">
+        <h2>Monthly Trend</h2>
+        <div v-if="store.summary.monthly_trend.length === 0" class="empty-state">No trend data yet.</div>
+        <div v-else class="trend-list">
+          <div v-for="item in store.summary.monthly_trend" :key="item.month" class="trend-item">
+            <div class="trend-month">{{ item.month }}</div>
+            <div class="trend-metrics">
+              <span class="income-text">Income {{ formatCurrency(item.income) }}</span>
+              <span class="expense-text">Expense {{ formatCurrency(item.expense) }}</span>
             </div>
           </div>
-          <div class="chart-legend">
-            <span class="legend-dot income-dot"></span>收入
-            <span class="legend-dot expense-dot" style="margin-left:16px;"></span>支出
-          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 各類別支出分析 -->
-      <div class="card">
-        <h2>支出類別分析</h2>
-        <div v-if="store.summary.expense_by_category.length === 0" class="empty-state">目前尚無類別支出資料</div>
-        <table v-else>
+      <section class="card">
+        <h2>Expense by Category</h2>
+        <div v-if="store.summary.expense_by_category.length === 0" class="empty-state">No expense data yet.</div>
+        <table v-else class="table">
           <thead>
             <tr>
-              <th>類別</th>
-              <th>金額</th>
-              <th>佔比</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Share</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in store.summary.expense_by_category" :key="item.category">
               <td>{{ item.category }}</td>
-              <td>{{ fmt(item.amount) }}</td>
-              <td>
-                <div class="progress-bar-wrap">
-                  <div
-                    class="progress-bar"
-                    :style="{ width: pct(item.amount, store.summary.total_expense) + '%' }"
-                  ></div>
-                  <span>{{ pct(item.amount, store.summary.total_expense).toFixed(1) }}%</span>
-                </div>
-              </td>
+              <td>{{ formatCurrency(item.amount) }}</td>
+              <td>{{ percent(item.amount, store.summary.total_expense).toFixed(1) }}%</td>
             </tr>
           </tbody>
         </table>
-      </div>
+      </section>
 
-      <!-- AI 財務摘要與建議 (v0.6.0) -->
-      <div class="card">
-        <h2>🤖 AI 財務分析與建議</h2>
-        
-        <!-- 財務摘要 -->
-        <div class="ai-section mb-16">
-          <h3 class="ai-subtitle">財務摘要</h3>
-          <div v-if="!store.aiSummary">
-            <button class="btn btn-primary" @click="store.fetchAiSummary()">生成摘要</button>
-          </div>
-          <div v-else class="ai-summary-text">{{ store.aiSummary }}</div>
+      <section class="card">
+        <h2>Over Budget</h2>
+        <div v-if="store.summary.over_budget.length === 0" class="empty-state">No categories are over budget this month.</div>
+        <table v-else class="table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Limit</th>
+              <th>Spent</th>
+              <th>Over</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in store.summary.over_budget" :key="item.category">
+              <td>{{ item.category }}</td>
+              <td>{{ formatCurrency(item.limit) }}</td>
+              <td>{{ formatCurrency(item.spent) }}</td>
+              <td class="expense-text">{{ formatCurrency(item.over) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>AI Insights</h2>
+        <div class="ai-block">
+          <h3>Finance Summary</h3>
+          <button v-if="!store.aiSummary" class="btn btn-primary" @click="store.fetchAiSummary()">Generate Summary</button>
+          <p v-else class="ai-text">{{ store.aiSummary }}</p>
         </div>
 
-        <!-- 預算建議 -->
-        <div class="ai-section">
-          <h3 class="ai-subtitle">預算分析建議</h3>
-          <div v-if="adviceLoading" class="loading-text">正在分析預算執行進度...</div>
-          <div v-else-if="!budgetAdvice">
-            <button class="btn btn-secondary" @click="fetchBudgetAdvice">獲取預算建議</button>
-          </div>
-          <div v-else class="ai-summary-text advice-box">{{ budgetAdvice }}</div>
+        <div class="ai-block">
+          <h3>Budget Advice</h3>
+          <div v-if="adviceLoading" class="loading-text">Loading budget advice...</div>
+          <button v-else-if="!budgetAdvice" class="btn btn-secondary" @click="fetchBudgetAdvice">Get Advice</button>
+          <p v-else class="ai-text ai-warning">{{ budgetAdvice }}</p>
         </div>
-      </div>
+      </section>
     </template>
 
-    <div v-else class="empty-state">目前尚無財務資料，請先新增記帳記錄</div>
-
-    <!-- 版本資訊 -->
-    <div class="version-footer">
-      Version {{ VERSION }}
-    </div>
+    <div v-else class="empty-state">No dashboard data available.</div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import api from '@/api/index'
-import { useDashboardStore } from '@/stores/dashboardStore'
 import { VERSION } from '@/constants/version'
+import { useDashboardStore } from '@/stores/dashboardStore'
 
 const store = useDashboardStore()
 const budgetAdvice = ref('')
 const adviceLoading = ref(false)
 
-const fetchBudgetAdvice = async () => {
+function formatCurrency(value) {
+  return `NT$ ${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+function percent(value, total) {
+  return total > 0 ? (value / total) * 100 : 0
+}
+
+async function fetchBudgetAdvice() {
   adviceLoading.value = true
   try {
-    const res = await api.get('/ai/budget-advice')
-    budgetAdvice.value = res.advice
-  } catch (e) {
-    budgetAdvice.value = '暫時無法產生預算建議'
+    const response = await api.get('/ai/budget-advice')
+    budgetAdvice.value = response.advice
+  } catch (_error) {
+    budgetAdvice.value = 'Unable to load budget advice.'
   } finally {
     adviceLoading.value = false
   }
@@ -148,149 +137,80 @@ const fetchBudgetAdvice = async () => {
 
 onMounted(() => {
   store.fetchSummary()
-  // 自動載入預算建議
   fetchBudgetAdvice()
 })
-
-// 格式化金額顯示
-function fmt(val) {
-  return `NT$ ${Number(val).toLocaleString('zh-TW', { minimumFractionDigits: 0 })}`
-}
-
-// 計算長條圖視覺寬度
-function barWidth(val) {
-  const max = Math.max(
-    ...store.summary.monthly_trend.map(m => Math.max(m.income, m.expense))
-  )
-  return max > 0 ? Math.round((val / max) * 300) : 0
-}
-
-// 計算佔比百分比
-function pct(val, total) {
-  return total > 0 ? (val / total) * 100 : 0
-}
 </script>
 
 <style scoped>
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
-  margin-bottom: 20px;
 }
 
 .stat-card {
   text-align: center;
-  padding: 20px;
 }
 
 .card-label {
-  font-size: 13px;
-  color: #888;
-  margin-bottom: 8px;
-}
-
-/* 長條圖樣式 */
-.chart-container { padding: 8px 0; }
-
-.chart-row {
-  display: flex;
-  align-items: center;
   margin-bottom: 10px;
-  gap: 12px;
-}
-
-.chart-label {
-  width: 70px;
+  color: #66788a;
   font-size: 13px;
-  color: #666;
-  flex-shrink: 0;
 }
 
-.chart-bars { display: flex; flex-direction: column; gap: 4px; }
+.trend-list {
+  display: grid;
+  gap: 10px;
+}
 
-.bar-wrap {
+.trend-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fbfe;
+  border: 1px solid #e4ebf2;
 }
 
-.bar {
-  height: 14px;
-  border-radius: 3px;
-  min-width: 4px;
-  transition: width 0.3s;
+.trend-month {
+  font-weight: 700;
 }
 
-.income-bar  { background: #27ae60; }
-.expense-bar { background: #e74c3c; }
-
-.bar-val {
-  font-size: 12px;
-  color: #666;
-  white-space: nowrap;
-}
-
-.chart-legend {
+.trend-metrics {
   display: flex;
-  align-items: center;
-  margin-top: 12px;
-  font-size: 12px;
-  color: #666;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.legend-dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  margin-right: 4px;
+.income-text {
+  color: #1f8f5f;
 }
 
-.income-dot  { background: #27ae60; }
-.expense-dot { background: #e74c3c; }
-
-/* 進度條樣式 */
-.progress-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.expense-text {
+  color: #d04d48;
 }
 
-.progress-bar {
-  height: 8px;
-  background: #e74c3c;
-  border-radius: 4px;
-  min-width: 2px;
-  max-width: 200px;
+.ai-block + .ai-block {
+  margin-top: 20px;
 }
 
-/* AI 摘要文字區塊 */
-.ai-section { margin-bottom: 24px; }
-.ai-subtitle { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 8px; }
-.mb-16 { margin-bottom: 16px; }
+.ai-block h3 {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
 
-.ai-summary-text {
-  background: #f8f9fa;
-  border-left: 4px solid #1a73e8;
-  padding: 12px 16px;
-  border-radius: 4px;
-  font-size: 14px;
-  line-height: 1.8;
+.ai-text {
+  margin: 0;
+  padding: 12px 14px;
+  background: #f5f8fc;
+  border-radius: 10px;
+  border-left: 4px solid #1d6fdc;
+  line-height: 1.7;
   white-space: pre-line;
-  color: #444;
 }
 
-.advice-box {
-  border-left-color: #f39c12;
-}
-
-.version-footer {
-  margin-top: 40px;
-  padding: 20px 0;
-  text-align: center;
-  font-size: 12px;
-  color: #999;
-  border-top: 1px solid #eee;
+.ai-warning {
+  border-left-color: #d6a300;
 }
 </style>

@@ -1,107 +1,106 @@
-"""
-測試資料填充腳本 (v0.5.1)
-執行方式：
-    cd backend
-    python seed_data.py
-"""
-import sys
-import os
-from datetime import date
-sys.path.insert(0, os.path.dirname(__file__))
+from __future__ import annotations
 
-from db.database import SessionLocal, engine, Base
-from models.user import UserORM
+import argparse
+from datetime import date
+
+from db.database import SessionLocal, init_db, reset_sqlite_db
+from models.budget import BudgetORM
 from models.expense import ExpenseORM
-from models.stock import WatchlistORM, StockPriceORM
+from models.stock import StockPriceORM, WatchlistORM
+from models.user import UserORM
 from services.auth import get_password_hash
 
-# 確保資料表存在
-Base.metadata.create_all(bind=engine)
+DEMO_EMAIL = "demo@example.com"
+DEMO_PASSWORD = "demo1234"
 
 MOCK_EXPENSES = [
-    {"amount": 50000.0, "category": "薪資",     "type": "income",  "date": date(2026, 1, 5), "note": "一月薪資"},
-    {"amount": 8000.0,  "category": "餐飲",     "type": "expense", "date": date(2026, 1, 10), "note": "一月餐費"},
-    {"amount": 3500.0,  "category": "交通",     "type": "expense", "date": date(2026, 1, 15), "note": "捷運月票"},
-    {"amount": 12000.0, "category": "房租",     "type": "expense", "date": date(2026, 1, 1), "note": "一月房租"},
-    {"amount": 2000.0,  "category": "娛樂",     "type": "expense", "date": date(2026, 1, 20), "note": "電影與遊戲"},
-    {"amount": 50000.0, "category": "薪資",     "type": "income",  "date": date(2026, 2, 5), "note": "二月薪資"},
-    {"amount": 5000.0,  "category": "獎金",     "type": "income",  "date": date(2026, 2, 10), "note": "年終獎金"},
-    {"amount": 9500.0,  "category": "餐飲",     "type": "expense", "date": date(2026, 2, 12), "note": "二月餐費"},
-    {"amount": 3500.0,  "category": "交通",     "type": "expense", "date": date(2026, 2, 1), "note": "捷運月票"},
-    {"amount": 12000.0, "category": "房租",     "type": "expense", "date": date(2026, 2, 1), "note": "二月房租"},
-    {"amount": 4500.0,  "category": "購物",     "type": "expense", "date": date(2026, 2, 14), "note": "情人節禮物"},
-    {"amount": 50000.0, "category": "薪資",     "type": "income",  "date": date(2026, 3, 5), "note": "三月薪資"},
-    {"amount": 7800.0,  "category": "餐飲",     "type": "expense", "date": date(2026, 3, 10), "note": "三月餐費"},
-    {"amount": 3500.0,  "category": "交通",     "type": "expense", "date": date(2026, 3, 1), "note": "捷運月票"},
-    {"amount": 12000.0, "category": "房租",     "type": "expense", "date": date(2026, 3, 1), "note": "三月房租"},
-    {"amount": 15000.0, "category": "醫療",     "type": "expense", "date": date(2026, 3, 8), "note": "健康檢查"},
-    {"amount": 3000.0,  "category": "投資收益", "type": "income",  "date": date(2026, 3, 15), "note": "股息收入"},
+    {"amount": 50000.0, "category": "Salary", "type": "income", "date": date(2026, 2, 5), "note": "Monthly salary"},
+    {"amount": 9200.0, "category": "Food", "type": "expense", "date": date(2026, 2, 10), "note": "Dining and groceries"},
+    {"amount": 3600.0, "category": "Transport", "type": "expense", "date": date(2026, 2, 12), "note": "Metro and taxi"},
+    {"amount": 12500.0, "category": "Housing", "type": "expense", "date": date(2026, 2, 1), "note": "Rent"},
+    {"amount": 1800.0, "category": "Utilities", "type": "expense", "date": date(2026, 2, 15), "note": "Utilities"},
+    {"amount": 50000.0, "category": "Salary", "type": "income", "date": date(2026, 3, 5), "note": "Monthly salary"},
+    {"amount": 5000.0, "category": "Freelance", "type": "income", "date": date(2026, 3, 18), "note": "Side project"},
+    {"amount": 8400.0, "category": "Food", "type": "expense", "date": date(2026, 3, 8), "note": "Dining and groceries"},
+    {"amount": 3400.0, "category": "Transport", "type": "expense", "date": date(2026, 3, 14), "note": "Metro and taxi"},
+    {"amount": 12500.0, "category": "Housing", "type": "expense", "date": date(2026, 3, 1), "note": "Rent"},
+    {"amount": 4600.0, "category": "Entertainment", "type": "expense", "date": date(2026, 3, 20), "note": "Weekend trip"},
+    {"amount": 50000.0, "category": "Salary", "type": "income", "date": date(2026, 4, 5), "note": "Monthly salary"},
+    {"amount": 9800.0, "category": "Food", "type": "expense", "date": date(2026, 4, 6), "note": "Dining and groceries"},
+    {"amount": 3200.0, "category": "Transport", "type": "expense", "date": date(2026, 4, 7), "note": "Metro and taxi"},
+    {"amount": 12500.0, "category": "Housing", "type": "expense", "date": date(2026, 4, 1), "note": "Rent"},
+    {"amount": 2900.0, "category": "Utilities", "type": "expense", "date": date(2026, 4, 8), "note": "Utilities"},
+    {"amount": 6200.0, "category": "Healthcare", "type": "expense", "date": date(2026, 4, 9), "note": "Clinic and medicine"},
+    {"amount": 2800.0, "category": "Travel", "type": "expense", "date": date(2026, 5, 2), "note": "Future booking"},
+]
+
+MOCK_BUDGETS = [
+    {"category": "Food", "monthly_limit": 9000.0},
+    {"category": "Transport", "monthly_limit": 3500.0},
+    {"category": "Housing", "monthly_limit": 13000.0},
+    {"category": "Utilities", "monthly_limit": 2500.0},
+    {"category": "Healthcare", "monthly_limit": 5000.0},
 ]
 
 MOCK_WATCHLIST = [
-    {"stock_code": "2330.TW", "name": "台積電"},
-    {"stock_code": "2317.TW", "name": "鴻海"},
-    {"stock_code": "2454.TW", "name": "聯發科"},
-    {"stock_code": "2382.TW", "name": "廣達"},
-    {"stock_code": "AAPL",    "name": "Apple"},
-    {"stock_code": "NVDA",    "name": "NVIDIA"},
+    {"stock_code": "2330.TW", "name": "TSMC"},
+    {"stock_code": "2317.TW", "name": "Hon Hai"},
+    {"stock_code": "AAPL", "name": "Apple"},
 ]
 
 MOCK_PRICES = [
-    {"stock_code": "2330.TW", "trade_date": "2026-03-15", "close": 850.0,  "open": 845.0,  "high": 855.0,  "low": 840.0,  "volume": 25000.0},
-    {"stock_code": "2317.TW", "trade_date": "2026-03-15", "close": 168.5,  "open": 165.0,  "high": 170.0,  "low": 164.0,  "volume": 45000.0},
-    {"stock_code": "2454.TW", "trade_date": "2026-03-15", "close": 1120.0, "open": 1100.0, "high": 1130.0, "low": 1090.0, "volume": 1200.0},
-    {"stock_code": "2382.TW", "trade_date": "2026-03-15", "close": 285.0,  "open": 280.0,  "high": 288.0,  "low": 278.0,  "volume": 8000.0},
-    {"stock_code": "AAPL",    "trade_date": "2026-03-15", "close": 172.3,  "open": 170.0,  "high": 175.0,  "low": 169.0,  "volume": 55000000.0},
-    {"stock_code": "NVDA",    "trade_date": "2026-03-15", "close": 875.4,  "open": 860.0,  "high": 885.0,  "low": 855.0,  "volume": 42000000.0},
+    {"stock_code": "2330.TW", "trade_date": "2026-04-09", "close": 850.0, "open": 845.0, "high": 855.0, "low": 840.0, "volume": 25000.0},
+    {"stock_code": "2317.TW", "trade_date": "2026-04-09", "close": 168.5, "open": 165.0, "high": 170.0, "low": 164.0, "volume": 45000.0},
+    {"stock_code": "AAPL", "trade_date": "2026-04-09", "close": 172.3, "open": 170.0, "high": 175.0, "low": 169.0, "volume": 55000000.0},
 ]
 
-def seed():
+
+def seed(reset: bool = False) -> None:
+    if reset:
+        reset_sqlite_db()
+    else:
+        init_db()
+
     db = SessionLocal()
     try:
-        # 建立 Demo User
-        demo_email = "demo@example.com"
-        demo_user = db.query(UserORM).filter(UserORM.email == demo_email).first()
+        demo_user = db.query(UserORM).filter(UserORM.email == DEMO_EMAIL).first()
         if not demo_user:
-            print(f"建立 Demo User: {demo_email}")
-            demo_user = UserORM(
-                email=demo_email,
-                password_hash=get_password_hash("demo1234")
-            )
+            demo_user = UserORM(email=DEMO_EMAIL, password_hash=get_password_hash(DEMO_PASSWORD))
             db.add(demo_user)
             db.commit()
             db.refresh(demo_user)
 
-        # 清空舊資料 (只清空該 Demo User 的隔離資料，價格資料是共享的)
         db.query(ExpenseORM).filter(ExpenseORM.user_id == demo_user.id).delete()
+        db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
         db.query(WatchlistORM).filter(WatchlistORM.user_id == demo_user.id).delete()
+        db.query(StockPriceORM).filter(StockPriceORM.stock_code.in_([item["stock_code"] for item in MOCK_PRICES])).delete(
+            synchronize_session=False
+        )
         db.commit()
 
-        # 填入記帳資料
         for item in MOCK_EXPENSES:
             db.add(ExpenseORM(user_id=demo_user.id, **item))
 
-        # 填入自選股資料
+        for item in MOCK_BUDGETS:
+            db.add(BudgetORM(user_id=demo_user.id, **item))
+
         for item in MOCK_WATCHLIST:
             db.add(WatchlistORM(user_id=demo_user.id, **item))
 
-        # 填入價格資料 (共享資料)
         for item in MOCK_PRICES:
-            # 檢查是否已存在相同代碼與日期的資料
-            existing = db.query(StockPriceORM).filter(
-                StockPriceORM.stock_code == item["stock_code"],
-                StockPriceORM.trade_date == item["trade_date"]
-            ).first()
-            if not existing:
-                db.add(StockPriceORM(**item))
+            db.add(StockPriceORM(**item))
 
         db.commit()
-        print(f"✅ 已為 {demo_email} 填入 {len(MOCK_EXPENSES)} 筆記帳資料、{len(MOCK_WATCHLIST)} 筆自選股資料")
-        print(f"✅ 已更新市場共享價格資料 {len(MOCK_PRICES)} 筆")
-        print(f"Demo 帳號: {demo_email}")
-        print(f"Demo 密碼: demo1234")
+
+        print("Seed completed successfully.")
+        print(f"Demo email: {DEMO_EMAIL}")
+        print(f"Demo password: {DEMO_PASSWORD}")
     finally:
         db.close()
 
+
 if __name__ == "__main__":
-    seed()
+    parser = argparse.ArgumentParser(description="Seed demo data for Personal Finance Dashboard.")
+    parser.add_argument("--reset", action="store_true", help="Delete the SQLite database first and recreate it.")
+    args = parser.parse_args()
+    seed(reset=args.reset)

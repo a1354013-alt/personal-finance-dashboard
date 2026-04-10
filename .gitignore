@@ -1,0 +1,13 @@
+backend/finance.db
+backend/__pycache__/
+backend/.pytest_cache/
+backend/tests/__pycache__/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+.env
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp

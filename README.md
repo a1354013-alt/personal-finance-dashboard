@@ -1,83 +1,178 @@
-# Personal Finance Dashboard (v0.6.1)
+# Personal Finance Dashboard v0.6.1
 
-這是一個完整且精簡的個人財務管理系統 DEMO 專案，結合了記帳系統、預算管理、真實股票行情同步、股票篩選引擎以及 AI 財務建議模組。
+Personal Finance Dashboard is a demo full-stack project built with FastAPI, SQLAlchemy, Vue 3, Pinia, and Vite. This version is stabilized around four goals:
 
-## 🚀 版本更新：v0.6.1 (API Path Fixes, Stock Autofill & Code Cleanup)
-- **API 路徑修正**：修正前端 API 模組與頁面中的冗餘 `/api` 前綴，確保路徑一致性。
-- **股票名稱自動填寫**：後端股票服務新增自動填寫股票名稱功能，提升使用者體驗。
-- **冗餘代碼移除**：移除後端 `stock_data_service.py` 中不再使用的 `get_mock_price` 函數。
-- **代碼清理與註釋優化**：清理前後端所有檔案中的開發註釋，使代碼更簡潔。
-- **用戶數據隔離驗證**：確保所有 API 接口都已正確實施用戶數據隔離。
+- `npm run build` passes on the frontend.
+- Backend and frontend contracts are consistent.
+- SQLite delivery is reproducible through clean init and seed steps.
+- Budget and stock status logic is defined in one place and rendered consistently in the UI.
 
-## 🚀 版本更新：v0.6.0 (Budget System & AI Advice)
-- **預算管理系統**：新增每月預算限額設定，自動追蹤各類別支出使用率與超支警示。
-- **AI 財務建議**：根據收支與預算執行進度，由 AI (Template-based) 產生個人化理財與預算建議。
-- **Dashboard 強化**：儀表板新增預算分析建議區塊。
-- **穩定性修正 (v0.5.2)**：修正股票同步訊息、清理開發註解、優化 Loading 狀態管理。
+## Tech Stack
 
-## 📂 專案結構
-```text
-personal-finance-dashboard/
-├── backend/                # FastAPI 後端
-│   ├── db/                 # 資料庫連線與初始化
-│   ├── models/             # SQLAlchemy ORM 與 Pydantic 模型 (User, Expense, Stock, Budget)
-│   ├── routers/            # API 路由 (Auth, Expenses, Stocks, Budgets, Dashboard, AI)
-│   ├── services/           # 業務邏輯 (Auth, StockData, StockFilter, AISummary)
-│   ├── main.py             # 程式入口
-│   └── seed_data.py        # 測試資料填充腳本
-├── frontend/               # Vue 3 前端
-│   ├── src/
-│   │   ├── api/            # Axios API 呼叫封裝 (Auth, Expenses, Stocks, Budgets)
-│   │   ├── stores/         # Pinia 狀態管理 (Auth, Expense, Stock, Dashboard)
-│   │   ├── pages/          # 頁面元件 (Login, Register, Dashboard, Expenses, Stocks, Budgets)
-│   │   └── constants/      # 全域常數 (版本號等)
-│   └── vite.config.js      # Vite 配置 (含 API Proxy)
-└── README.md
+- Backend: FastAPI, SQLAlchemy, SQLite
+- Frontend: Vue 3, Pinia, Vue Router, Vite
+- Python: recommended `3.11` or `3.12`
+- Node.js: recommended `18` or newer
+
+## Version Contract
+
+The following version markers are intentionally aligned to `0.6.1`:
+
+- README version
+- FastAPI app version
+- Frontend package version
+- Frontend UI version display
+
+## Demo Account
+
+- Email: `demo@example.com`
+- Password: `demo1234`
+
+## Environment Setup
+
+1. Copy the example env file at the repository root.
+2. Fill in `SECRET_KEY` if you want a non-default development key.
+
+Example:
+
+```bash
+cp .env.example .env
 ```
 
-## 🛠️ 快速啟動
+Windows PowerShell:
 
-### 1. 後端啟動
+```powershell
+Copy-Item .env.example .env
+```
+
+Root `.env.example` includes:
+
+```env
+ENV=development
+SECRET_KEY=
+CORS_ORIGINS=http://localhost:5173
+DATABASE_URL=sqlite:///./finance.db
+```
+
+## From Scratch
+
+### 1. Install backend dependencies
+
 ```bash
 cd backend
-# 安裝依賴 (建議使用虛擬環境)
-pip install -r requirements.txt
-# 初始化資料庫與測試資料
-python seed_data.py
-# 啟動伺服器
+python -m pip install -r requirements.txt
+```
+
+### 2. Initialize a clean database and seed demo data
+
+This project does not rely on an old committed `finance.db`. Use the seed script to create a fresh SQLite database and demo records:
+
+```bash
+python seed_data.py --reset
+```
+
+This creates:
+
+- the SQLite schema
+- the demo user
+- demo expenses
+- demo budgets
+- demo watchlist items
+- demo stock prices
+
+### 3. Start the backend
+
+```bash
 uvicorn main:app --reload
 ```
 
-### 2. 前端啟動
+Backend default URL:
+
+- API root: [http://localhost:8000](http://localhost:8000)
+- Swagger docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 4. Install frontend dependencies
+
 ```bash
-cd frontend
-# 安裝依賴
-pnpm install
-# 啟動開發伺服器
-pnpm dev
+cd ../frontend
+npm install
 ```
 
-## 🔐 測試帳號
-- **Email**: `demo@example.com`
-- **Password**: `demo1234`
+### 5. Start the frontend
 
-## 📈 股票資料說明 (Stock Data)
-- **真實資料**：目前「最新價格」、「成交量」與「最後更新日期」均透過 `yfinance` 抓取真實市場行情。
-- **台股支援**：輸入 4 位數台股代碼（如 `2330`）系統會自動補全為 `2330.TW` 進行抓取。
-- **同步機制**：使用者可手動點擊「同步最新價格」觸發更新，抓取失敗時會回傳錯誤提示。
-- **Mock 流程**：股票篩選引擎的基本面數據與 AI 股票解說目前仍為 Demo/Mock 流程。
+```bash
+npm run dev
+```
 
-## 📝 版本更新日誌 (Release Notes)
-- **v0.6.1**：修正 API 路徑、自動填寫股票名稱、移除冗餘代碼、清理註釋及確保用戶隔離。
-- **v0.6.0**：正式導入預算管理系統與 AI 預算建議功能。
-- **v0.5.2**：穩定性修正。優化股票同步訊息、清理開發註解、優化 Loading 狀態管理。
-- **v0.5.1**：優化 API 回傳處理、台股代碼辨識、移除 alert 改用頁面提示。
-- **v0.5.0**：正式導入真實股票資料流程 (yfinance) 與 Watchlist 完整 CRUD。
-- **v0.4.1**：認證流程穩定性優化與 API 結構重整。
-- **v0.4.0**：引入 JWT 認證系統與使用者資料隔離。
+Frontend default URL:
 
-## ⚠️ 限制與說明
-- 本專案為 DEMO 用途，不建議直接用於生產環境。
-- AI 摘要與建議目前使用預設 Template 生成，可於 `backend/services/ai_summary.py` 中替換為真實 LLM API。
-- 股票資料抓取受限於 yfinance 的穩定性與網路環境。
-- 預算統計以「自然月」為單位進行計算。
+- App: [http://localhost:5173](http://localhost:5173)
+
+## Build
+
+Frontend production build:
+
+```bash
+cd frontend
+npm run build
+```
+
+## Testing
+
+Backend smoke tests:
+
+```bash
+cd backend
+python -m pytest
+```
+
+Current smoke coverage includes:
+
+- auth: register / login / me
+- expenses: create / list / delete
+- budgets: create / list / delete
+- dashboard summary
+- user isolation for authenticated resources
+
+## Stable Data Rules
+
+### Budget summary
+
+All current-month budget calculations follow the same rules:
+
+- `date >= month_start`
+- `date < next_month_start`
+- `type == "expense"`
+
+This logic is centralized in `backend/services/budget_summary.py` and reused by:
+
+- `backend/routers/budgets.py`
+- `backend/routers/dashboard.py`
+- `backend/routers/ai.py`
+
+### SQLite delivery
+
+- `backend/finance.db` is ignored and should not be committed as a delivery artifact.
+- `python seed_data.py --reset` is the supported reproducible reset path.
+- The app initializes tables for a clean database, but does not try to repair a stale schema in place.
+
+### Stock watchlist sync status
+
+Watchlist rows expose exactly three sync states:
+
+- `success`
+- `pending`
+- `failed`
+
+Frontend rendering matches these states directly. If a stock has no price data after loading the watchlist, it is shown as `pending`, not as a healthy synced state.
+
+### Mock stock screening scope
+
+Fundamental screening is still mock-based for a limited set of bundled symbols. The UI explicitly states that screening coverage is only available for that mock list so users do not mistake it for full live market analysis.
+
+## Known Limits
+
+- SQLite is suitable for demo and local use, but this project does not yet include Alembic migrations.
+- Stock prices depend on `yfinance`; transient upstream failures can still produce `failed` sync states.
+- Fundamental screening remains mock-backed rather than fully live.
+- `.env` loading is included for local development, but production deployment still needs explicit secret and environment management.

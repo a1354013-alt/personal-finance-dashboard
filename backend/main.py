@@ -1,37 +1,31 @@
-"""
-FastAPI 主程式
-配置 API 路由、中介軟體與資料庫初始化。
-"""
+from __future__ import annotations
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from db.database import engine, Base
-from routers import expenses, stocks, dashboard, ai, auth, budgets
 
-# 初始化資料庫
-# 匯入所有 ORM 模型，確保 Base.metadata 包含所有 table
-from models.user import UserORM
-from models.expense import ExpenseORM
-from models.stock import WatchlistORM, StockPriceORM
-from models.budget import BudgetORM
+from config import APP_VERSION, get_cors_origins
+from db.database import init_db
+from routers import ai, auth, budgets, dashboard, expenses, stocks
+from services.auth import validate_secret_key_configuration
 
-Base.metadata.create_all(bind=engine)
+validate_secret_key_configuration()
+init_db()
 
 app = FastAPI(
     title="Personal Finance Dashboard API",
-    description="提供記帳、股票篩選與 AI 財務摘要功能的後端服務 (含 JWT 認證與真實股票資料)",
-    version="0.6.1"
+    description="API for the Personal Finance Dashboard demo project.",
+    version=APP_VERSION,
 )
 
-# CORS 配置
+cors_origins = get_cors_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-# 註冊路由
 app.include_router(auth.router)
 app.include_router(expenses.router)
 app.include_router(stocks.router)
@@ -39,14 +33,17 @@ app.include_router(dashboard.router)
 app.include_router(ai.router)
 app.include_router(budgets.router)
 
+
 @app.get("/")
 def read_root():
     return {
-        "message": "Personal Finance Dashboard API is running",
+        "message": "Personal Finance Dashboard API is running.",
         "docs": "/docs",
-        "version": "0.6.1"
+        "version": APP_VERSION,
+        "cors_origins": cors_origins,
     }
+
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "version": APP_VERSION}
