@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <h1>Dashboard</h1>
-      <p>Version {{ VERSION }}. Summary, budget alerts, and AI advice share the same backend contract.</p>
+      <p>Version {{ VERSION }}. Totals are all-time, while over-budget alerts are for the current month.</p>
     </div>
 
     <div v-if="store.loading" class="loading-text">Loading dashboard...</div>
@@ -11,15 +11,15 @@
     <template v-else-if="store.summary">
       <div class="stats-grid">
         <div class="card stat-card">
-          <div class="card-label">Total Income</div>
+          <div class="card-label">All-time Income</div>
           <div class="stat-value income">{{ formatCurrency(store.summary.total_income) }}</div>
         </div>
         <div class="card stat-card">
-          <div class="card-label">Total Expense</div>
+          <div class="card-label">All-time Expense</div>
           <div class="stat-value expense">{{ formatCurrency(store.summary.total_expense) }}</div>
         </div>
         <div class="card stat-card">
-          <div class="card-label">Net Balance</div>
+          <div class="card-label">All-time Net Balance</div>
           <div class="stat-value balance" :class="store.summary.net_balance >= 0 ? 'income' : 'expense'">
             {{ formatCurrency(store.summary.net_balance) }}
           </div>
@@ -62,7 +62,7 @@
       </section>
 
       <section class="card">
-        <h2>Over Budget</h2>
+        <h2>Over Budget (Current Month)</h2>
         <div v-if="store.summary.over_budget.length === 0" class="empty-state">No categories are over budget this month.</div>
         <table v-else class="table">
           <thead>

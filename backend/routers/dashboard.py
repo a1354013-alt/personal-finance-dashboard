@@ -71,4 +71,8 @@ def get_summary(
         "expense_by_category": expense_by_category,
         "monthly_trend": monthly_trend,
         "over_budget": over_budget,
+        "summary_scope": {
+            "totals": "all_time",
+            "over_budget": "current_month",
+        },
     }

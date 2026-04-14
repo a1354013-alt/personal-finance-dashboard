@@ -14,6 +14,13 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    clearSession() {
+      this.token = null
+      this.user = null
+      this.error = null
+      this.persistSession()
+    },
+
     persistSession() {
       if (this.token) {
         localStorage.setItem('token', this.token)
@@ -62,25 +69,28 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout() {
-      this.token = null
-      this.user = null
-      this.error = null
-      this.persistSession()
+      this.clearSession()
     },
 
     async fetchMe() {
       if (!this.token) {
+        this.clearSession()
         return false
       }
 
+      this.loading = true
+      this.error = null
       try {
         const user = await getMe()
         this.user = user
         this.persistSession()
         return true
-      } catch (_error) {
-        this.logout()
+      } catch (error) {
+        this.clearSession()
+        this.error = error.message || 'Session expired. Please sign in again.'
         return false
+      } finally {
+        this.loading = false
       }
     }
   }

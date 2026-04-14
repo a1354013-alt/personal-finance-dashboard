@@ -23,6 +23,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      const encodedRedirect = encodeURIComponent(currentPath || '/')
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.replace(`/login?redirect=${encodedRedirect}`)
+      }
     }
 
     const message = error.response?.data?.detail || error.message || 'Request failed.'

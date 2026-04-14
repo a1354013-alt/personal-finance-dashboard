@@ -9,7 +9,8 @@ export const useStockStore = defineStore('stock', () => {
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
-  const syncLoading = ref(false)
+  const syncAllLoading = ref(false)
+  const syncingCodes = ref([])
 
   const watchlistError = ref(null)
   const filterError = ref(null)
@@ -49,7 +50,7 @@ export const useStockStore = defineStore('stock', () => {
   }
 
   async function syncAllPrices() {
-    syncLoading.value = true
+    syncAllLoading.value = true
     try {
       const response = await stockApi.syncAllPrices()
       await fetchWatchlist()
@@ -57,7 +58,28 @@ export const useStockStore = defineStore('stock', () => {
     } catch (error) {
       throw new Error(error.message)
     } finally {
-      syncLoading.value = false
+      syncAllLoading.value = false
+    }
+  }
+
+  function isSingleSyncing(stockCode) {
+    return syncingCodes.value.includes(stockCode)
+  }
+
+  async function syncSinglePrice(stockCode) {
+    if (isSingleSyncing(stockCode)) {
+      return null
+    }
+
+    syncingCodes.value.push(stockCode)
+    try {
+      const response = await stockApi.syncSinglePrice(stockCode)
+      await fetchWatchlist()
+      return response
+    } catch (error) {
+      throw new Error(error.message)
+    } finally {
+      syncingCodes.value = syncingCodes.value.filter((code) => code !== stockCode)
     }
   }
 
@@ -93,7 +115,8 @@ export const useStockStore = defineStore('stock', () => {
     filterMetadata,
     watchlistLoading,
     filterLoading,
-    syncLoading,
+    syncAllLoading,
+    syncingCodes,
     watchlistError,
     filterError,
     passedStocks,
@@ -103,6 +126,8 @@ export const useStockStore = defineStore('stock', () => {
     addToWatchlist,
     deleteFromWatchlist,
     syncAllPrices,
+    syncSinglePrice,
+    isSingleSyncing,
     evaluateStock,
     getAiStockExplain
   }

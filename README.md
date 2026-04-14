@@ -71,6 +71,12 @@ This project does not rely on an old committed `finance.db`. Use the seed script
 python seed_data.py --reset
 ```
 
+Optional (for long-term demos): shift the deterministic dataset to recent months while preserving record shapes:
+
+```bash
+python seed_data.py --reset --relative-dates
+```
+
 This creates:
 
 - the SQLite schema
@@ -114,7 +120,17 @@ Frontend production build:
 
 ```bash
 cd frontend
+npm install
 npm run build
+```
+
+`npm install` is required for official verification. Do not treat archived or copied `node_modules` folders as a valid build source.
+
+Frontend lint:
+
+```bash
+cd frontend
+npm run lint
 ```
 
 ## Testing
@@ -156,6 +172,13 @@ This logic is centralized in `backend/services/budget_summary.py` and reused by:
 - `python seed_data.py --reset` is the supported reproducible reset path.
 - Relative SQLite paths are normalized against the `backend` directory so the database location does not drift with the current shell working directory.
 - The app initializes tables for a clean database and fails fast if an existing SQLite file is missing required tables, instead of silently patching an old schema in place.
+- Local database files are runtime artifacts, not release validation artifacts.
+
+### Frontend dependency lock
+
+- `frontend/package-lock.json` is the single source of truth for dependency versions.
+- `frontend/node_modules` is a local install artifact and must not be treated as release evidence.
+- Use `cd frontend && npm install && npm run build` for reproducible verification.
 
 ### Stock watchlist sync status
 
@@ -165,7 +188,7 @@ Watchlist rows expose exactly three sync states:
 - `pending`
 - `failed`
 
-Frontend rendering matches these states directly. Failed sync status is persisted per watchlist item together with the latest sync error, so add-to-watchlist feedback and later refreshes stay consistent.
+Frontend rendering matches these states directly from backend response fields. Failed sync status is persisted per watchlist item together with the latest sync error, so add-to-watchlist feedback and later refreshes stay consistent.
 
 ### Mock stock screening scope
 
@@ -177,11 +200,36 @@ Fundamental screening is still mock-based for a limited set of bundled symbols. 
 - Stock prices depend on `yfinance`; transient upstream failures can still produce `failed` sync states.
 - Fundamental screening remains mock-backed rather than fully live.
 - `.env` loading is included for local development, but production deployment still needs explicit secret and environment management.
+- The default seed dataset uses fixed reference dates for deterministic demos. Use `--relative-dates` when you want the same dataset shape mapped to recent months.
+
+## Packaging and Cleanup
+
+Run cleanup before packaging to avoid shipping local artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/clean-delivery.ps1
+```
+
+This removes local artifacts such as:
+
+- `backend/finance.db`
+- `backend/test_smoke.db`
+- `backend/__pycache__`
+- `backend/.pytest_cache`
+- `frontend/node_modules`
+- `frontend/dist`
+- `frontend/.vite`
+
+For source-only delivery that excludes `.git`, use:
+
+```bash
+git archive --format zip --output personal-finance-dashboard.zip HEAD
+```
 
 ## Release Checklist
 
 - Run `python seed_data.py --reset` inside `backend`.
 - Run `python -m pytest` inside `backend`.
-- Run `npm run build` inside `frontend`.
+- Run `npm install && npm run lint && npm run build` inside `frontend`.
 - Confirm the UI can sign in with `demo@example.com / demo1234`.
 - Confirm dashboard, expenses, budgets, and stocks pages load without console or API contract errors.

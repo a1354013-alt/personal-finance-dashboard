@@ -11,8 +11,8 @@
     <section class="card">
       <div class="section-header">
         <h2>Watchlist</h2>
-        <button class="btn btn-secondary" :disabled="stockStore.syncLoading" @click="handleSyncAll">
-          {{ stockStore.syncLoading ? 'Syncing...' : 'Sync Prices' }}
+        <button class="btn btn-secondary" :disabled="stockStore.syncAllLoading" @click="handleSyncAll">
+          {{ stockStore.syncAllLoading ? 'Syncing...' : 'Sync Prices' }}
         </button>
       </div>
 
@@ -56,6 +56,16 @@
               </td>
               <td>
                 <button class="btn btn-danger" @click="handleDeleteWatchlist(item.id)">Delete</button>
+                <button
+                  class="btn btn-primary row-action-btn"
+                  :disabled="stockStore.isSingleSyncing(item.stock_code)"
+                  @click="handleSyncSingle(item.stock_code)"
+                >
+                  {{ stockStore.isSingleSyncing(item.stock_code) ? 'Syncing...' : 'Sync' }}
+                </button>
+                <div v-if="singleSyncErrors[item.stock_code]" class="status-detail error-inline">
+                  {{ singleSyncErrors[item.stock_code] }}
+                </div>
               </td>
             </tr>
           </tbody>
@@ -112,6 +122,7 @@ const newStockCode = ref('')
 const isAdding = ref(false)
 const actionMessage = ref('')
 const actionError = ref('')
+const singleSyncErrors = ref({})
 
 function formatPrice(value) {
   return `NT$ ${Number(value).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -171,6 +182,21 @@ async function handleDeleteWatchlist(id) {
   }
 }
 
+async function handleSyncSingle(stockCode) {
+  actionMessage.value = ''
+  actionError.value = ''
+  singleSyncErrors.value = { ...singleSyncErrors.value, [stockCode]: '' }
+
+  try {
+    const response = await stockStore.syncSinglePrice(stockCode)
+    actionMessage.value = response?.message || `${stockCode} synced successfully.`
+    await stockStore.fetchFilterResults()
+  } catch (error) {
+    const message = error.message || `Unable to sync ${stockCode}.`
+    singleSyncErrors.value = { ...singleSyncErrors.value, [stockCode]: message }
+  }
+}
+
 async function handleSyncAll() {
   actionMessage.value = ''
   actionError.value = ''
@@ -211,6 +237,14 @@ onMounted(refreshStocksView)
   color: #66788a;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.row-action-btn {
+  margin-left: 8px;
+}
+
+.error-inline {
+  color: #9a2c2c;
 }
 
 .stocks-grid {

@@ -5,6 +5,7 @@ import Stocks from '@/pages/Stocks.vue'
 import Budgets from '@/pages/Budgets.vue'
 import Login from '@/pages/Login.vue'
 import Register from '@/pages/Register.vue'
+import NotFound from '@/pages/NotFound.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const routes = [
@@ -13,7 +14,8 @@ const routes = [
   { path: '/stocks', name: 'Stocks', component: Stocks, meta: { requiresAuth: true } },
   { path: '/budgets', name: 'Budgets', component: Budgets, meta: { requiresAuth: true } },
   { path: '/login', name: 'Login', component: Login, meta: { guestOnly: true } },
-  { path: '/register', name: 'Register', component: Register, meta: { guestOnly: true } }
+  { path: '/register', name: 'Register', component: Register, meta: { guestOnly: true } },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
 ]
 
 const router = createRouter({

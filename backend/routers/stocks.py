@@ -47,11 +47,12 @@ def _latest_price_for_code(db: Session, stock_code: str) -> StockPriceORM | None
 
 def _build_watchlist_item(db: Session, item: WatchlistORM) -> dict:
     latest_price = _latest_price_for_code(db, item.stock_code)
-    sync_status = item.price_sync_status
-    if latest_price and sync_status != SYNC_STATUS_FAILED:
-        sync_status = SYNC_STATUS_SUCCESS
-    elif not latest_price and sync_status == SYNC_STATUS_SUCCESS:
-        sync_status = SYNC_STATUS_PENDING
+    # Sync status semantics are persistence-first:
+    # - pending: sync has not succeeded yet
+    # - success: latest sync succeeded
+    # - failed: latest sync attempt failed
+    # Price rows are display data only and must not overwrite persisted sync status.
+    sync_status = item.price_sync_status or SYNC_STATUS_PENDING
 
     return {
         "id": item.id,
