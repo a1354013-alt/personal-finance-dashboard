@@ -35,3 +35,15 @@ export function filterSingleStock(data) {
 export function getAiStockExplain(data) {
   return api.post('/ai/stock-explain', data)
 }
+
+export function syncWatchlistFundamentals({ force = false } = {}) {
+  return api.post('/stocks/fundamentals/sync', { force })
+}
+
+export function syncSingleFundamentals(stockCode, { force = false } = {}) {
+  return api.post(`/stocks/fundamentals/${stockCode.toUpperCase()}/sync`, { force })
+}
+
+export function getWatchlistFundamentals() {
+  return api.get('/stocks/fundamentals')
+}

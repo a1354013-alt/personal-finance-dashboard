@@ -74,13 +74,24 @@
     </section>
 
     <section class="card">
-      <h2>Screening Coverage</h2>
+      <div class="section-header">
+        <h2>Fundamentals Screening</h2>
+        <button
+          class="btn btn-secondary"
+          :disabled="stockStore.fundamentalsSyncing"
+          @click="handleSyncFundamentals"
+        >
+          {{ stockStore.fundamentalsSyncing ? 'Syncing...' : 'Sync Fundamentals' }}
+        </button>
+      </div>
       <p class="helper-text">
         {{ stockStore.filterMetadata?.message || 'Screening metadata unavailable.' }}
       </p>
       <p class="helper-text" v-if="stockStore.filterMetadata">
-        Supported mock codes: {{ stockStore.filterMetadata.supported_codes.join(', ') }}
+        Provider: {{ stockStore.filterMetadata.fundamentals_provider }} · TTL: {{ stockStore.filterMetadata.ttl_hours }}h · Timeout:
+        {{ stockStore.filterMetadata.timeout_seconds }}s
       </p>
+      <div v-if="stockStore.fundamentalsError" class="error-msg">{{ stockStore.fundamentalsError }}</div>
     </section>
 
     <div class="stocks-grid">
@@ -88,11 +99,12 @@
         <h2>Passed</h2>
         <div v-if="stockStore.filterLoading" class="loading-text">Loading screening results...</div>
         <div v-else-if="stockStore.filterError" class="error-msg">{{ stockStore.filterError }}</div>
-        <div v-else-if="stockStore.passedStocks.length === 0" class="empty-state">No watchlist items passed the mock screen.</div>
+        <div v-else-if="stockStore.passedStocks.length === 0" class="empty-state">No watchlist items passed the fundamentals screen.</div>
         <ul v-else class="result-list">
           <li v-for="stock in stockStore.passedStocks" :key="stock.stock_code" class="result-item result-pass">
             <strong>{{ stock.stock_code }}</strong>
-            <span>Passed all mock rules.</span>
+            <span class="muted">{{ fundamentalsMetaText(stock) }}</span>
+            <span class="muted">{{ fundamentalsMetricText(stock) }}</span>
           </li>
         </ul>
       </section>
@@ -105,6 +117,8 @@
         <ul v-else class="result-list">
           <li v-for="stock in stockStore.failedStocks" :key="stock.stock_code" class="result-item result-fail">
             <strong>{{ stock.stock_code }}</strong>
+            <span class="muted">{{ fundamentalsMetaText(stock) }}</span>
+            <span class="muted" v-if="stock.fundamentals">{{ fundamentalsMetricText(stock) }}</span>
             <span>{{ stock.fail_reasons.join(' / ') }}</span>
           </li>
         </ul>
@@ -138,6 +152,26 @@ function statusBadgeClass(status) {
   if (status === 'success') return 'badge-success'
   if (status === 'failed') return 'badge-danger'
   return 'badge-warning'
+}
+
+function fundamentalsMetaText(stock) {
+  const meta = stock?.meta
+  if (!meta) return 'No fundamentals metadata.'
+  const status = meta.status ? `status=${meta.status}` : 'status=missing'
+  const asOf = meta.as_of_date ? `as_of=${meta.as_of_date}` : 'as_of=-'
+  const stale = meta.is_stale ? 'stale' : 'fresh'
+  return `${meta.provider} · ${status} · ${asOf} · ${stale}`
+}
+
+function fundamentalsMetricText(stock) {
+  const f = stock?.fundamentals
+  if (!f) return 'No fundamentals cached.'
+  const pe = f.pe_ratio != null ? `P/E ${Number(f.pe_ratio).toFixed(2)}` : 'P/E -'
+  const pb = f.pb_ratio != null ? `P/B ${Number(f.pb_ratio).toFixed(2)}` : 'P/B -'
+  const div = f.dividend_yield != null ? `Yield ${Number(f.dividend_yield).toFixed(2)}%` : 'Yield -'
+  const rev = f.revenue_growth != null ? `Rev ${Number(f.revenue_growth).toFixed(2)}%` : 'Rev -'
+  const eps = f.eps != null ? `EPS ${Number(f.eps).toFixed(2)}` : 'EPS -'
+  return `${pe} · ${pb} · ${div} · ${rev} · ${eps}`
 }
 
 async function refreshStocksView() {
@@ -211,6 +245,18 @@ async function handleSyncAll() {
   }
 }
 
+async function handleSyncFundamentals() {
+  actionMessage.value = ''
+  actionError.value = ''
+
+  try {
+    await stockStore.syncFundamentals()
+    actionMessage.value = 'Fundamentals synced for watchlist items.'
+  } catch (error) {
+    actionError.value = error.message || 'Unable to sync fundamentals.'
+  }
+}
+
 onMounted(refreshStocksView)
 </script>
 
@@ -266,6 +312,12 @@ onMounted(refreshStocksView)
   gap: 6px;
   padding: 14px;
   border-radius: 12px;
+}
+
+.muted {
+  color: #66788a;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .result-pass {

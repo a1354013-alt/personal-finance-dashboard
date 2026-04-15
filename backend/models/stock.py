@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date as DateType, datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from pydantic import BaseModel, field_serializer, field_validator
+from sqlalchemy import BigInteger, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -31,12 +32,12 @@ class StockPriceORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     stock_code = Column(String(20), nullable=False, index=True)
-    trade_date = Column(String(20), nullable=False)
-    open = Column(Float, nullable=True)
-    high = Column(Float, nullable=True)
-    low = Column(Float, nullable=True)
-    close = Column(Float, nullable=False)
-    volume = Column(Float, nullable=True)
+    trade_date = Column(Date, nullable=False)
+    open = Column(Numeric(18, 4), nullable=True)
+    high = Column(Numeric(18, 4), nullable=True)
+    low = Column(Numeric(18, 4), nullable=True)
+    close = Column(Numeric(18, 4), nullable=False)
+    volume = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("stock_code", "trade_date", name="_stock_date_uc"),)
@@ -61,14 +62,20 @@ class WatchlistItemResponse(BaseModel):
     user_id: int
     stock_code: str
     name: Optional[str] = None
-    price: Optional[float] = None
-    date: Optional[str] = None
-    volume: Optional[float] = None
+    price: Optional[Decimal] = None
+    date: Optional[DateType] = None
+    volume: Optional[int] = None
     price_sync_status: str = "pending"
     last_sync_error: Optional[str] = None
     last_sync_attempt_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("price")
+    def serialize_price(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
 
 
 class StockFilterRequest(BaseModel):

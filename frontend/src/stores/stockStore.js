@@ -6,6 +6,8 @@ export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
   const filterResults = ref([])
   const filterMetadata = ref(null)
+  const fundamentalsSyncing = ref(false)
+  const fundamentalsError = ref(null)
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
@@ -101,6 +103,20 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  async function syncFundamentals({ force = false } = {}) {
+    fundamentalsSyncing.value = true
+    fundamentalsError.value = null
+    try {
+      await stockApi.syncWatchlistFundamentals({ force })
+      await fetchFilterResults()
+    } catch (error) {
+      fundamentalsError.value = error.message || 'Unable to sync fundamentals.'
+      throw error
+    } finally {
+      fundamentalsSyncing.value = false
+    }
+  }
+
   async function evaluateStock(data) {
     return stockApi.filterSingleStock(data)
   }
@@ -113,6 +129,8 @@ export const useStockStore = defineStore('stock', () => {
     watchlist,
     filterResults,
     filterMetadata,
+    fundamentalsSyncing,
+    fundamentalsError,
     watchlistLoading,
     filterLoading,
     syncAllLoading,
@@ -123,6 +141,7 @@ export const useStockStore = defineStore('stock', () => {
     failedStocks,
     fetchWatchlist,
     fetchFilterResults,
+    syncFundamentals,
     addToWatchlist,
     deleteFromWatchlist,
     syncAllPrices,

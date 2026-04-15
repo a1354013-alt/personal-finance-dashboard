@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import Any, Optional
 
 import yfinance as yf
@@ -33,7 +34,7 @@ class StockDataService:
                 logger.warning("Missing close price for %s", formatted_code)
                 return None
 
-            trade_date = last_row.name.strftime("%Y-%m-%d")
+            trade_date = date.fromisoformat(last_row.name.strftime("%Y-%m-%d"))
             return {
                 "stock_code": formatted_code,
                 "trade_date": trade_date,
@@ -41,7 +42,7 @@ class StockDataService:
                 "high": float(last_row["High"]) if "High" in last_row else None,
                 "low": float(last_row["Low"]) if "Low" in last_row else None,
                 "close": float(close_price),
-                "volume": float(last_row["Volume"]) if "Volume" in last_row else None,
+                "volume": int(last_row["Volume"]) if "Volume" in last_row and last_row["Volume"] is not None else None,
             }
         except Exception:
             logger.exception("Failed to fetch price for %s", formatted_code)

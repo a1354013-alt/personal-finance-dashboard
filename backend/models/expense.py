@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date as DateType
+from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
-from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String, Text
+from pydantic import BaseModel, field_serializer, field_validator
+from sqlalchemy import Column, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -15,7 +16,7 @@ class ExpenseORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 2), nullable=False)
     category = Column(String(50), nullable=False)
     type = Column(String(10), nullable=False)
     date = Column(Date, nullable=False)
@@ -25,10 +26,10 @@ class ExpenseORM(Base):
 
 
 class ExpenseCreate(BaseModel):
-    amount: float
+    amount: Decimal
     category: str
     type: str
-    date: date
+    date: DateType
     note: Optional[str] = None
 
     @field_validator("type")
@@ -40,7 +41,7 @@ class ExpenseCreate(BaseModel):
 
     @field_validator("amount")
     @classmethod
-    def validate_amount(cls, value: float) -> float:
+    def validate_amount(cls, value: Decimal) -> Decimal:
         if value <= 0:
             raise ValueError("amount must be greater than 0.")
         return value
@@ -67,10 +68,14 @@ class ExpenseCreate(BaseModel):
 class ExpenseResponse(BaseModel):
     id: int
     user_id: int
-    amount: float
+    amount: Decimal
     category: str
     type: str
-    date: date
+    date: DateType
     note: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("amount")
+    def serialize_amount(self, value: Decimal) -> float:
+        return float(value)

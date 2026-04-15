@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session
 
@@ -48,10 +49,10 @@ def get_current_month_spend_by_category(
     db: Session,
     user_id: int,
     reference_date: date | None = None,
-) -> dict[str, float]:
-    totals: dict[str, float] = defaultdict(float)
+) -> dict[str, Decimal]:
+    totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
     for expense in get_month_expense_rows(db, user_id, reference_date):
-        totals[expense.category] += expense.amount
+        totals[expense.category] += Decimal(expense.amount)
     return dict(totals)
 
 
@@ -70,18 +71,19 @@ def build_budget_status(
 
     budget_status = []
     for budget in budgets:
-        spent = round(spend_by_category.get(budget.category, 0.0), 2)
-        percent_used = round((spent / budget.monthly_limit) * 100, 2) if budget.monthly_limit else 0.0
+        monthly_limit = Decimal(budget.monthly_limit)
+        spent = spend_by_category.get(budget.category, Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        percent_used = round((float(spent) / float(monthly_limit)) * 100, 2) if monthly_limit else 0.0
         budget_status.append(
             {
                 "id": budget.id,
                 "user_id": budget.user_id,
                 "category": budget.category,
-                "monthly_limit": round(budget.monthly_limit, 2),
+                "monthly_limit": monthly_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                 "created_at": budget.created_at,
                 "current_spent": spent,
                 "percent_used": percent_used,
-                "over_budget": spent > budget.monthly_limit,
+                "over_budget": spent > monthly_limit,
             }
         )
 

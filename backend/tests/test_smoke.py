@@ -1,31 +1,14 @@
 from __future__ import annotations
 
-import os
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import date, datetime, timezone
 
 import pytest
-from fastapi.testclient import TestClient
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-TEST_DB_PATH = ROOT / 'test_smoke.db'
-os.environ['DATABASE_URL'] = f"sqlite:///{TEST_DB_PATH.as_posix()}"
-os.environ['SECRET_KEY'] = 'test-secret-key'
-os.environ['ENV'] = 'development'
-
-from db.database import SessionLocal, engine, init_db, reset_sqlite_db  # noqa: E402
-from main import app  # noqa: E402
+from db.database import SessionLocal  # noqa: E402
 from models.stock import StockPriceORM, WatchlistORM  # noqa: E402
 from routers import stocks as stocks_router  # noqa: E402
 
-client = TestClient(app)
 
-
-def mock_price(stock_code: str, close: float = 100.0, trade_date: str = '2026-04-10') -> dict:
+def mock_price(stock_code: str, close: float = 100.0, trade_date: date = date(2026, 4, 10)) -> dict:
     return {
         'stock_code': stock_code,
         'trade_date': trade_date,
@@ -33,24 +16,10 @@ def mock_price(stock_code: str, close: float = 100.0, trade_date: str = '2026-04
         'high': close + 1,
         'low': close - 2,
         'close': close,
-        'volume': 12345.0,
+        'volume': 12345,
     }
 
-
-@pytest.fixture(autouse=True)
-def clean_db():
-    engine.dispose()
-    if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
-    reset_sqlite_db()
-    init_db()
-    yield
-    engine.dispose()
-    if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
-
-
-def register_and_login(email: str) -> str:
+def register_and_login(client, email: str) -> str:
     register_response = client.post('/api/auth/register', json={'email': email, 'password': 'password123'})
     assert register_response.status_code == 201
 
@@ -63,17 +32,17 @@ def auth_headers(token: str) -> dict[str, str]:
     return {'Authorization': f'Bearer {token}'}
 
 
-def test_auth_register_login_me():
-    token = register_and_login('smoke@example.com')
+def test_auth_register_login_me(client):
+    token = register_and_login(client, 'smoke@example.com')
 
     me_response = client.get('/api/auth/me', headers=auth_headers(token))
     assert me_response.status_code == 200
     assert me_response.json()['email'] == 'smoke@example.com'
 
 
-def test_expenses_create_list_delete_with_user_isolation():
-    token_a = register_and_login('user-a@example.com')
-    token_b = register_and_login('user-b@example.com')
+def test_expenses_create_list_delete_with_user_isolation(client):
+    token_a = register_and_login(client, 'user-a@example.com')
+    token_b = register_and_login(client, 'user-b@example.com')
 
     create_response = client.post(
         '/api/expenses',
@@ -95,8 +64,8 @@ def test_expenses_create_list_delete_with_user_isolation():
     assert delete_response.status_code == 200
 
 
-def test_budgets_create_list_delete_and_dashboard_summary():
-    token = register_and_login('budget@example.com')
+def test_budgets_create_list_delete_and_dashboard_summary(client):
+    token = register_and_login(client, 'budget@example.com')
 
     create_budget = client.post(
         '/api/budgets',
@@ -150,8 +119,8 @@ def test_budgets_create_list_delete_and_dashboard_summary():
     assert delete_budget.status_code == 204
 
 
-def test_stocks_add_watchlist_success(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-add-success@example.com')
+def test_stocks_add_watchlist_success(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-add-success@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code, close=321.0)))
@@ -165,8 +134,8 @@ def test_stocks_add_watchlist_success(monkeypatch: pytest.MonkeyPatch):
     assert payload['last_sync_attempt_at'] is not None
 
 
-def test_stocks_duplicate_add_returns_400(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-duplicate@example.com')
+def test_stocks_duplicate_add_returns_400(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-duplicate@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code)))
@@ -178,8 +147,8 @@ def test_stocks_duplicate_add_returns_400(monkeypatch: pytest.MonkeyPatch):
     assert duplicate.status_code == 400
 
 
-def test_stocks_delete_watchlist_success(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-delete@example.com')
+def test_stocks_delete_watchlist_success(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-delete@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code)))
@@ -195,9 +164,9 @@ def test_stocks_delete_watchlist_success(monkeypatch: pytest.MonkeyPatch):
     assert watchlist_response.json() == []
 
 
-def test_stocks_delete_other_user_item_returns_404(monkeypatch: pytest.MonkeyPatch):
-    token_a = register_and_login('stocks-owner@example.com')
-    token_b = register_and_login('stocks-other@example.com')
+def test_stocks_delete_other_user_item_returns_404(client, monkeypatch: pytest.MonkeyPatch):
+    token_a = register_and_login(client, 'stocks-owner@example.com')
+    token_b = register_and_login(client, 'stocks-other@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code)))
@@ -209,8 +178,8 @@ def test_stocks_delete_other_user_item_returns_404(monkeypatch: pytest.MonkeyPat
     assert delete_other.status_code == 404
 
 
-def test_stocks_sync_all_success(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-sync-all-success@example.com')
+def test_stocks_sync_all_success(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-sync-all-success@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code, close=200.0)))
@@ -230,8 +199,8 @@ def test_stocks_sync_all_success(monkeypatch: pytest.MonkeyPatch):
     assert all(item['last_sync_attempt_at'] is not None for item in watchlist)
 
 
-def test_stocks_sync_all_partial_failure(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-sync-all-partial@example.com')
+def test_stocks_sync_all_partial_failure(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-sync-all-partial@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
 
@@ -261,8 +230,8 @@ def test_stocks_sync_all_partial_failure(monkeypatch: pytest.MonkeyPatch):
     assert by_code['AAPL']['last_sync_attempt_at'] is not None
 
 
-def test_stocks_single_sync_success(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-single-sync@example.com')
+def test_stocks_single_sync_success(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-single-sync@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code, close=111.0)))
@@ -279,8 +248,8 @@ def test_stocks_single_sync_success(monkeypatch: pytest.MonkeyPatch):
     assert watchlist[0]['last_sync_attempt_at'] is not None
 
 
-def test_stocks_single_sync_not_in_watchlist_returns_403(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-sync-403@example.com')
+def test_stocks_single_sync_not_in_watchlist_returns_403(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-sync-403@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code)))
 
@@ -288,8 +257,8 @@ def test_stocks_single_sync_not_in_watchlist_returns_403(monkeypatch: pytest.Mon
     assert sync_response.status_code == 403
 
 
-def test_stocks_status_persistence_failed_pending_success(monkeypatch: pytest.MonkeyPatch):
-    token = register_and_login('stocks-status-persist@example.com')
+def test_stocks_status_persistence_failed_pending_success(client, monkeypatch: pytest.MonkeyPatch):
+    token = register_and_login(client, 'stocks-status-persist@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': code}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code, close=222.0)))
@@ -339,9 +308,9 @@ def test_stocks_status_persistence_failed_pending_success(monkeypatch: pytest.Mo
     assert item_payload['last_sync_attempt_at'] is not None
 
 
-def test_stocks_watchlist_user_isolation(monkeypatch: pytest.MonkeyPatch):
-    token_a = register_and_login('stocks-a@example.com')
-    token_b = register_and_login('stocks-b@example.com')
+def test_stocks_watchlist_user_isolation(client, monkeypatch: pytest.MonkeyPatch):
+    token_a = register_and_login(client, 'stocks-a@example.com')
+    token_b = register_and_login(client, 'stocks-b@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_stock_info', classmethod(lambda cls, code: {'shortName': 'NVIDIA'}))
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: None))

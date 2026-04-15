@@ -1,0 +1,7 @@
+Alembic migrations live in `backend/alembic/versions`.
+
+Common commands (run inside `backend`):
+
+- `alembic upgrade head`
+- `alembic revision --autogenerate -m "message"`
+

@@ -50,9 +50,9 @@ MOCK_WATCHLIST = [
 ]
 
 FIXED_MOCK_PRICES = [
-    {"stock_code": "2330.TW", "trade_date": "2026-04-09", "close": 850.0, "open": 845.0, "high": 855.0, "low": 840.0, "volume": 25000.0},
-    {"stock_code": "2317.TW", "trade_date": "2026-04-09", "close": 168.5, "open": 165.0, "high": 170.0, "low": 164.0, "volume": 45000.0},
-    {"stock_code": "AAPL", "trade_date": "2026-04-09", "close": 172.3, "open": 170.0, "high": 175.0, "low": 169.0, "volume": 55000000.0},
+    {"stock_code": "2330.TW", "trade_date": date(2026, 4, 9), "close": 850.0, "open": 845.0, "high": 855.0, "low": 840.0, "volume": 25000},
+    {"stock_code": "2317.TW", "trade_date": date(2026, 4, 9), "close": 168.5, "open": 165.0, "high": 170.0, "low": 164.0, "volume": 45000},
+    {"stock_code": "AAPL", "trade_date": date(2026, 4, 9), "close": 172.3, "open": 170.0, "high": 175.0, "low": 169.0, "volume": 55000000},
 ]
 
 
@@ -80,10 +80,10 @@ def build_demo_dates(relative_dates: bool) -> tuple[list[dict], list[dict]]:
 
     relative_prices: list[dict] = []
     for item in FIXED_MOCK_PRICES:
-        original_trade_date = datetime.strptime(item["trade_date"], "%Y-%m-%d").date()
+        original_trade_date = item["trade_date"]
         shifted_trade_date = _shift_date_by_months(original_trade_date, anchor_delta)
         shifted_item = dict(item)
-        shifted_item["trade_date"] = shifted_trade_date.isoformat()
+        shifted_item["trade_date"] = shifted_trade_date
         relative_prices.append(shifted_item)
 
     return relative_expenses, relative_prices

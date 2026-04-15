@@ -12,7 +12,7 @@ load_dotenv()
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE_URL = "sqlite:///./finance.db"
-EXPECTED_TABLES = {"users", "expenses", "budgets", "watchlist", "stock_prices"}
+EXPECTED_TABLES = {"alembic_version", "users", "expenses", "budgets", "watchlist", "stock_prices", "fundamentals"}
 
 
 def normalize_database_url(database_url: str) -> str:
@@ -54,14 +54,12 @@ def resolve_sqlite_path(database_url: str = DATABASE_URL) -> Path | None:
 
 
 def init_db() -> None:
-    from models.budget import BudgetORM  # noqa: F401
-    from models.expense import ExpenseORM  # noqa: F401
-    from models.stock import StockPriceORM, WatchlistORM  # noqa: F401
-    from models.user import UserORM  # noqa: F401
-
     sqlite_path = resolve_sqlite_path()
-    if sqlite_path is None or not sqlite_path.exists():
-        Base.metadata.create_all(bind=engine)
+    if sqlite_path is not None and not sqlite_path.exists():
+        # For a brand new SQLite file, running migrations is safe and keeps schema evolution explicit.
+        from db.migrations import upgrade_head
+
+        upgrade_head(DATABASE_URL)
         return
 
     existing_tables = set(inspect(engine).get_table_names())
@@ -70,7 +68,7 @@ def init_db() -> None:
         missing = ", ".join(sorted(missing_tables))
         raise RuntimeError(
             "Existing database schema is incompatible with the current application. "
-            f"Missing tables: {missing}. Run `python seed_data.py --reset` to recreate it."
+            f"Missing tables: {missing}. Run `alembic upgrade head` (or `python seed_data.py --reset`) to migrate."
         )
 
 
@@ -83,5 +81,7 @@ def reset_sqlite_db(database_url: str = DATABASE_URL) -> Path:
     if sqlite_path.exists():
         sqlite_path.unlink()
 
-    Base.metadata.create_all(bind=engine)
+    from db.migrations import upgrade_head
+
+    upgrade_head(database_url)
     return sqlite_path

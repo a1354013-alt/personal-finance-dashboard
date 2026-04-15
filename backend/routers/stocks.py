@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
+from models.fundamentals import FundamentalsSnapshot, FundamentalsSyncOptions
 from models.stock import (
     StockFilterRequest,
     StockFilterResult,
@@ -14,8 +16,12 @@ from models.stock import (
     WatchlistItemResponse,
     WatchlistORM,
 )
+from models.stocks_filter import FilterMetadataResponse, FundamentalsStatusMeta, StockFundamentalsFilterResult
 from models.user import UserORM
+from providers.fundamentals import get_fundamentals_provider
 from services.auth import get_current_user
+from services.fundamentals_screening import screen_fundamentals
+from services.fundamentals_service import fundamentals_ttl_hours, get_latest_fundamentals_by_code, is_stale, sync_fundamentals
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
 
@@ -24,16 +30,6 @@ router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
 SYNC_STATUS_SUCCESS = "success"
 SYNC_STATUS_PENDING = "pending"
 SYNC_STATUS_FAILED = "failed"
-
-MOCK_FUNDAMENTALS = [
-    {"stock_code": "2330.TW", "net_income": 500_000, "free_cash_flow": 300_000, "revenue_growth": 12.5},
-    {"stock_code": "2317.TW", "net_income": 80_000, "free_cash_flow": -5_000, "revenue_growth": 3.2},
-    {"stock_code": "2454.TW", "net_income": 120_000, "free_cash_flow": 90_000, "revenue_growth": -2.1},
-    {"stock_code": "2382.TW", "net_income": 45_000, "free_cash_flow": 30_000, "revenue_growth": 8.7},
-    {"stock_code": "AAPL", "net_income": 970_000, "free_cash_flow": 850_000, "revenue_growth": 5.0},
-    {"stock_code": "NVDA", "net_income": 430_000, "free_cash_flow": 380_000, "revenue_growth": 122.0},
-]
-MOCK_FUNDAMENTAL_CODES = {item["stock_code"] for item in MOCK_FUNDAMENTALS}
 
 
 def _latest_price_for_code(db: Session, stock_code: str) -> StockPriceORM | None:
@@ -134,6 +130,53 @@ def delete_from_watchlist(
     db.commit()
 
 
+@router.post("/fundamentals/sync", response_model=list[FundamentalsSnapshot])
+def sync_watchlist_fundamentals(
+    payload: FundamentalsSyncOptions,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    # IMPORTANT: this route must be defined before `/{stock_code}/sync` to avoid path conflicts.
+    watchlist = db.query(WatchlistORM).filter(WatchlistORM.user_id == current_user.id).all()
+    provider = get_fundamentals_provider()
+    rows = [
+        sync_fundamentals(db, stock_code=item.stock_code, provider=provider, force=payload.force) for item in watchlist
+    ]
+    return [FundamentalsSnapshot.model_validate(row) for row in rows]
+
+
+@router.post("/fundamentals/{stock_code}/sync", response_model=FundamentalsSnapshot)
+def sync_single_fundamentals(
+    stock_code: str,
+    payload: FundamentalsSyncOptions,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    formatted_code = StockDataService._format_stock_code(stock_code)
+    watchlist_item = (
+        db.query(WatchlistORM)
+        .filter(WatchlistORM.user_id == current_user.id, WatchlistORM.stock_code == formatted_code)
+        .first()
+    )
+    if not watchlist_item:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Stock is not in your watchlist.")
+
+    provider = get_fundamentals_provider()
+    row = sync_fundamentals(db, stock_code=formatted_code, provider=provider, force=payload.force)
+    return FundamentalsSnapshot.model_validate(row)
+
+
+@router.get("/fundamentals", response_model=list[FundamentalsSnapshot])
+def get_watchlist_fundamentals(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    watchlist = db.query(WatchlistORM).filter(WatchlistORM.user_id == current_user.id).all()
+    codes = {item.stock_code for item in watchlist}
+    latest = get_latest_fundamentals_by_code(db, codes)
+    return [FundamentalsSnapshot.model_validate(latest[code]) for code in sorted(latest)]
+
+
 @router.post("/sync")
 def sync_all_watchlist_prices(
     db: Session = Depends(get_db),
@@ -223,35 +266,78 @@ def _sync_stock_price_internal(stock_code: str, db: Session, watchlist_item: Wat
     return True
 
 
-@router.get("/filter", response_model=list[StockFilterResult])
+@router.get("/filter", response_model=list[StockFundamentalsFilterResult])
 def filter_watchlist_stocks(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
     watchlist = db.query(WatchlistORM).filter(WatchlistORM.user_id == current_user.id).all()
-    watchlist_codes = {stock.stock_code for stock in watchlist}
+    codes = {item.stock_code for item in watchlist}
+    latest = get_latest_fundamentals_by_code(db, codes)
 
-    results = []
-    for stock in MOCK_FUNDAMENTALS:
-        if stock["stock_code"] in watchlist_codes:
+    results: list[StockFundamentalsFilterResult] = []
+    ttl = fundamentals_ttl_hours()
+    provider_name = get_fundamentals_provider().name
+
+    for code in sorted(codes):
+        row = latest.get(code)
+        if row is None:
             results.append(
-                evaluate_stock(
-                    stock_code=stock["stock_code"],
-                    net_income=stock["net_income"],
-                    free_cash_flow=stock["free_cash_flow"],
-                    revenue_growth=stock["revenue_growth"],
+                StockFundamentalsFilterResult(
+                    stock_code=code,
+                    passed=False,
+                    fail_reasons=["No fundamentals cached yet. Sync required."],
+                    fundamentals=None,
+                    meta=FundamentalsStatusMeta(
+                        provider=provider_name,
+                        ttl_hours=ttl,
+                        is_stale=True,
+                        fetched_at=None,
+                        as_of_date=None,
+                        status=None,
+                        error_message=None,
+                    ),
                 )
             )
+            continue
+
+        screen = screen_fundamentals(row)
+        results.append(
+            StockFundamentalsFilterResult(
+                stock_code=code,
+                passed=screen.passed,
+                fail_reasons=screen.fail_reasons,
+                fundamentals=FundamentalsSnapshot.model_validate(row),
+                meta=FundamentalsStatusMeta(
+                    provider=row.source,
+                    ttl_hours=ttl,
+                    is_stale=is_stale(fetched_at=row.fetched_at, ttl_hours=ttl),
+                    fetched_at=row.fetched_at,
+                    as_of_date=row.as_of_date.isoformat(),
+                    status=row.status,
+                    error_message=row.error_message,
+                ),
+            )
+        )
     return results
 
 
-@router.get("/filter-metadata")
+@router.get("/filter-metadata", response_model=FilterMetadataResponse)
 def get_filter_metadata():
-    return {
-        "mock_only": True,
-        "supported_codes": sorted(MOCK_FUNDAMENTAL_CODES),
-        "message": "Screening results are available only for the bundled mock fundamentals list.",
-    }
+    provider = get_fundamentals_provider()
+    ttl = fundamentals_ttl_hours()
+    timeout = float(os.getenv("FUNDAMENTALS_TIMEOUT_SECONDS", "8"))
+    return FilterMetadataResponse(
+        fundamentals_provider=provider.name,
+        ttl_hours=ttl,
+        timeout_seconds=timeout,
+        message=(
+            "Fundamentals screening reads cached data from the database. "
+            "Sync fundamentals explicitly to refresh; screening does not fetch live data per request."
+        ),
+    )
+
+
 
 
 @router.post("/filter", response_model=StockFilterResult)
