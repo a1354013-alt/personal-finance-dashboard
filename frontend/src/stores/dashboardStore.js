@@ -1,10 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getAiSummary, getDashboardSummary } from '@/api/dashboard'
+import { getAiSummary, getBudgetAdvice, getDashboardSummary } from '@/api/dashboard'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref(null)
   const aiSummary = ref('')
+  const budgetAdvice = ref('')
+  const budgetAdviceLoading = ref(false)
+  const budgetAdviceError = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
@@ -45,13 +48,31 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function fetchBudgetAdvice() {
+    budgetAdviceLoading.value = true
+    budgetAdviceError.value = null
+    try {
+      const result = await getBudgetAdvice()
+      budgetAdvice.value = result.advice
+    } catch (e) {
+      budgetAdvice.value = ''
+      budgetAdviceError.value = e.message || 'Unable to load budget advice.'
+    } finally {
+      budgetAdviceLoading.value = false
+    }
+  }
+
   return {
     summary,
     aiSummary,
+    budgetAdvice,
+    budgetAdviceLoading,
+    budgetAdviceError,
     loading,
     error,
     normalizeDashboardSummary,
     fetchSummary,
-    fetchAiSummary
+    fetchAiSummary,
+    fetchBudgetAdvice
   }
 })

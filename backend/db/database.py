@@ -7,6 +7,7 @@ from typing import Iterator
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 load_dotenv()
 
@@ -20,6 +21,8 @@ def normalize_database_url(database_url: str) -> str:
         return database_url
 
     sqlite_path = database_url.replace("sqlite:///", "", 1)
+    if sqlite_path.strip() == ":memory:":
+        return database_url
     path_obj = Path(sqlite_path)
     if not path_obj.is_absolute():
         path_obj = (BACKEND_DIR / path_obj).resolve()
@@ -31,6 +34,12 @@ Base = declarative_base()
 
 
 def _build_engine():
+    if DATABASE_URL.startswith("sqlite") and DATABASE_URL.endswith(":memory:"):
+        return create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
     connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
     return create_engine(DATABASE_URL, connect_args=connect_args)
 
@@ -50,10 +59,19 @@ def get_db() -> Iterator:
 def resolve_sqlite_path(database_url: str = DATABASE_URL) -> Path | None:
     if not database_url.startswith("sqlite:///"):
         return None
-    return Path(database_url.replace("sqlite:///", "", 1)).resolve()
+    sqlite_path = database_url.replace("sqlite:///", "", 1)
+    if sqlite_path.strip() == ":memory:":
+        return None
+    return Path(sqlite_path).resolve()
 
 
 def init_db() -> None:
+    if DATABASE_URL.startswith("sqlite") and DATABASE_URL.endswith(":memory:"):
+        # In-memory SQLite cannot be migrated via Alembic CLI in a reliable way.
+        # It's intended for tests and local experimentation only.
+        Base.metadata.create_all(bind=engine)
+        return
+
     sqlite_path = resolve_sqlite_path()
     if sqlite_path is not None and not sqlite_path.exists():
         # For a brand new SQLite file, running migrations is safe and keeps schema evolution explicit.
@@ -73,6 +91,11 @@ def init_db() -> None:
 
 
 def reset_sqlite_db(database_url: str = DATABASE_URL) -> Path:
+    if database_url.startswith("sqlite") and database_url.endswith(":memory:"):
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        return Path(":memory:")
+
     sqlite_path = resolve_sqlite_path(database_url)
     if sqlite_path is None:
         raise RuntimeError("Reset is only supported for SQLite databases.")

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as stockApi from '@/api/stocks'
+import { normalizeFilterMetadata, normalizeFundamentalsFilterResult, normalizeWatchlistItem } from '@/api/contracts'
 
 export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
@@ -24,7 +25,8 @@ export const useStockStore = defineStore('stock', () => {
     watchlistLoading.value = true
     watchlistError.value = null
     try {
-      watchlist.value = await stockApi.getWatchlist()
+      const result = await stockApi.getWatchlist()
+      watchlist.value = Array.isArray(result) ? result.map(normalizeWatchlistItem).filter(Boolean) : []
     } catch (error) {
       watchlistError.value = error.message
     } finally {
@@ -94,8 +96,8 @@ export const useStockStore = defineStore('stock', () => {
         stockApi.getFilterResults(),
         stockApi.getFilterMetadata()
       ])
-      filterResults.value = results
-      filterMetadata.value = metadata
+      filterResults.value = Array.isArray(results) ? results.map(normalizeFundamentalsFilterResult).filter(Boolean) : []
+      filterMetadata.value = normalizeFilterMetadata(metadata)
     } catch (error) {
       filterError.value = error.message
     } finally {

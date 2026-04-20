@@ -129,9 +129,18 @@ def test_stocks_add_watchlist_success(client, monkeypatch: pytest.MonkeyPatch):
     assert add_response.status_code == 201
     payload = add_response.json()
     assert payload['stock_code'] == 'NVDA'
-    assert payload['price_sync_status'] == 'success'
+    assert payload['price_sync_status'] == 'pending'
     assert payload['last_sync_error'] is None
-    assert payload['last_sync_attempt_at'] is not None
+    assert payload['last_sync_attempt_at'] is None
+
+    sync_response = client.post('/api/stocks/NVDA/sync', headers=auth_headers(token))
+    assert sync_response.status_code == 200
+    assert sync_response.json()['price_sync_status'] == 'success'
+
+    watchlist = client.get('/api/stocks/watchlist', headers=auth_headers(token)).json()
+    assert watchlist[0]['price_sync_status'] == 'success'
+    assert watchlist[0]['last_sync_error'] is None
+    assert watchlist[0]['last_sync_attempt_at'] is not None
 
 
 def test_stocks_duplicate_add_returns_400(client, monkeypatch: pytest.MonkeyPatch):
@@ -317,9 +326,10 @@ def test_stocks_watchlist_user_isolation(client, monkeypatch: pytest.MonkeyPatch
 
     add_response = client.post('/api/stocks/watchlist', headers=auth_headers(token_a), json={'stock_code': 'NVDA'})
     assert add_response.status_code == 201
-    assert add_response.json()['price_sync_status'] == 'failed'
-    assert add_response.json()['last_sync_error']
-    assert add_response.json()['last_sync_attempt_at'] is not None
+    assert add_response.json()['price_sync_status'] == 'pending'
+
+    sync_response = client.post('/api/stocks/NVDA/sync', headers=auth_headers(token_a))
+    assert sync_response.status_code == 502
 
     watchlist_a = client.get('/api/stocks/watchlist', headers=auth_headers(token_a))
     watchlist_b = client.get('/api/stocks/watchlist', headers=auth_headers(token_b))

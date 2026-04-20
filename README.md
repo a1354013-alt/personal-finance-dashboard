@@ -41,6 +41,19 @@ Frontend layers (high-level):
 - `stores/`: state management + normalization
 - `pages/`: UI rendering + error states
 
+### Architecture Diagram
+
+```mermaid
+flowchart TB
+  UI["Vue Pages/Components"] --> STORES["Pinia Stores (normalized state)"]
+  STORES --> API["Axios API client (auth + error normalization)"]
+  API --> ROUTERS["FastAPI Routers (parse + status codes)"]
+  ROUTERS --> SERVICES["Services (domain logic + aggregation)"]
+  SERVICES --> DB["SQLAlchemy ORM + SQLite"]
+  SERVICES --> PROVIDERS["Providers (LLM + Fundamentals + Stock data)"]
+  PROVIDERS --> UPSTREAM["Upstream APIs (mocked in tests)"]
+```
+
 ## AI Provider Design
 
 Environment-controlled provider switching (no router-to-SDK coupling):
@@ -78,6 +91,28 @@ Stock screening reads from normalized DB rows so that:
 - Money-like fields use `Numeric/Decimal` in DB (API serializes to JSON numbers)
 - `stock_prices.trade_date` is a real date type (`Date`), serialized as ISO (YYYY-MM-DD)
 - Response models are defined for dashboard/AI/stocks metadata/fundamentals
+
+### Watchlist Price Sync Contract
+
+Watchlist items expose two compatible shapes:
+
+- Legacy fields (kept for backward compatibility):
+  - `price_sync_status`, `last_sync_error`, `last_sync_attempt_at`
+- Stable nested contract (preferred):
+  - `price_sync: { status, provider, as_of_date, last_attempt_at, error_message }`
+
+### Watchlist Add vs Sync (Decoupled Semantics)
+
+To keep creation deterministic and fast, watchlist creation does **not** depend on upstream availability:
+
+- `POST /api/stocks/watchlist`:
+  - Always creates the row with `status=pending`
+  - Enqueues a best-effort background sync (price + display name)
+- Explicit sync endpoints:
+  - `POST /api/stocks/{code}/sync`
+  - `POST /api/stocks/sync`
+
+This keeps `201 Created` semantics clean while still persisting `success/failed` results on later sync attempts.
 
 ## Local Setup
 
@@ -143,7 +178,7 @@ npm test
 
 GitHub Actions workflow runs on clean machines:
 
-- backend: `pytest`
+- backend: import smoke + `alembic upgrade head` smoke + `compileall` + `pytest`
 - frontend: `lint` + `test` + `build`
 
 See `.github/workflows/ci.yml`.
@@ -164,3 +199,12 @@ See `.github/workflows/ci.yml`.
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/clean-delivery.ps1
 ```
+
+## Screenshots (Placeholder)
+
+Add screenshots under a future `docs/screenshots/` folder and embed them here:
+
+- Dashboard overview
+- Expenses form + list
+- Budgets status
+- Stocks watchlist + screening

@@ -1,23 +1,23 @@
-import api from './index'
+﻿import api from './index'
 
 /**
- * 取得記帳列表
- * @param {Object} params - 可選篩選參數 { type, category }
+ * Expenses API.
+ * @param {Object} params - Optional filters, e.g. { type }.
  */
 export function getExpenses(params = {}) {
   return api.get('/expenses', { params })
 }
 
 /**
- * 新增記帳記錄
- * @param {Object} data - { amount, category, type, date, note }
+ * Create a new expense record.
+ * @param {Object} data - { amount, category, type, date, note }.
  */
 export function createExpense(data) {
   return api.post('/expenses', data)
 }
 
 /**
- * 刪除記帳記錄
+ * Delete an expense record by id.
  * @param {number} id
  */
 export function deleteExpense(id) {

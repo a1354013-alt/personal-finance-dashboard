@@ -6,7 +6,7 @@
     </div>
 
     <div v-if="message" class="success-msg">{{ message }}</div>
-    <div v-if="error" class="error-msg">{{ error }}</div>
+    <div v-if="store.error || error" class="error-msg">{{ store.error || error }}</div>
 
     <section class="card">
       <h2>Create or Update Budget</h2>
@@ -32,8 +32,8 @@
           />
         </div>
 
-        <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-          {{ isSubmitting ? 'Saving...' : 'Save Budget' }}
+        <button type="submit" class="btn btn-primary" :disabled="store.submitting">
+          {{ store.submitting ? 'Saving...' : 'Save Budget' }}
         </button>
       </form>
     </section>
@@ -41,11 +41,11 @@
     <section class="card">
       <h2>Current Month Status</h2>
 
-      <div v-if="loading" class="loading-text">Loading budgets...</div>
-      <div v-else-if="budgets.length === 0" class="empty-state">No budgets yet.</div>
+      <div v-if="store.loading" class="loading-text">Loading budgets...</div>
+      <div v-else-if="store.budgets.length === 0" class="empty-state">No budgets yet.</div>
 
       <div v-else class="budget-list">
-        <article v-for="budget in budgets" :key="budget.id" class="budget-item">
+        <article v-for="budget in store.budgets" :key="budget.id" class="budget-item">
           <div class="budget-topline">
             <div>
               <strong>{{ budget.category }}</strong>
@@ -80,12 +80,10 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import * as budgetApi from '@/api/budgets'
 import { EXPENSE_CATEGORIES } from '@/constants/categories'
+import { useBudgetStore } from '@/stores/budgetStore'
 
-const budgets = ref([])
-const loading = ref(false)
-const isSubmitting = ref(false)
+const store = useBudgetStore()
 const message = ref('')
 const error = ref('')
 
@@ -107,32 +105,20 @@ function progressClass(percentUsed) {
 }
 
 async function fetchBudgets() {
-  loading.value = true
   error.value = ''
-
-  try {
-    budgets.value = await budgetApi.getBudgets()
-  } catch (err) {
-    error.value = err.message || 'Unable to load budgets.'
-  } finally {
-    loading.value = false
-  }
+  await store.fetchBudgets()
 }
 
 async function handleAddBudget() {
-  isSubmitting.value = true
   message.value = ''
   error.value = ''
 
   try {
-    await budgetApi.createBudget(newBudget.value)
+    await store.saveBudget(newBudget.value)
     message.value = 'Budget saved successfully.'
     newBudget.value = { category: '', monthly_limit: null }
-    await fetchBudgets()
   } catch (err) {
     error.value = err.message || 'Unable to save budget.'
-  } finally {
-    isSubmitting.value = false
   }
 }
 
@@ -141,9 +127,8 @@ async function handleDeleteBudget(id) {
   error.value = ''
 
   try {
-    await budgetApi.deleteBudget(id)
+    await store.removeBudget(id)
     message.value = 'Budget deleted.'
-    await fetchBudgets()
   } catch (err) {
     error.value = err.message || 'Unable to delete budget.'
   }

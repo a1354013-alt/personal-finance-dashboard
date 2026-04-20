@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date
 from typing import Any, Optional
 
@@ -11,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 class StockDataService:
     @staticmethod
-    def _format_stock_code(stock_code: str) -> str:
+    def provider_name() -> str:
+        return "yfinance"
+
+    @staticmethod
+    def normalize_stock_code(stock_code: str) -> str:
         code = stock_code.strip().upper()
         if code.isdigit() and len(code) == 4:
             return f"{code}.TW"
@@ -19,10 +24,11 @@ class StockDataService:
 
     @classmethod
     def fetch_real_price(cls, stock_code: str) -> Optional[dict[str, Any]]:
-        formatted_code = cls._format_stock_code(stock_code)
+        formatted_code = cls.normalize_stock_code(stock_code)
+        timeout = float(os.getenv("STOCK_DATA_TIMEOUT_SECONDS", "8"))
         try:
             ticker = yf.Ticker(formatted_code)
-            history = ticker.history(period="5d", auto_adjust=False)
+            history = ticker.history(period="5d", auto_adjust=False, timeout=timeout)
 
             if history.empty:
                 logger.warning("No price history returned for %s", formatted_code)
@@ -50,7 +56,7 @@ class StockDataService:
 
     @classmethod
     def fetch_stock_info(cls, stock_code: str) -> Optional[dict[str, Any]]:
-        formatted_code = cls._format_stock_code(stock_code)
+        formatted_code = cls.normalize_stock_code(stock_code)
         try:
             ticker = yf.Ticker(formatted_code)
             info = getattr(ticker, "info", None)

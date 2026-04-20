@@ -94,9 +94,12 @@
 
         <div class="ai-block">
           <h3>Budget Advice</h3>
-          <div v-if="adviceLoading" class="loading-text">Loading budget advice...</div>
-          <button v-else-if="!budgetAdvice" class="btn btn-secondary" @click="fetchBudgetAdvice">Get Advice</button>
-          <p v-else class="ai-text ai-warning">{{ budgetAdvice }}</p>
+          <div v-if="store.budgetAdviceLoading" class="loading-text">Loading budget advice...</div>
+          <div v-else-if="store.budgetAdviceError" class="error-msg">{{ store.budgetAdviceError }}</div>
+          <button v-else-if="!store.budgetAdvice" class="btn btn-secondary" @click="store.fetchBudgetAdvice()">
+            Get Advice
+          </button>
+          <p v-else class="ai-text ai-warning">{{ store.budgetAdvice }}</p>
         </div>
       </section>
     </template>
@@ -106,14 +109,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { getBudgetAdvice } from '@/api/dashboard'
+import { onMounted } from 'vue'
 import { VERSION } from '@/constants/version'
 import { useDashboardStore } from '@/stores/dashboardStore'
 
 const store = useDashboardStore()
-const budgetAdvice = ref('')
-const adviceLoading = ref(false)
 
 function formatCurrency(value) {
   return `NT$ ${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
@@ -123,21 +123,9 @@ function percent(value, total) {
   return total > 0 ? (value / total) * 100 : 0
 }
 
-async function fetchBudgetAdvice() {
-  adviceLoading.value = true
-  try {
-    const response = await getBudgetAdvice()
-    budgetAdvice.value = response.advice
-  } catch (_error) {
-    budgetAdvice.value = 'Unable to load budget advice.'
-  } finally {
-    adviceLoading.value = false
-  }
-}
-
 onMounted(() => {
   store.fetchSummary()
-  fetchBudgetAdvice()
+  store.fetchBudgetAdvice()
 })
 </script>
 

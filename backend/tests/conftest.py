@@ -11,9 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-TEST_DB_PATH = ROOT / "test_pytest.db"
-
-os.environ.setdefault("DATABASE_URL", f"sqlite:///{TEST_DB_PATH.as_posix()}")
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("ENV", "development")
 
@@ -23,15 +21,10 @@ from main import app as fastapi_app  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    engine.dispose()
-    if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
     reset_sqlite_db()
     init_db()
     yield
-    engine.dispose()
-    if TEST_DB_PATH.exists():
-        TEST_DB_PATH.unlink()
+    reset_sqlite_db()
 
 
 @pytest.fixture()

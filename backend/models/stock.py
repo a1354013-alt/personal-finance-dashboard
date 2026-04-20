@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date as DateType, datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, field_serializer, field_validator
 from sqlalchemy import BigInteger, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
@@ -57,6 +57,14 @@ class WatchlistCreate(BaseModel):
         return stock_code
 
 
+class PriceSyncMeta(BaseModel):
+    status: Literal["pending", "success", "failed"]
+    provider: str
+    as_of_date: Optional[DateType] = None
+    last_attempt_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+
+
 class WatchlistItemResponse(BaseModel):
     id: int
     user_id: int
@@ -68,6 +76,7 @@ class WatchlistItemResponse(BaseModel):
     price_sync_status: str = "pending"
     last_sync_error: Optional[str] = None
     last_sync_attempt_at: Optional[datetime] = None
+    price_sync: Optional[PriceSyncMeta] = None
 
     model_config = {"from_attributes": True}
 

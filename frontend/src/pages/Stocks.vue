@@ -191,6 +191,8 @@ async function handleAddWatchlist() {
 
     if (response.price_sync_status === 'failed') {
       actionMessage.value = `${response.stock_code} was added, but the latest price sync failed. The item is marked as failed until a future sync succeeds.`
+    } else if (response.price_sync_status === 'pending') {
+      actionMessage.value = `${response.stock_code} was added to the watchlist. Latest price sync is queued; refresh or run Sync to see the updated status.`
     } else {
       actionMessage.value = `${response.stock_code} was added to the watchlist.`
     }

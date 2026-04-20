@@ -53,7 +53,11 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
 
     add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
     assert add.status_code == 201
-    watch_item = add.json()
+
+    sync = client.post("/api/stocks/AAPL/sync", headers=auth_headers(token))
+    assert sync.status_code == 200
+
+    watch_item = client.get("/api/stocks/watchlist", headers=auth_headers(token)).json()[0]
     assert watch_item["date"] == "2026-04-10"
     assert isinstance(watch_item["price"], (int, float))
 

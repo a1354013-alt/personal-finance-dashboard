@@ -1,8 +1,17 @@
 backend/finance.db
 backend/test_smoke.db
+backend/*.db
+backend/*.db-journal
+backend/*.db-wal
+backend/*.db-shm
+backend/can_write.txt
+backend/pytest-cache-files-*
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/coverage/
+.eslintcache
+.npm-cache/
 .env
 .DS_Store
 Thumbs.db
