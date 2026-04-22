@@ -29,13 +29,7 @@ export const useBudgetStore = defineStore('budget', () => {
     error.value = null
     try {
       const saved = normalizeBudget(await createBudget(payload))
-      if (saved) {
-        const index = budgets.value.findIndex((b) => b.id === saved.id)
-        if (index >= 0) budgets.value.splice(index, 1, saved)
-        else budgets.value = [...budgets.value, saved].sort((a, b) => a.category.localeCompare(b.category))
-      } else {
-        await fetchBudgets()
-      }
+      await fetchBudgets()
       return saved
     } catch (e) {
       error.value = e.message || 'Unable to save budget.'
@@ -51,7 +45,7 @@ export const useBudgetStore = defineStore('budget', () => {
     try {
       deleting.value = true
       await deleteBudget(id)
-      budgets.value = budgets.value.filter((b) => b.id !== id)
+      await fetchBudgets()
     } catch (e) {
       error.value = e.message || 'Unable to delete budget.'
       throw e

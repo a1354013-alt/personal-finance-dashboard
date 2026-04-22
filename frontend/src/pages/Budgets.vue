@@ -50,7 +50,7 @@
             <div>
               <strong>{{ budget.category }}</strong>
               <div class="budget-meta">
-                Limit {{ formatCurrency(budget.monthly_limit) }} · Spent {{ formatCurrency(budget.current_spent) }}
+                Limit {{ formatCurrency(budget.monthly_limit) }} | Spent {{ formatCurrency(budget.current_spent) }}
               </div>
             </div>
 

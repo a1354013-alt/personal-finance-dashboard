@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
@@ -41,10 +40,8 @@ class BudgetCreate(BudgetBase):
 
 class BudgetResponse(BudgetBase):
     id: int
-    user_id: int
-    created_at: datetime
-    percent_used: Optional[float] = 0.0
-    current_spent: Optional[Decimal] = Decimal("0.0")
+    percent_used: float = 0.0
+    current_spent: Decimal = Decimal("0.0")
 
     model_config = {"from_attributes": True}
 

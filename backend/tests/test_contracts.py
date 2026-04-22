@@ -27,8 +27,19 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     )
     assert expense.status_code == 201
     payload = expense.json()
+    assert "user_id" not in payload
     assert isinstance(payload["amount"], (int, float))
     assert payload["date"] == "2026-04-10"
+
+    budget = client.post(
+        "/api/budgets",
+        headers=auth_headers(token),
+        json={"category": "Food", "monthly_limit": 1000},
+    )
+    assert budget.status_code in {200, 201}
+    budget_payload = budget.json()
+    assert "user_id" not in budget_payload
+    assert "created_at" not in budget_payload
 
     import routers.stocks as stocks_router
 

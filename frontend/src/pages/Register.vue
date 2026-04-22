@@ -20,7 +20,7 @@
           <input id="register-confirm-password" v-model="form.confirmPassword" type="password" required placeholder="Repeat your password" />
         </div>
 
-        <div v-if="authStore.error" class="error-msg">{{ authStore.error }}</div>
+        <div v-if="formError || authStore.error" class="error-msg">{{ formError || authStore.error }}</div>
 
         <button class="btn btn-primary auth-submit" :disabled="authStore.loading">
           {{ authStore.loading ? 'Creating account...' : 'Register' }}
@@ -42,6 +42,7 @@ import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const formError = ref('')
 
 const form = ref({
   email: '',
@@ -50,10 +51,10 @@ const form = ref({
 })
 
 async function handleRegister() {
-  authStore.error = null
+  formError.value = ''
 
   if (form.value.password !== form.value.confirmPassword) {
-    authStore.error = 'Passwords do not match.'
+    formError.value = 'Passwords do not match.'
     return
   }
 

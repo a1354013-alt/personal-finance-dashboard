@@ -9,6 +9,7 @@ export const useExpenseStore = defineStore('expense', () => {
   const submitting = ref(false)
   const deleting = ref(false)
   const error = ref(null)
+  const lastParams = ref({})
 
   const totalIncome = computed(() =>
     expenses.value
@@ -25,6 +26,7 @@ export const useExpenseStore = defineStore('expense', () => {
   async function fetchExpenses(params = {}) {
     loading.value = true
     error.value = null
+    lastParams.value = params
     try {
       const result = await getExpenses(params)
       expenses.value = Array.isArray(result) ? result.map(normalizeExpense).filter(Boolean) : []
@@ -41,7 +43,7 @@ export const useExpenseStore = defineStore('expense', () => {
     error.value = null
     try {
       await createExpense(data)
-      await fetchExpenses()
+      await fetchExpenses(lastParams.value)
     } catch (e) {
       error.value = e.message
       throw e
@@ -56,7 +58,7 @@ export const useExpenseStore = defineStore('expense', () => {
     try {
       deleting.value = true
       await deleteExpense(id)
-      expenses.value = expenses.value.filter((expense) => expense.id !== Number(id))
+      await fetchExpenses(lastParams.value)
     } catch (e) {
       error.value = e.message
       throw e

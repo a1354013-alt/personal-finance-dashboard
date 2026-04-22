@@ -8,24 +8,18 @@ vi.mock('@/api/budgets', () => ({
   getBudgets: vi.fn(async () => [
     {
       id: 1,
-      user_id: 1,
       category: 'Food',
       monthly_limit: 1000,
       current_spent: 200,
       percent_used: 20,
-      over_budget: false,
-      created_at: '2026-04-10T00:00:00Z'
     }
   ]),
   createBudget: vi.fn(async (payload) => ({
     id: 1,
-    user_id: 1,
     category: payload.category,
     monthly_limit: payload.monthly_limit,
     current_spent: 200,
     percent_used: 20,
-    over_budget: false,
-    created_at: '2026-04-10T00:00:00Z'
   })),
   deleteBudget: vi.fn(async () => ({}))
 }))

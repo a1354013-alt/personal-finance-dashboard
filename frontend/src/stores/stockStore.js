@@ -14,6 +14,7 @@ export const useStockStore = defineStore('stock', () => {
   const filterLoading = ref(false)
   const syncAllLoading = ref(false)
   const syncingCodes = ref([])
+  const deleting = ref(false)
 
   const watchlistError = ref(null)
   const filterError = ref(null)
@@ -46,10 +47,14 @@ export const useStockStore = defineStore('stock', () => {
 
   async function deleteFromWatchlist(id) {
     try {
+      if (deleting.value) return null
+      deleting.value = true
       await stockApi.deleteFromWatchlist(id)
-      watchlist.value = watchlist.value.filter((item) => item.id !== id)
+      await fetchWatchlist()
     } catch (error) {
       throw new Error(error.message)
+    } finally {
+      deleting.value = false
     }
   }
 
@@ -137,6 +142,7 @@ export const useStockStore = defineStore('stock', () => {
     filterLoading,
     syncAllLoading,
     syncingCodes,
+    deleting,
     watchlistError,
     filterError,
     passedStocks,

@@ -123,6 +123,12 @@ To keep creation deterministic and fast, watchlist creation does **not** depend 
 
 This keeps `201 Created` semantics clean while still persisting `success/failed` results on later sync attempts.
 
+### Budgets Save Semantics (Create-or-Update)
+
+- `POST /api/budgets` is **create-or-update by (user, category)**.
+- If the category already exists for the current user, the backend updates `monthly_limit` and responds with **200 OK**.
+- If it is new, the backend creates the row and responds with **201 Created**.
+
 ## Local Setup
 
 ### 1) Environment

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import Expenses from '@/pages/Expenses.vue'
 
 const getExpensesMock = vi.fn(async () => [
-  { id: 1, user_id: 1, amount: 120, category: 'Food', type: 'expense', date: '2026-04-10', note: 'Lunch' }
+  { id: 1, amount: 120, category: 'Food', type: 'expense', date: '2026-04-10', note: 'Lunch' }
 ])
 const createExpenseMock = vi.fn(async () => ({ id: 2 }))
 const deleteExpenseMock = vi.fn(async () => ({}))

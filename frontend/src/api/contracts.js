@@ -112,8 +112,7 @@ export function normalizeExpense(row) {
     category: toStringOrEmpty(row.category),
     type: row.type === 'income' ? 'income' : 'expense',
     date: row.date || null,
-    note: toStringOrEmpty(row.note),
-    created_at: row.created_at || null
+    note: toStringOrEmpty(row.note)
   }
 }
 
@@ -130,9 +129,7 @@ export function normalizeBudget(row) {
     category: toStringOrEmpty(row.category),
     monthly_limit: toNumberOrZero(row.monthly_limit),
     current_spent: toNumberOrZero(row.current_spent),
-    percent_used: toNumberOrZero(row.percent_used),
-    over_budget: Boolean(row.over_budget),
-    created_at: row.created_at || null
+    percent_used: toNumberOrZero(row.percent_used)
   }
 }
 

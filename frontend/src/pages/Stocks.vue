@@ -55,7 +55,13 @@
                 <div v-if="item.last_sync_error" class="status-detail">{{ item.last_sync_error }}</div>
               </td>
               <td>
-                <button class="btn btn-danger" @click="handleDeleteWatchlist(item.id)">Delete</button>
+                <button
+                  class="btn btn-danger"
+                  :disabled="stockStore.deleting || stockStore.isSingleSyncing(item.stock_code)"
+                  @click="handleDeleteWatchlist(item.id)"
+                >
+                  {{ stockStore.deleting ? 'Deleting...' : 'Delete' }}
+                </button>
                 <button
                   class="btn btn-primary row-action-btn"
                   :disabled="stockStore.isSingleSyncing(item.stock_code)"
@@ -88,7 +94,7 @@
         {{ stockStore.filterMetadata?.message || 'Screening metadata unavailable.' }}
       </p>
       <p class="helper-text" v-if="stockStore.filterMetadata">
-        Provider: {{ stockStore.filterMetadata.fundamentals_provider }} · TTL: {{ stockStore.filterMetadata.ttl_hours }}h · Timeout:
+        Provider: {{ stockStore.filterMetadata.fundamentals_provider }} | TTL: {{ stockStore.filterMetadata.ttl_hours }}h | Timeout:
         {{ stockStore.filterMetadata.timeout_seconds }}s
       </p>
       <div v-if="stockStore.fundamentalsError" class="error-msg">{{ stockStore.fundamentalsError }}</div>
