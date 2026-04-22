@@ -1,9 +1,21 @@
 import { defineStore } from 'pinia'
 import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
 
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase()
+}
+
+function normalizeUser(user) {
+  if (!user || typeof user !== 'object') return null
+  return {
+    id: Number(user.id),
+    email: normalizeEmail(user.email)
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('user') || 'null'),
+    user: normalizeUser(JSON.parse(localStorage.getItem('user') || 'null')),
     token: localStorage.getItem('token') || null,
     loading: false,
     error: null
@@ -40,9 +52,9 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
-        const response = await loginRequest({ email, password })
+        const response = await loginRequest({ email: normalizeEmail(email), password })
         this.token = response.access_token
-        this.user = response.user
+        this.user = normalizeUser(response.user)
         this.persistSession()
         return true
       } catch (error) {
@@ -58,7 +70,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
-        await registerRequest({ email, password })
+        await registerRequest({ email: normalizeEmail(email), password })
         return true
       } catch (error) {
         this.error = error.message || 'Registration failed.'
@@ -82,7 +94,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         const user = await getMe()
-        this.user = user
+        this.user = normalizeUser(user)
         this.persistSession()
         return true
       } catch (error) {

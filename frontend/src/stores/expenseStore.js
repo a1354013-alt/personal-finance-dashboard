@@ -1,6 +1,6 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { getExpenses, createExpense, deleteExpense } from '@/api/expenses'
+import { createExpense, deleteExpense, getExpenses } from '@/api/expenses'
 
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref([])
@@ -8,26 +8,40 @@ export const useExpenseStore = defineStore('expense', () => {
   const submitting = ref(false)
   const error = ref(null)
 
-  // 計算總收入
+  function normalizeExpense(row) {
+    if (!row || typeof row !== 'object') return null
+    return {
+      id: Number(row.id),
+      user_id: Number(row.user_id),
+      amount: Number(row.amount ?? 0),
+      category: String(row.category || ''),
+      type: row.type === 'income' ? 'income' : 'expense',
+      date: row.date || null,
+      note: row.note || '',
+      created_at: row.created_at || null
+    }
+  }
+
   const totalIncome = computed(() =>
     expenses.value
-      .filter(e => e.type === 'income')
-      .reduce((sum, e) => sum + e.amount, 0)
+      .filter((expense) => expense.type === 'income')
+      .reduce((sum, expense) => sum + expense.amount, 0)
   )
 
-  // 計算總支出
   const totalExpense = computed(() =>
     expenses.value
-      .filter(e => e.type === 'expense')
-      .reduce((sum, e) => sum + e.amount, 0)
+      .filter((expense) => expense.type === 'expense')
+      .reduce((sum, expense) => sum + expense.amount, 0)
   )
 
   async function fetchExpenses(params = {}) {
     loading.value = true
     error.value = null
     try {
-      expenses.value = await getExpenses(params)
+      const result = await getExpenses(params)
+      expenses.value = Array.isArray(result) ? result.map(normalizeExpense).filter(Boolean) : []
     } catch (e) {
+      expenses.value = []
       error.value = e.message
     } finally {
       loading.value = false
@@ -52,7 +66,7 @@ export const useExpenseStore = defineStore('expense', () => {
     error.value = null
     try {
       await deleteExpense(id)
-      expenses.value = expenses.value.filter(e => e.id !== id)
+      expenses.value = expenses.value.filter((expense) => expense.id !== Number(id))
     } catch (e) {
       error.value = e.message
       throw e
@@ -60,8 +74,15 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   return {
-    expenses, loading, submitting, error,
-    totalIncome, totalExpense,
-    fetchExpenses, addExpense, removeExpense,
+    expenses,
+    loading,
+    submitting,
+    error,
+    totalIncome,
+    totalExpense,
+    fetchExpenses,
+    addExpense,
+    removeExpense
   }
 })
+

@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config import get_secret_key, is_development_mode
@@ -42,6 +43,9 @@ def validate_secret_key_configuration() -> None:
     if not is_development_mode() and secret_key == "dev-only-change-me-in-production":
         raise RuntimeError("SECRET_KEY must be set in production.")
 
+def normalize_email(email: str) -> str:
+    return str(email or "").strip().lower()
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     expire_at = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
@@ -68,7 +72,8 @@ async def get_current_user(
     except JWTError as exc:
         raise credentials_exception from exc
 
-    user = db.query(UserORM).filter(UserORM.email == email).first()
+    normalized_email = normalize_email(str(email))
+    user = db.query(UserORM).filter(func.lower(UserORM.email) == normalized_email).first()
     if user is None:
         raise credentials_exception
     return user

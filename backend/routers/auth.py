@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -13,6 +14,7 @@ from services.auth import (
     create_access_token,
     get_current_user,
     get_password_hash,
+    normalize_email,
     validate_password_strength,
     verify_password,
 )
@@ -45,14 +47,15 @@ class TokenResponse(BaseModel):
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(UserORM).filter(UserORM.email == user_in.email).first()
+    normalized_email = normalize_email(str(user_in.email))
+    existing_user = db.query(UserORM).filter(func.lower(UserORM.email) == normalized_email).first()
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is already registered.")
 
     validate_password_strength(user_in.password)
 
     new_user = UserORM(
-        email=user_in.email,
+        email=normalized_email,
         password_hash=get_password_hash(user_in.password),
     )
     db.add(new_user)
@@ -63,7 +66,8 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(user_in: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(UserORM).filter(UserORM.email == user_in.email).first()
+    normalized_email = normalize_email(str(user_in.email))
+    user = db.query(UserORM).filter(func.lower(UserORM.email) == normalized_email).first()
     if not user or not verify_password(user_in.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +76,7 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
         )
 
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": normalized_email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer", "user": user}

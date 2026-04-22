@@ -16,7 +16,7 @@ from models.stocks_filter import FilterMetadataResponse, StockFundamentalsFilter
 from models.user import UserORM
 from providers.fundamentals import get_fundamentals_provider
 from services.auth import get_current_user
-from services.fundamentals_service import sync_fundamentals
+from services.fundamentals_service import get_latest_fundamentals_by_code, sync_fundamentals
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
@@ -98,7 +98,7 @@ def sync_single_fundamentals(
         .first()
     )
     if not watchlist_item:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Stock is not in your watchlist.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
 
     provider = get_fundamentals_provider()
     row = sync_fundamentals(db, stock_code=formatted_code, provider=provider, force=payload.force)
@@ -151,7 +151,7 @@ def sync_single_stock_price(
         .first()
     )
     if not watchlist_item:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Stock is not in your watchlist.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
 
     if sync_stock_price(db, stock_code=formatted_code, watchlist_item=watchlist_item):
         return {"message": f"Synchronized {formatted_code} successfully.", "price_sync_status": SYNC_STATUS_SUCCESS}

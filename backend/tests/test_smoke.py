@@ -257,13 +257,13 @@ def test_stocks_single_sync_success(client, monkeypatch: pytest.MonkeyPatch):
     assert watchlist[0]['last_sync_attempt_at'] is not None
 
 
-def test_stocks_single_sync_not_in_watchlist_returns_403(client, monkeypatch: pytest.MonkeyPatch):
+def test_stocks_single_sync_not_in_watchlist_returns_404(client, monkeypatch: pytest.MonkeyPatch):
     token = register_and_login(client, 'stocks-sync-403@example.com')
 
     monkeypatch.setattr(stocks_router.StockDataService, 'fetch_real_price', classmethod(lambda cls, code: mock_price(code)))
 
     sync_response = client.post('/api/stocks/NVDA/sync', headers=auth_headers(token))
-    assert sync_response.status_code == 403
+    assert sync_response.status_code == 404
 
 
 def test_stocks_status_persistence_failed_pending_success(client, monkeypatch: pytest.MonkeyPatch):

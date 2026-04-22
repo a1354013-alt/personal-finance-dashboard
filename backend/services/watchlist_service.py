@@ -86,29 +86,27 @@ def delete_watchlist_item(db: Session, *, user_id: int, item_id: int) -> bool:
     return True
 
 
-def sync_stock_price(db: Session, *, stock_code: str, watchlist_item: WatchlistORM | None = None) -> bool:
+def sync_stock_price(db: Session, *, stock_code: str, watchlist_item: WatchlistORM) -> bool:
+    # Safety: require a user-scoped watchlist item to avoid cross-user updates.
     sync_target = watchlist_item
-    if sync_target is None:
-        sync_target = db.query(WatchlistORM).filter(WatchlistORM.stock_code == stock_code).first()
+    stock_code = sync_target.stock_code
 
     attempted_at = datetime.now(timezone.utc)
     try:
         price_data = StockDataService.fetch_real_price(stock_code)
     except Exception as exc:  # pragma: no cover - safety net
         price_data = None
-        if sync_target:
-            sync_target.price_sync_status = SYNC_STATUS_FAILED
-            sync_target.last_sync_error = f"Unexpected error: {exc}"
-            sync_target.last_sync_attempt_at = attempted_at
-            db.commit()
+        sync_target.price_sync_status = SYNC_STATUS_FAILED
+        sync_target.last_sync_error = f"Unexpected error: {exc}"
+        sync_target.last_sync_attempt_at = attempted_at
+        db.commit()
         return False
 
     if not price_data:
-        if sync_target:
-            sync_target.price_sync_status = SYNC_STATUS_FAILED
-            sync_target.last_sync_error = "Unable to fetch latest price data from the upstream provider."
-            sync_target.last_sync_attempt_at = attempted_at
-            db.commit()
+        sync_target.price_sync_status = SYNC_STATUS_FAILED
+        sync_target.last_sync_error = "Unable to fetch latest price data from the upstream provider."
+        sync_target.last_sync_attempt_at = attempted_at
+        db.commit()
         return False
 
     existing = (
@@ -129,10 +127,9 @@ def sync_stock_price(db: Session, *, stock_code: str, watchlist_item: WatchlistO
     else:
         db.add(StockPriceORM(**price_data))
 
-    if sync_target:
-        sync_target.price_sync_status = SYNC_STATUS_SUCCESS
-        sync_target.last_sync_error = None
-        sync_target.last_sync_attempt_at = attempted_at
+    sync_target.price_sync_status = SYNC_STATUS_SUCCESS
+    sync_target.last_sync_error = None
+    sync_target.last_sync_attempt_at = attempted_at
 
     db.commit()
     return True

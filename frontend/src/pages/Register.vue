@@ -20,7 +20,6 @@
           <input id="register-confirm-password" v-model="form.confirmPassword" type="password" required placeholder="Repeat your password" />
         </div>
 
-        <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
         <div v-if="authStore.error" class="error-msg">{{ authStore.error }}</div>
 
         <button class="btn btn-primary auth-submit" :disabled="authStore.loading">
@@ -50,11 +49,8 @@ const form = ref({
   confirmPassword: ''
 })
 
-const successMsg = ref('')
-
 async function handleRegister() {
   authStore.error = null
-  successMsg.value = ''
 
   if (form.value.password !== form.value.confirmPassword) {
     authStore.error = 'Passwords do not match.'
@@ -63,10 +59,7 @@ async function handleRegister() {
 
   const success = await authStore.register(form.value.email, form.value.password)
   if (success) {
-    successMsg.value = 'Account created. Redirecting to sign in...'
-    setTimeout(() => {
-      router.push('/login')
-    }, 1200)
+    router.push({ path: '/login', query: { registered: '1' } })
   }
 }
 </script>
@@ -102,12 +95,4 @@ async function handleRegister() {
   font-size: 14px;
 }
 
-.success-msg {
-  color: #166534;
-  font-size: 13px;
-  padding: 8px 12px;
-  background: #dcfce7;
-  border-radius: 6px;
-  margin-bottom: 12px;
-}
 </style>

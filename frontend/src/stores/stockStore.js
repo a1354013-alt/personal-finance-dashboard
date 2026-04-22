@@ -38,7 +38,7 @@ export const useStockStore = defineStore('stock', () => {
     try {
       const response = await stockApi.addToWatchlist(stockCode)
       await fetchWatchlist()
-      return response
+      return normalizeWatchlistItem(response) || response
     } catch (error) {
       throw new Error(error.message)
     }

@@ -3,6 +3,7 @@
     <div class="card auth-card">
       <h2>Sign In</h2>
       <p class="auth-subtitle">Use the demo account or your own registered account to continue.</p>
+      <div v-if="registered" class="success-msg">Account created. Please sign in.</div>
 
       <form @submit.prevent="handleLogin">
         <div class="form-group">
@@ -31,13 +32,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
+ import { computed, ref } from 'vue'
+ import { useRoute, useRouter } from 'vue-router'
+ import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const registered = computed(() => route.query.registered === '1')
 
 const form = ref({
   email: '',
@@ -81,5 +84,14 @@ async function handleLogin() {
   margin-top: 20px;
   text-align: center;
   font-size: 14px;
+}
+
+.success-msg {
+  color: #166534;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: #dcfce7;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 </style>

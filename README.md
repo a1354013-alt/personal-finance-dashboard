@@ -12,7 +12,7 @@ This project is intentionally designed to demonstrate production-minded engineer
 
 - **Provider abstractions** (LLM + fundamentals) with **stable, deterministic fallbacks**
 - **Normalized data contracts** (typed response models, consistent status semantics, explicit metadata)
-- **Schema evolution** via **Alembic migrations** (no “reset-only” schema management)
+- **Schema evolution** via **Alembic migrations** (no reset-only schema management)
 - **Testability**: mock providers in tests; CI does not call real external APIs
 - **Reproducible CI**: backend tests + frontend lint/test/build on clean environments
 

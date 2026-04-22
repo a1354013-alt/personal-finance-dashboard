@@ -80,7 +80,45 @@ export function normalizeFilterMetadata(row) {
 
 /**
  * @param {any} row
- * @returns {any}
+ * @returns {any|null}
+ */
+export function normalizeFundamentalsSnapshot(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    stock_code: String(row.stock_code || '').toUpperCase(),
+    source: row.source == null ? null : String(row.source),
+    as_of_date: row.as_of_date || null,
+    fetched_at: row.fetched_at || null,
+    status: row.status == null ? null : String(row.status),
+    error_message: row.error_message || null,
+    pe_ratio: row.pe_ratio == null ? null : Number(row.pe_ratio),
+    pb_ratio: row.pb_ratio == null ? null : Number(row.pb_ratio),
+    dividend_yield: row.dividend_yield == null ? null : Number(row.dividend_yield),
+    revenue_growth: row.revenue_growth == null ? null : Number(row.revenue_growth),
+    eps: row.eps == null ? null : Number(row.eps)
+  }
+}
+
+/**
+ * @param {any} row
+ * @returns {any|null}
+ */
+export function normalizeFundamentalsMeta(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    provider: String(row.provider || ''),
+    ttl_hours: Number(row.ttl_hours ?? 0),
+    is_stale: Boolean(row.is_stale),
+    fetched_at: row.fetched_at || null,
+    as_of_date: row.as_of_date || null,
+    status: row.status == null ? null : String(row.status),
+    error_message: row.error_message || null
+  }
+}
+
+/**
+ * @param {any} row
+ * @returns {any|null}
  */
 export function normalizeFundamentalsFilterResult(row) {
   if (!row || typeof row !== 'object') return null
@@ -88,8 +126,8 @@ export function normalizeFundamentalsFilterResult(row) {
     stock_code: String(row.stock_code || '').toUpperCase(),
     passed: Boolean(row.passed),
     fail_reasons: Array.isArray(row.fail_reasons) ? row.fail_reasons : [],
-    fundamentals: row.fundamentals ?? null,
-    meta: row.meta ?? null
+    fundamentals: normalizeFundamentalsSnapshot(row.fundamentals),
+    meta: normalizeFundamentalsMeta(row.meta)
   }
 }
 

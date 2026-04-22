@@ -15,9 +15,9 @@ describe('authStore', () => {
     setActivePinia(createPinia())
     const store = useAuthStore()
 
-    const ok = await store.login('a@example.com', 'password123')
+    const ok = await store.login(' A@Example.Com ', 'password123')
     expect(ok).toBe(true)
-    expect(loginRequest).toHaveBeenCalled()
+    expect(loginRequest).toHaveBeenCalledWith({ email: 'a@example.com', password: 'password123' })
     expect(store.isAuthenticated).toBe(true)
     expect(localStorage.getItem('token')).toBe('token-123')
     expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({ email: 'a@example.com' })
