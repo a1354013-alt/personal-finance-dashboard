@@ -7,7 +7,6 @@ import Stocks from '@/pages/Stocks.vue'
 const getWatchlistMock = vi.fn(async () => [
   {
     id: 1,
-    user_id: 1,
     stock_code: 'NVDA',
     name: 'NVIDIA',
     price: 100,
@@ -32,7 +31,6 @@ const getFilterMetadataMock = vi.fn(async () => ({
 
 const addToWatchlistMock = vi.fn(async () => ({
   id: 2,
-  user_id: 1,
   stock_code: 'AAPL',
   name: 'AAPL',
   price: null,

@@ -54,7 +54,9 @@
               </div>
             </div>
 
-            <button class="btn btn-danger" @click="handleDeleteBudget(budget.id)">Delete</button>
+            <button class="btn btn-danger" :disabled="store.deleting" @click="handleDeleteBudget(budget.id)">
+              {{ store.deleting ? 'Deleting...' : 'Delete' }}
+            </button>
           </div>
 
           <div class="progress-track">

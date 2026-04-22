@@ -60,4 +60,5 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     watch_item = client.get("/api/stocks/watchlist", headers=auth_headers(token)).json()[0]
     assert watch_item["date"] == "2026-04-10"
     assert isinstance(watch_item["price"], (int, float))
+    assert "user_id" not in watch_item
 

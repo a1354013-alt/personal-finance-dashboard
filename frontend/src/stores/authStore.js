@@ -1,17 +1,6 @@
 import { defineStore } from 'pinia'
 import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
-
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase()
-}
-
-function normalizeUser(user) {
-  if (!user || typeof user !== 'object') return null
-  return {
-    id: Number(user.id),
-    email: normalizeEmail(user.email)
-  }
-}
+import { normalizeEmail, normalizeUser } from '@/api/contracts'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({

@@ -32,6 +32,7 @@ def is_stale(*, fetched_at: datetime | None, ttl_hours: int | None = None) -> bo
 
 
 def get_latest_fundamentals_by_code(db: Session, stock_codes: set[str]) -> dict[str, FundamentalsORM]:
+    # Shared-cache lookup: fundamentals rows are not user-scoped; callers decide which stock codes they care about.
     if not stock_codes:
         return {}
 

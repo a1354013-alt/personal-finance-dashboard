@@ -37,7 +37,7 @@ Backend layers (high-level):
 
 Frontend layers (high-level):
 
-- `api/`: typed HTTP calls
+- `api/`: Axios client + request helpers + contract normalizers (JS-first, not a generated typed client)
 - `stores/`: state management + normalization
 - `pages/`: UI rendering + error states
 
@@ -62,6 +62,8 @@ Environment-controlled provider switching (no router-to-SDK coupling):
 - `LLM_PROVIDER=fallback`: deterministic local output (no external calls)
 - `LLM_PROVIDER=mock`: test-only provider (returns `LLM_MOCK_TEXT`)
 
+If `LLM_PROVIDER=openai` but `OPENAI_API_KEY` is missing, the backend auto-degrades to the deterministic fallback provider.
+
 Runtime guarantees:
 
 - Missing key or upstream failure **never crashes endpoints**; the API responds with a deterministic fallback and exposes provider metadata in `meta`.
@@ -85,6 +87,13 @@ Stock screening reads from normalized DB rows so that:
 
 - `FUNDAMENTALS_TTL_HOURS` controls staleness detection (default 24h)
 - `/api/stocks/filter` **does not fetch live**. Use `/api/stocks/fundamentals/sync` explicitly.
+
+### Scope and ownership (Shared cache vs user-scoped)
+
+- `watchlist` is **user-scoped** (`user_id` + `stock_code`)
+- `stock_prices` is a **shared cache** keyed by (`stock_code`, `trade_date`) and reused across users
+- `fundamentals` is a **shared cache** keyed by (`stock_code`, `source`, `as_of_date`) and reused across users
+- Sync endpoints are gated by a user-scoped watchlist item (prevents cross-user watchlist mutation) while caches remain shared for efficiency and clarity
 
 ## Data Model Contracts
 
@@ -137,6 +146,11 @@ alembic upgrade head
 python seed_data.py --reset
 uvicorn main:app --reload
 ```
+
+Notes:
+
+- For a brand new SQLite database file, the backend also auto-runs migrations on startup; running `alembic upgrade head` explicitly keeps the workflow clear and CI-aligned.
+- `python seed_data.py --reset` is a SQLite-only convenience that drops/recreates the DB via migrations, then inserts demo data.
 
 Backend URLs:
 

@@ -1,26 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { createBudget, deleteBudget, getBudgets } from '@/api/budgets'
+import { normalizeBudget } from '@/api/contracts'
 
 export const useBudgetStore = defineStore('budget', () => {
   const budgets = ref([])
   const loading = ref(false)
   const submitting = ref(false)
+  const deleting = ref(false)
   const error = ref(null)
-
-  function normalizeBudget(row) {
-    if (!row || typeof row !== 'object') return null
-    return {
-      id: Number(row.id),
-      user_id: Number(row.user_id),
-      category: String(row.category || ''),
-      monthly_limit: Number(row.monthly_limit ?? 0),
-      current_spent: Number(row.current_spent ?? 0),
-      percent_used: Number(row.percent_used ?? 0),
-      over_budget: Boolean(row.over_budget),
-      created_at: row.created_at || null
-    }
-  }
 
   async function fetchBudgets() {
     loading.value = true
@@ -58,13 +46,17 @@ export const useBudgetStore = defineStore('budget', () => {
   }
 
   async function removeBudget(id) {
+    if (deleting.value) return
     error.value = null
     try {
+      deleting.value = true
       await deleteBudget(id)
       budgets.value = budgets.value.filter((b) => b.id !== id)
     } catch (e) {
       error.value = e.message || 'Unable to delete budget.'
       throw e
+    } finally {
+      deleting.value = false
     }
   }
 
@@ -72,6 +64,7 @@ export const useBudgetStore = defineStore('budget', () => {
     budgets,
     loading,
     submitting,
+    deleting,
     error,
     normalizeBudget,
     fetchBudgets,

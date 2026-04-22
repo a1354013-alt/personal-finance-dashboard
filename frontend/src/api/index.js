@@ -1,5 +1,29 @@
 import axios from 'axios'
 
+let unauthorizedHandler = null
+let lastUnauthorizedAt = 0
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === 'function' ? handler : null
+}
+
+function clearBrowserSession() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+}
+
+function currentFullPath() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}` || '/'
+}
+
+function defaultUnauthorizedHandler({ redirect }) {
+  clearBrowserSession()
+  const encodedRedirect = encodeURIComponent(redirect || '/')
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.assign(`/login?redirect=${encodedRedirect}`)
+  }
+}
+
 const api = axios.create({
   baseURL: '/api',
   timeout: 10000,
@@ -21,13 +45,11 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-
-      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-      const encodedRedirect = encodeURIComponent(currentPath || '/')
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.replace(`/login?redirect=${encodedRedirect}`)
+      const now = Date.now()
+      if (now - lastUnauthorizedAt > 750) {
+        lastUnauthorizedAt = now
+        const handler = unauthorizedHandler || defaultUnauthorizedHandler
+        handler({ redirect: currentFullPath() })
       }
     }
 

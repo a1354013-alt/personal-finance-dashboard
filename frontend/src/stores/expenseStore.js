@@ -1,26 +1,14 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { createExpense, deleteExpense, getExpenses } from '@/api/expenses'
+import { normalizeExpense } from '@/api/contracts'
 
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref([])
   const loading = ref(false)
   const submitting = ref(false)
+  const deleting = ref(false)
   const error = ref(null)
-
-  function normalizeExpense(row) {
-    if (!row || typeof row !== 'object') return null
-    return {
-      id: Number(row.id),
-      user_id: Number(row.user_id),
-      amount: Number(row.amount ?? 0),
-      category: String(row.category || ''),
-      type: row.type === 'income' ? 'income' : 'expense',
-      date: row.date || null,
-      note: row.note || '',
-      created_at: row.created_at || null
-    }
-  }
 
   const totalIncome = computed(() =>
     expenses.value
@@ -63,13 +51,17 @@ export const useExpenseStore = defineStore('expense', () => {
   }
 
   async function removeExpense(id) {
+    if (deleting.value) return
     error.value = null
     try {
+      deleting.value = true
       await deleteExpense(id)
       expenses.value = expenses.value.filter((expense) => expense.id !== Number(id))
     } catch (e) {
       error.value = e.message
       throw e
+    } finally {
+      deleting.value = false
     }
   }
 
@@ -77,6 +69,7 @@ export const useExpenseStore = defineStore('expense', () => {
     expenses,
     loading,
     submitting,
+    deleting,
     error,
     totalIncome,
     totalExpense,
@@ -85,4 +78,3 @@ export const useExpenseStore = defineStore('expense', () => {
     removeExpense
   }
 })
-

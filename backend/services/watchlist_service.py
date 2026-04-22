@@ -29,7 +29,6 @@ def build_watchlist_item(db: Session, *, item: WatchlistORM) -> dict[str, Any]:
 
     return {
         "id": item.id,
-        "user_id": item.user_id,
         "stock_code": item.stock_code,
         "name": item.name or item.stock_code,
         "price": latest_price.close if latest_price else None,

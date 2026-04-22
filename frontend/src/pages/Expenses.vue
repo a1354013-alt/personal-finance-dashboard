@@ -97,7 +97,9 @@
               </td>
               <td>{{ item.note || '-' }}</td>
               <td>
-                <button class="btn btn-danger" @click="handleDelete(item.id)">Delete</button>
+                <button class="btn btn-danger" :disabled="store.deleting" @click="handleDelete(item.id)">
+                  {{ store.deleting ? 'Deleting...' : 'Delete' }}
+                </button>
               </td>
             </tr>
           </tbody>

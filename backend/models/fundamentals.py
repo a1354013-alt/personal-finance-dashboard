@@ -11,6 +11,7 @@ from db.database import Base
 
 
 class FundamentalsORM(Base):
+    # Shared cache: fundamentals are keyed by (stock_code, source, as_of_date) and reused across users.
     __tablename__ = "fundamentals"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

@@ -3,6 +3,39 @@
  * This project is intentionally JS-first; these helpers reduce implicit fields and magic strings.
  */
 
+function toNumberOrNull(value) {
+  if (value == null) return null
+  const num = Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
+function toNumberOrZero(value) {
+  const num = Number(value ?? 0)
+  return Number.isFinite(num) ? num : 0
+}
+
+function toStringOrEmpty(value) {
+  return value == null ? '' : String(value)
+}
+
+export function normalizeEmail(email) {
+  return toStringOrEmpty(email).trim().toLowerCase()
+}
+
+/**
+ * @param {any} user
+ * @returns {{id:number, email:string}|null}
+ */
+export function normalizeUser(user) {
+  if (!user || typeof user !== 'object') return null
+  const id = Number(user.id)
+  if (!Number.isFinite(id)) return null
+  return {
+    id,
+    email: normalizeEmail(user.email)
+  }
+}
+
 /**
  * @typedef {'pending'|'success'|'failed'} SyncStatus
  */
@@ -19,7 +52,6 @@
 /**
  * @typedef {Object} WatchlistItem
  * @property {number} id
- * @property {number} user_id
  * @property {string} stock_code
  * @property {string} name
  * @property {number|null} price
@@ -38,6 +70,9 @@
 export function normalizeWatchlistItem(row) {
   if (!row || typeof row !== 'object') return null
 
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+
   const status = row.price_sync_status === 'success' || row.price_sync_status === 'failed' ? row.price_sync_status : 'pending'
   const priceSync = row.price_sync && typeof row.price_sync === 'object'
     ? {
@@ -50,17 +85,72 @@ export function normalizeWatchlistItem(row) {
     : null
 
   return {
-    id: Number(row.id),
-    user_id: Number(row.user_id),
+    id,
     stock_code: String(row.stock_code || '').toUpperCase(),
     name: String(row.name || row.stock_code || '').trim(),
-    price: row.price == null ? null : Number(row.price),
+    price: toNumberOrNull(row.price),
     date: row.date || null,
-    volume: row.volume == null ? null : Number(row.volume),
+    volume: toNumberOrNull(row.volume),
     price_sync_status: status,
     last_sync_error: row.last_sync_error || null,
     last_sync_attempt_at: row.last_sync_attempt_at || null,
     price_sync: priceSync
+  }
+}
+
+/**
+ * @param {any} row
+ * @returns {any|null}
+ */
+export function normalizeExpense(row) {
+  if (!row || typeof row !== 'object') return null
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+  return {
+    id,
+    amount: toNumberOrZero(row.amount),
+    category: toStringOrEmpty(row.category),
+    type: row.type === 'income' ? 'income' : 'expense',
+    date: row.date || null,
+    note: toStringOrEmpty(row.note),
+    created_at: row.created_at || null
+  }
+}
+
+/**
+ * @param {any} row
+ * @returns {any|null}
+ */
+export function normalizeBudget(row) {
+  if (!row || typeof row !== 'object') return null
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+  return {
+    id,
+    category: toStringOrEmpty(row.category),
+    monthly_limit: toNumberOrZero(row.monthly_limit),
+    current_spent: toNumberOrZero(row.current_spent),
+    percent_used: toNumberOrZero(row.percent_used),
+    over_budget: Boolean(row.over_budget),
+    created_at: row.created_at || null
+  }
+}
+
+/**
+ * @param {any} payload
+ * @returns {any|null}
+ */
+export function normalizeDashboardSummary(payload) {
+  if (!payload || typeof payload !== 'object') return null
+
+  return {
+    total_income: toNumberOrZero(payload.total_income),
+    total_expense: toNumberOrZero(payload.total_expense),
+    net_balance: toNumberOrZero(payload.net_balance),
+    expense_by_category: Array.isArray(payload.expense_by_category) ? payload.expense_by_category : [],
+    monthly_trend: Array.isArray(payload.monthly_trend) ? payload.monthly_trend : [],
+    over_budget: Array.isArray(payload.over_budget) ? payload.over_budget : [],
+    summary_scope: payload.summary_scope ?? { totals: 'all_time', over_budget: 'current_month' }
   }
 }
 
@@ -72,8 +162,8 @@ export function normalizeFilterMetadata(row) {
   if (!row || typeof row !== 'object') return null
   return {
     fundamentals_provider: String(row.fundamentals_provider || ''),
-    ttl_hours: Number(row.ttl_hours ?? 0),
-    timeout_seconds: Number(row.timeout_seconds ?? 0),
+    ttl_hours: toNumberOrZero(row.ttl_hours),
+    timeout_seconds: toNumberOrZero(row.timeout_seconds),
     message: String(row.message || '')
   }
 }
@@ -91,11 +181,11 @@ export function normalizeFundamentalsSnapshot(row) {
     fetched_at: row.fetched_at || null,
     status: row.status == null ? null : String(row.status),
     error_message: row.error_message || null,
-    pe_ratio: row.pe_ratio == null ? null : Number(row.pe_ratio),
-    pb_ratio: row.pb_ratio == null ? null : Number(row.pb_ratio),
-    dividend_yield: row.dividend_yield == null ? null : Number(row.dividend_yield),
-    revenue_growth: row.revenue_growth == null ? null : Number(row.revenue_growth),
-    eps: row.eps == null ? null : Number(row.eps)
+    pe_ratio: toNumberOrNull(row.pe_ratio),
+    pb_ratio: toNumberOrNull(row.pb_ratio),
+    dividend_yield: toNumberOrNull(row.dividend_yield),
+    revenue_growth: toNumberOrNull(row.revenue_growth),
+    eps: toNumberOrNull(row.eps)
   }
 }
 
@@ -107,7 +197,7 @@ export function normalizeFundamentalsMeta(row) {
   if (!row || typeof row !== 'object') return null
   return {
     provider: String(row.provider || ''),
-    ttl_hours: Number(row.ttl_hours ?? 0),
+    ttl_hours: toNumberOrZero(row.ttl_hours),
     is_stale: Boolean(row.is_stale),
     fetched_at: row.fetched_at || null,
     as_of_date: row.as_of_date || null,

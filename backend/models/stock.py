@@ -12,6 +12,7 @@ from db.database import Base
 
 
 class WatchlistORM(Base):
+    # User-scoped: one watchlist row per (user_id, stock_code).
     __tablename__ = "watchlist"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -28,6 +29,7 @@ class WatchlistORM(Base):
 
 
 class StockPriceORM(Base):
+    # Shared cache: prices are stored per (stock_code, trade_date) and reused across users.
     __tablename__ = "stock_prices"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -67,7 +69,6 @@ class PriceSyncMeta(BaseModel):
 
 class WatchlistItemResponse(BaseModel):
     id: int
-    user_id: int
     stock_code: str
     name: Optional[str] = None
     price: Optional[Decimal] = None

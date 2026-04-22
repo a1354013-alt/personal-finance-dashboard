@@ -175,8 +175,6 @@ def get_filter_metadata():
     return build_filter_metadata()
 
 
-
-
 @router.post("/filter", response_model=StockFilterResult)
 def filter_single_stock(payload: StockFilterRequest):
     return evaluate_stock(

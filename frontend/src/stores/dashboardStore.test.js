@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-
-import { useDashboardStore } from '@/stores/dashboardStore'
+import { normalizeDashboardSummary } from '@/api/contracts'
 
 describe('dashboardStore', () => {
   it('normalizeDashboardSummary coerces numbers and arrays', () => {
-    setActivePinia(createPinia())
-    const store = useDashboardStore()
-
-    const normalized = store.normalizeDashboardSummary({
+    const normalized = normalizeDashboardSummary({
       total_income: '1234',
       total_expense: 200,
       net_balance: null,
