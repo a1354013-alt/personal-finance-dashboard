@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getAiSummary, getBudgetAdvice, getDashboardSummary } from '@/api/dashboard'
-import { normalizeDashboardSummary } from '@/api/contracts'
+import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardSummary } from '@/api/contracts'
+import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref(null)
   const aiSummary = ref('')
+  const aiSummaryLoading = ref(false)
+  const aiSummaryError = ref(null)
   const budgetAdvice = ref('')
   const budgetAdviceLoading = ref(false)
   const budgetAdviceError = ref(null)
@@ -20,30 +23,42 @@ export const useDashboardStore = defineStore('dashboard', () => {
       summary.value = normalizeDashboardSummary(result)
     } catch (err) {
       summary.value = null
-      error.value = err.message || 'Unable to load dashboard summary.'
+      error.value = toErrorMessage(err, 'Unable to load dashboard summary.')
     } finally {
       loading.value = false
     }
   }
 
   async function fetchAiSummary() {
+    aiSummaryLoading.value = true
+    aiSummaryError.value = null
+    aiSummary.value = ''
     try {
       const result = await getAiSummary()
-      aiSummary.value = result.summary
-    } catch (_error) {
-      aiSummary.value = 'Unable to generate the AI summary right now.'
+      aiSummary.value = normalizeAiSummary(result)
+      if (!aiSummary.value) {
+        aiSummaryError.value = 'Unable to load AI summary.'
+      }
+    } catch (error) {
+      aiSummaryError.value = toErrorMessage(error, 'Unable to load AI summary.')
+    } finally {
+      aiSummaryLoading.value = false
     }
   }
 
   async function fetchBudgetAdvice() {
     budgetAdviceLoading.value = true
     budgetAdviceError.value = null
+    budgetAdvice.value = ''
     try {
       const result = await getBudgetAdvice()
-      budgetAdvice.value = result.advice
+      budgetAdvice.value = normalizeBudgetAdvice(result)
+      if (!budgetAdvice.value) {
+        budgetAdviceError.value = 'Unable to load budget advice.'
+      }
     } catch (e) {
       budgetAdvice.value = ''
-      budgetAdviceError.value = e.message || 'Unable to load budget advice.'
+      budgetAdviceError.value = toErrorMessage(e, 'Unable to load budget advice.')
     } finally {
       budgetAdviceLoading.value = false
     }
@@ -52,6 +67,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   return {
     summary,
     aiSummary,
+    aiSummaryLoading,
+    aiSummaryError,
     budgetAdvice,
     budgetAdviceLoading,
     budgetAdviceError,

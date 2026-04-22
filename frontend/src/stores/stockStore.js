@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as stockApi from '@/api/stocks'
 import { normalizeFilterMetadata, normalizeFundamentalsFilterResult, normalizeWatchlistItem } from '@/api/contracts'
+import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
@@ -29,19 +30,22 @@ export const useStockStore = defineStore('stock', () => {
       const result = await stockApi.getWatchlist()
       watchlist.value = Array.isArray(result) ? result.map(normalizeWatchlistItem).filter(Boolean) : []
     } catch (error) {
-      watchlistError.value = error.message
+      watchlist.value = []
+      watchlistError.value = toErrorMessage(error, 'Unable to load watchlist.')
     } finally {
       watchlistLoading.value = false
     }
   }
 
   async function addToWatchlist(stockCode) {
+    watchlistError.value = null
     try {
       const response = await stockApi.addToWatchlist(stockCode)
       await fetchWatchlist()
       return normalizeWatchlistItem(response) || response
     } catch (error) {
-      throw new Error(error.message)
+      watchlistError.value = toErrorMessage(error, 'Unable to add watchlist item.')
+      throw error
     }
   }
 
@@ -49,10 +53,12 @@ export const useStockStore = defineStore('stock', () => {
     try {
       if (deleting.value) return null
       deleting.value = true
+      watchlistError.value = null
       await stockApi.deleteFromWatchlist(id)
       await fetchWatchlist()
     } catch (error) {
-      throw new Error(error.message)
+      watchlistError.value = toErrorMessage(error, 'Unable to delete watchlist item.')
+      throw error
     } finally {
       deleting.value = false
     }
@@ -60,12 +66,14 @@ export const useStockStore = defineStore('stock', () => {
 
   async function syncAllPrices() {
     syncAllLoading.value = true
+    watchlistError.value = null
     try {
       const response = await stockApi.syncAllPrices()
       await fetchWatchlist()
       return response
     } catch (error) {
-      throw new Error(error.message)
+      watchlistError.value = toErrorMessage(error, 'Unable to sync watchlist prices.')
+      throw error
     } finally {
       syncAllLoading.value = false
     }
@@ -81,12 +89,14 @@ export const useStockStore = defineStore('stock', () => {
     }
 
     syncingCodes.value.push(stockCode)
+    watchlistError.value = null
     try {
       const response = await stockApi.syncSinglePrice(stockCode)
       await fetchWatchlist()
       return response
     } catch (error) {
-      throw new Error(error.message)
+      watchlistError.value = toErrorMessage(error, 'Unable to sync stock price.')
+      throw error
     } finally {
       syncingCodes.value = syncingCodes.value.filter((code) => code !== stockCode)
     }
@@ -104,7 +114,9 @@ export const useStockStore = defineStore('stock', () => {
       filterResults.value = Array.isArray(results) ? results.map(normalizeFundamentalsFilterResult).filter(Boolean) : []
       filterMetadata.value = normalizeFilterMetadata(metadata)
     } catch (error) {
-      filterError.value = error.message
+      filterResults.value = []
+      filterMetadata.value = null
+      filterError.value = toErrorMessage(error, 'Unable to load fundamentals screening results.')
     } finally {
       filterLoading.value = false
     }
@@ -117,7 +129,7 @@ export const useStockStore = defineStore('stock', () => {
       await stockApi.syncWatchlistFundamentals({ force })
       await fetchFilterResults()
     } catch (error) {
-      fundamentalsError.value = error.message || 'Unable to sync fundamentals.'
+      fundamentalsError.value = toErrorMessage(error, 'Unable to sync fundamentals.')
       throw error
     } finally {
       fundamentalsSyncing.value = false

@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { createExpense, deleteExpense, getExpenses } from '@/api/expenses'
 import { normalizeExpense } from '@/api/contracts'
+import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref([])
@@ -32,7 +33,7 @@ export const useExpenseStore = defineStore('expense', () => {
       expenses.value = Array.isArray(result) ? result.map(normalizeExpense).filter(Boolean) : []
     } catch (e) {
       expenses.value = []
-      error.value = e.message
+      error.value = toErrorMessage(e, 'Unable to load expenses.')
     } finally {
       loading.value = false
     }
@@ -45,7 +46,7 @@ export const useExpenseStore = defineStore('expense', () => {
       await createExpense(data)
       await fetchExpenses(lastParams.value)
     } catch (e) {
-      error.value = e.message
+      error.value = toErrorMessage(e, 'Unable to add expense.')
       throw e
     } finally {
       submitting.value = false
@@ -60,7 +61,7 @@ export const useExpenseStore = defineStore('expense', () => {
       await deleteExpense(id)
       await fetchExpenses(lastParams.value)
     } catch (e) {
-      error.value = e.message
+      error.value = toErrorMessage(e, 'Unable to delete expense.')
       throw e
     } finally {
       deleting.value = false

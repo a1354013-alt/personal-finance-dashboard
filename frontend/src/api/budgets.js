@@ -4,5 +4,6 @@
  * Budgets API.
  */
 export const getBudgets = () => api.get('/budgets')
-export const createBudget = (data) => api.post('/budgets', data)
+// POST /budgets is create-or-update by (user, category).
+export const upsertBudget = (data) => api.post('/budgets', data)
 export const deleteBudget = (id) => api.delete(`/budgets/${id}`)

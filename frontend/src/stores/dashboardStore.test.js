@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDashboardSummary } from '@/api/contracts'
+import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardSummary } from '@/api/contracts'
 
 describe('dashboardStore', () => {
   it('normalizeDashboardSummary coerces numbers and arrays', () => {
@@ -19,6 +19,18 @@ describe('dashboardStore', () => {
     expect(normalized.monthly_trend).toHaveLength(1)
     expect(normalized.over_budget).toEqual([])
     expect(normalized.summary_scope.totals).toBe('all_time')
+  })
+
+  it('normalizeAiSummary returns a stable string', () => {
+    expect(normalizeAiSummary(null)).toBe('')
+    expect(normalizeAiSummary({ summary: '  hello \n' })).toBe('hello')
+    expect(normalizeAiSummary({})).toBe('')
+  })
+
+  it('normalizeBudgetAdvice returns a stable string', () => {
+    expect(normalizeBudgetAdvice(undefined)).toBe('')
+    expect(normalizeBudgetAdvice({ advice: '  do X  ' })).toBe('do X')
+    expect(normalizeBudgetAdvice({})).toBe('')
   })
 })
 

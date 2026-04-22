@@ -21,7 +21,7 @@ def get_budgets(
 
 
 @router.post("", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
-def create_budget(
+def create_or_update_budget(
     budget: BudgetCreate,
     response: Response,
     db: Session = Depends(get_db),

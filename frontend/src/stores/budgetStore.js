@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createBudget, deleteBudget, getBudgets } from '@/api/budgets'
+import { deleteBudget, getBudgets, upsertBudget } from '@/api/budgets'
 import { normalizeBudget } from '@/api/contracts'
+import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useBudgetStore = defineStore('budget', () => {
   const budgets = ref([])
@@ -18,7 +19,7 @@ export const useBudgetStore = defineStore('budget', () => {
       budgets.value = Array.isArray(result) ? result.map(normalizeBudget).filter(Boolean) : []
     } catch (e) {
       budgets.value = []
-      error.value = e.message || 'Unable to load budgets.'
+      error.value = toErrorMessage(e, 'Unable to load budgets.')
     } finally {
       loading.value = false
     }
@@ -28,11 +29,11 @@ export const useBudgetStore = defineStore('budget', () => {
     submitting.value = true
     error.value = null
     try {
-      const saved = normalizeBudget(await createBudget(payload))
+      const saved = normalizeBudget(await upsertBudget(payload))
       await fetchBudgets()
       return saved
     } catch (e) {
-      error.value = e.message || 'Unable to save budget.'
+      error.value = toErrorMessage(e, 'Unable to save budget.')
       throw e
     } finally {
       submitting.value = false
@@ -47,7 +48,7 @@ export const useBudgetStore = defineStore('budget', () => {
       await deleteBudget(id)
       await fetchBudgets()
     } catch (e) {
-      error.value = e.message || 'Unable to delete budget.'
+      error.value = toErrorMessage(e, 'Unable to delete budget.')
       throw e
     } finally {
       deleting.value = false
@@ -60,7 +61,6 @@ export const useBudgetStore = defineStore('budget', () => {
     submitting,
     deleting,
     error,
-    normalizeBudget,
     fetchBudgets,
     saveBudget,
     removeBudget

@@ -5,11 +5,12 @@ let lastUnauthorizedAt = 0
 
 export function isAuthRoute(url) {
   const value = typeof url === 'string' ? url : ''
-  return value.includes('/auth/login') || value.includes('/auth/register')
+  return value.includes('/auth/login') || value.includes('/auth/register') || value.includes('/auth/me')
 }
 
 export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = typeof handler === 'function' ? handler : null
+  lastUnauthorizedAt = 0
 }
 
 function clearBrowserSession() {

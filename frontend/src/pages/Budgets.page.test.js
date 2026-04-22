@@ -14,7 +14,7 @@ vi.mock('@/api/budgets', () => ({
       percent_used: 20,
     }
   ]),
-  createBudget: vi.fn(async (payload) => ({
+  upsertBudget: vi.fn(async (payload) => ({
     id: 1,
     category: payload.category,
     monthly_limit: payload.monthly_limit,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -45,7 +45,7 @@ def create_expense(
     return expense
 
 
-@router.delete("/{expense_id}")
+@router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(
     expense_id: int,
     db: Session = Depends(get_db),
@@ -61,4 +61,4 @@ def delete_expense(
 
     db.delete(expense)
     db.commit()
-    return {"message": "Expense deleted."}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

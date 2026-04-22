@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
 import { normalizeEmail, normalizeUser } from '@/api/contracts'
+import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -47,7 +48,7 @@ export const useAuthStore = defineStore('auth', {
         this.persistSession()
         return true
       } catch (error) {
-        this.error = error.message || 'Login failed.'
+        this.error = toErrorMessage(error, 'Login failed.')
         return false
       } finally {
         this.loading = false
@@ -62,7 +63,7 @@ export const useAuthStore = defineStore('auth', {
         await registerRequest({ email: normalizeEmail(email), password })
         return true
       } catch (error) {
-        this.error = error.message || 'Registration failed.'
+        this.error = toErrorMessage(error, 'Registration failed.')
         return false
       } finally {
         this.loading = false
@@ -88,7 +89,7 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (error) {
         this.clearSession()
-        this.error = error.message || 'Session expired. Please sign in again.'
+        this.error = toErrorMessage(error, 'Session expired. Please sign in again.')
         return false
       } finally {
         this.loading = false

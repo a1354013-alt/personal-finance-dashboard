@@ -18,6 +18,10 @@ function toStringOrEmpty(value) {
   return value == null ? '' : String(value)
 }
 
+function toTrimmedStringOrEmpty(value) {
+  return toStringOrEmpty(value).trim()
+}
+
 export function normalizeEmail(email) {
   return toStringOrEmpty(email).trim().toLowerCase()
 }
@@ -149,6 +153,24 @@ export function normalizeDashboardSummary(payload) {
     over_budget: Array.isArray(payload.over_budget) ? payload.over_budget : [],
     summary_scope: payload.summary_scope ?? { totals: 'all_time', over_budget: 'current_month' }
   }
+}
+
+/**
+ * @param {any} payload
+ * @returns {string}
+ */
+export function normalizeAiSummary(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+  return toTrimmedStringOrEmpty(payload.summary)
+}
+
+/**
+ * @param {any} payload
+ * @returns {string}
+ */
+export function normalizeBudgetAdvice(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+  return toTrimmedStringOrEmpty(payload.advice)
 }
 
 /**

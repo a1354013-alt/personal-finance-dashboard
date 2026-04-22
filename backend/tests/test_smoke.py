@@ -61,7 +61,8 @@ def test_expenses_create_list_delete_with_user_isolation(client):
     assert delete_other_user.status_code == 404
 
     delete_response = client.delete(f'/api/expenses/{expense_id}', headers=auth_headers(token_a))
-    assert delete_response.status_code == 200
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
 
 
 def test_budgets_create_list_delete_and_dashboard_summary(client):
@@ -74,6 +75,15 @@ def test_budgets_create_list_delete_and_dashboard_summary(client):
     )
     assert create_budget.status_code == 201
     budget_id = create_budget.json()['id']
+
+    update_budget = client.post(
+        '/api/budgets',
+        headers=auth_headers(token),
+        json={'category': 'Food', 'monthly_limit': 1500},
+    )
+    assert update_budget.status_code == 200
+    assert update_budget.json()['id'] == budget_id
+    assert update_budget.json()['monthly_limit'] == 1500.0
 
     client.post(
         '/api/expenses',
@@ -100,7 +110,7 @@ def test_budgets_create_list_delete_and_dashboard_summary(client):
     assert budgets_response.status_code == 200
     budgets = budgets_response.json()
     assert budgets[0]['current_spent'] == 700
-    assert budgets[0]['percent_used'] == 70
+    assert budgets[0]['percent_used'] == 46.67
 
     dashboard_response = client.get('/api/dashboard/summary', headers=auth_headers(token))
     assert dashboard_response.status_code == 200

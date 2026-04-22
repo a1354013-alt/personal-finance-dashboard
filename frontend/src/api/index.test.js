@@ -16,10 +16,10 @@ describe('api/index (401 flow)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
-  it('isAuthRoute matches login/register only', () => {
+  it('isAuthRoute matches auth endpoints only', () => {
     expect(isAuthRoute('/auth/login')).toBe(true)
     expect(isAuthRoute('/auth/register')).toBe(true)
-    expect(isAuthRoute('/auth/me')).toBe(false)
+    expect(isAuthRoute('/auth/me')).toBe(true)
     expect(isAuthRoute('/expenses')).toBe(false)
   })
 

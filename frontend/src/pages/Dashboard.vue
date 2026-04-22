@@ -88,7 +88,11 @@
         <h2>AI Insights</h2>
         <div class="ai-block">
           <h3>Finance Summary</h3>
-          <button v-if="!store.aiSummary" class="btn btn-primary" @click="store.fetchAiSummary()">Generate Summary</button>
+          <div v-if="store.aiSummaryLoading" class="loading-text">Generating summary...</div>
+          <div v-else-if="store.aiSummaryError" class="error-msg">{{ store.aiSummaryError }}</div>
+          <button v-else-if="!store.aiSummary" class="btn btn-primary" @click="store.fetchAiSummary()">
+            Generate Summary
+          </button>
           <p v-else class="ai-text">{{ store.aiSummary }}</p>
         </div>
 
