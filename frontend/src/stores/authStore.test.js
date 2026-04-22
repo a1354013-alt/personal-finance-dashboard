@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('@/api/auth', () => ({
@@ -11,6 +11,19 @@ import { useAuthStore } from '@/stores/authStore'
 import { login as loginRequest } from '@/api/auth'
 
 describe('authStore', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('does not crash when persisted user JSON is invalid', () => {
+    localStorage.setItem('user', 'invalid-json')
+
+    setActivePinia(createPinia())
+    const store = useAuthStore()
+
+    expect(store.user).toBeNull()
+  })
+
   it('login persists token and user', async () => {
     setActivePinia(createPinia())
     const store = useAuthStore()

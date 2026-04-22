@@ -13,10 +13,23 @@ export function setUnauthorizedHandler(handler) {
   lastUnauthorizedAt = 0
 }
 
+function safeLocalStorageGetItem(key) {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 function clearBrowserSession() {
   if (typeof localStorage === 'undefined') return
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  try {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  } catch {
+    // ignore storage failures (private mode / quota / blocked)
+  }
 }
 
 export function currentFullPath() {
@@ -41,7 +54,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = safeLocalStorageGetItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

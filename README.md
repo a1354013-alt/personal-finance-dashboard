@@ -1,152 +1,50 @@
-# Personal Finance Dashboard v1.0.0
+# Personal Finance Dashboard
 
-Full-stack personal finance dashboard built as a job-ready portfolio project.
+> Full-stack personal finance dashboard with budgeting, expense tracking, stock watchlist, and AI insights — built with FastAPI + Vue 3.
 
-- Backend: FastAPI + SQLAlchemy + Alembic migrations (SQLite by default)
-- Frontend: Vue 3 + Pinia + Vue Router + Vite
-- Focus: clear data contracts, provider abstractions, deterministic fallbacks, and CI-reproducible workflows
+## Feature Table
 
-## Project Positioning (Portfolio)
+| Feature | Description |
+|--------|-------------|
+| Budget Tracking | Create monthly category budgets with current-month spend status |
+| Expense Logging | Track income/expense records with categories, dates, and optional notes |
+| Dashboard | Aggregated insights (totals, trends, category breakdown, over-budget list) |
+| Stocks Watchlist | Track selected symbols and sync cached prices/fundamentals |
+| AI Insights | Generate deterministic summaries/advice with provider metadata |
 
-This project is intentionally designed to demonstrate production-minded engineering in a compact codebase:
+## Screenshots
 
-- **Provider abstractions** (LLM + fundamentals) with **stable, deterministic fallbacks**
-- **Normalized data contracts** (typed response models, consistent status semantics, explicit metadata)
-- **Schema evolution** via **Alembic migrations** (no reset-only schema management)
-- **Testability**: mock providers in tests; CI does not call real external APIs
-- **Reproducible CI**: backend tests + frontend lint/test/build on clean environments
+![Dashboard](assets/screenshots/dashboard.svg)
+![Expenses](assets/screenshots/expenses.svg)
+![Budgets](assets/screenshots/budgets.svg)
+![Stocks Watchlist](assets/screenshots/stocks-watchlist.svg)
 
-## Core Features
+## Architecture Overview
 
-- Auth (register/login/me) with JWT bearer token
-- Expense tracking + budget tracking + dashboard aggregates
-- Watchlist with persisted price sync status (`pending`/`success`/`failed`)
-- **AI insights endpoints** with provider switching and deterministic fallback
-- **Fundamentals screening** backed by DB cache (explicit sync, stale detection, source/as-of metadata)
+- Backend: FastAPI routers + Pydantic response contracts + SQLAlchemy ORM + Alembic migrations
+- Frontend: Vue 3 pages + Pinia stores + Axios API client + contract normalizers
+- Database: SQLite by default (via `DATABASE_URL`)
+- External Providers: LLM provider (OpenAI/fallback/mock), fundamentals provider (`yfinance`) with DB cache
 
-## System Architecture
+High-level flow:
 
-Backend layers (high-level):
-
-- `routers/`: HTTP endpoints + response models
-- `services/`: domain logic (budget aggregation, AI request shaping, screening rules)
-- `providers/`: external integration abstractions (LLM + fundamentals) with timeouts and predictable errors
-- `models/`: SQLAlchemy ORM + Pydantic response contracts
-- `db/`: engine/session + Alembic migration runner
-- `alembic/`: migration scripts
-
-Frontend layers (high-level):
-
-- `api/`: Axios client + request helpers + contract normalizers (JS-first, not a generated typed client)
-- `stores/`: state management + normalization
-- `pages/`: UI rendering + error states
-
-### Architecture Diagram
-
-```mermaid
-flowchart TB
-  UI["Vue Pages/Components"] --> STORES["Pinia Stores (normalized state)"]
-  STORES --> API["Axios API client (auth + error normalization)"]
-  API --> ROUTERS["FastAPI Routers (parse + status codes)"]
-  ROUTERS --> SERVICES["Services (domain logic + aggregation)"]
-  SERVICES --> DB["SQLAlchemy ORM + SQLite"]
-  SERVICES --> PROVIDERS["Providers (LLM + Fundamentals + Stock data)"]
-  PROVIDERS --> UPSTREAM["Upstream APIs (mocked in tests)"]
+```text
+Frontend (Vue)
+       ↓
+API (FastAPI Routers)
+       ↓
+Services
+       ↓
+Database + Providers
 ```
 
-## AI Provider Design
+## Data Flow
 
-Environment-controlled provider switching (no router-to-SDK coupling):
+```text
+User → Router → Service → DB → Response → Frontend Store → UI
+```
 
-- `LLM_PROVIDER=openai`: calls OpenAI Responses API via `requests` (requires `OPENAI_API_KEY`)
-- `LLM_PROVIDER=fallback`: deterministic local output (no external calls)
-- `LLM_PROVIDER=mock`: test-only provider (returns `LLM_MOCK_TEXT`)
-
-If `LLM_PROVIDER=openai` but `OPENAI_API_KEY` is missing, the backend auto-degrades to the deterministic fallback provider.
-
-Runtime guarantees:
-
-- Missing key or upstream failure **never crashes endpoints**; the API responds with a deterministic fallback and exposes provider metadata in `meta`.
-
-## Fundamentals Provider + DB Cache Design
-
-### Why cache?
-
-Stock screening reads from normalized DB rows so that:
-
-- the UI can show **exact data source + as-of date**
-- screening is repeatable and debuggable
-- external fetch failures do not break the screen endpoint
-
-### Providers
-
-- Current default provider: `yfinance` (wrapped with a timeout guard)
-- Future providers can be added behind the same `BaseFundamentalsProvider` interface
-
-### Data freshness
-
-- `FUNDAMENTALS_TTL_HOURS` controls staleness detection (default 24h)
-- `/api/stocks/filter` **does not fetch live**. Use `/api/stocks/fundamentals/sync` explicitly.
-
-### Scope and ownership (Shared cache vs user-scoped)
-
-- `watchlist` is **user-scoped** (`user_id` + `stock_code`)
-- `stock_prices` is a **shared cache** keyed by (`stock_code`, `trade_date`) and reused across users
-- `fundamentals` is a **shared cache** keyed by (`stock_code`, `source`, `as_of_date`) and reused across users
-- Sync endpoints are gated by a user-scoped watchlist item (prevents cross-user watchlist mutation) while caches remain shared for efficiency and clarity
-
-## Data Model Contracts
-
-- Money-like fields use `Numeric/Decimal` in DB (API serializes to JSON numbers)
-- `stock_prices.trade_date` is a real date type (`Date`), serialized as ISO (YYYY-MM-DD)
-- Response models are defined for dashboard/AI/stocks metadata/fundamentals
-
-### Watchlist Price Sync Contract
-
-Watchlist items expose two compatible shapes:
-
-- Legacy fields (kept for backward compatibility):
-  - `price_sync_status`, `last_sync_error`, `last_sync_attempt_at`
-- Stable nested contract (preferred):
-  - `price_sync: { status, provider, as_of_date, last_attempt_at, error_message }`
-
-### Watchlist Add vs Sync (Decoupled Semantics)
-
-To keep creation deterministic and fast, watchlist creation does **not** depend on upstream availability:
-
-- `POST /api/stocks/watchlist`:
-  - Always creates the row with `status=pending`
-  - Enqueues a best-effort background sync (price + display name)
-- Explicit sync endpoints:
-  - `POST /api/stocks/{code}/sync`
-  - `POST /api/stocks/sync`
-
-This keeps `201 Created` semantics clean while still persisting `success/failed` results on later sync attempts.
-
-### Budgets Save Semantics (Create-or-Update / Upsert)
-
-- `POST /api/budgets` is **create-or-update by (user, category)**.
-- If the category already exists for the current user, the backend updates `monthly_limit` and responds with **200 OK**.
-- If it is new, the backend creates the row and responds with **201 Created**.
-
-### DELETE Semantics (No Content)
-
-For consistency and to avoid implicit frontend coupling on response bodies:
-
-- Successful deletes return **`204 No Content`** with an **empty** response body:
-  - `DELETE /api/expenses/{expense_id}`
-  - `DELETE /api/budgets/{budget_id}`
-  - `DELETE /api/stocks/watchlist/{item_id}`
-- If the resource does not exist (or is not owned by the current user), deletes return **`404 Not Found`**.
-
-### Unauthorized Handling (Frontend)
-
-- All non-auth API calls that receive **`401 Unauthorized`** trigger a centralized unauthorized handler:
-  - clears the persisted session (`token`, `user`)
-  - redirects to `/login?redirect=...` (debounced to avoid repeated redirects)
-- Auth endpoints (including `GET /api/auth/me`) do **not** trigger the global unauthorized handler; the auth store/router guard handles session expiry and navigation.
-
-## Local Setup
+## Quick Start
 
 ### 1) Environment
 
@@ -160,56 +58,58 @@ Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-### 2) Backend
+### 2) Backend (FastAPI)
 
 ```bash
 cd backend
 python -m pip install -r requirements.txt
 alembic upgrade head
-python seed_data.py --reset
 uvicorn main:app --reload
 ```
 
-Notes:
+Optional (SQLite demo data/reset):
 
-- For a brand new SQLite database file, the backend also auto-runs migrations on startup; running `alembic upgrade head` explicitly keeps the workflow clear and CI-aligned.
-- `python seed_data.py --reset` is a SQLite-only convenience that drops/recreates the DB via migrations, then inserts demo data.
+```bash
+cd backend
+python seed_data.py --reset
+```
 
 Backend URLs:
 
 - API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
 
-### 3) Frontend
+### 3) Frontend (Vue 3)
 
 ```bash
 cd frontend
-npm ci
+npm install
 npm run dev
 ```
 
 Frontend URL: http://localhost:5173
 
-## Demo Account
+## API Design Principles
 
-- Email: `demo@example.com`
-- Password: `demo1234`
+- RESTful routes with clear resource boundaries (`/api/expenses`, `/api/budgets`, `/api/stocks/*`, `/api/ai/*`)
+- `204 No Content` for successful DELETE (empty body)
+- Normalized responses (typed response models; consistent serialization for money/date fields)
+- User-scoped resources (JWT bearer auth; CRUD is scoped to the current user)
 
-## Testing
+## Testing Strategy
 
-Backend (all provider integrations are mocked in tests):
+- Backend: `pytest` (SQLite in-memory), provider calls mocked in tests
+- Frontend: `vitest` + `@vue/test-utils` + `jsdom`
+- Contract tests: validate serialization + response shape (no user-scoped leakage)
+- Smoke tests: end-to-end API flows (auth → CRUD → dashboard aggregates)
 
-```bash
-cd backend
-python -m pytest
-```
+## Why This Project Stands Out
 
-Frontend:
-
-```bash
-cd frontend
-npm test
-```
+- Provider abstraction design
+- Shared cache architecture
+- API contract normalization
+- Full CI pipeline
+- Production-style layering
 
 ## CI
 
@@ -220,28 +120,9 @@ GitHub Actions workflow runs on clean machines:
 
 See `.github/workflows/ci.yml`.
 
-## Known Limits (Honest)
+## Future Improvements
 
-- `yfinance` is **not an official market data API** and may rate-limit or change behavior; the project exposes source/status and caches results to reduce impact.
-- Fundamentals screen rules are intentionally simple baseline rules (documented in `services/fundamentals_screening.py`), and should be adjusted per strategy.
+- Recurring transactions
+- Budget alerts
+- Export reports
 
-## Roadmap
-
-- Add more fundamentals providers (official/commercial APIs) behind the same interface
-- Add background scheduling for fundamentals refresh (optional)
-- Add richer UI explanations for screening failures and provider errors
-
-## Packaging and Cleanup
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/clean-delivery.ps1
-```
-
-## Screenshots (Placeholder)
-
-Add screenshots under a future `docs/screenshots/` folder and embed them here:
-
-- Dashboard overview
-- Expenses form + list
-- Budgets status
-- Stocks watchlist + screening

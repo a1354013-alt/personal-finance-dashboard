@@ -31,7 +31,12 @@ class BudgetBase(BaseModel):
     @field_validator("category")
     @classmethod
     def normalize_category(cls, value: str) -> str:
-        return value.strip()
+        category = value.strip()
+        if not category:
+            raise ValueError("category is required.")
+        if len(category) > 50:
+            raise ValueError("category must be 50 characters or fewer.")
+        return category
 
 
 class BudgetCreate(BudgetBase):

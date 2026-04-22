@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .bg { fill: #0b1220; }
+      .panel { fill: #111a2c; stroke: #25324a; stroke-width: 1; }
+      .card { fill: #0f1a2f; stroke: #2a3a58; stroke-width: 1; }
+      .muted { fill: #93a4c7; font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+      .title { fill: #e6efff; font: 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .h2 { fill: #e6efff; font: 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .num { fill: #e6efff; font: 28px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 800; }
+      .pill { fill: #1a2a49; }
+      .accent { fill: #66e3c4; }
+      .warn { fill: #ffcd6b; }
+      .bad { fill: #ff7a90; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+
+  <!-- Sidebar -->
+  <rect class="panel" x="24" y="24" width="240" height="672" rx="14"/>
+  <text class="title" x="48" y="70">Finance</text>
+  <text class="muted" x="48" y="110">Dashboard</text>
+  <rect class="pill" x="40" y="92" width="208" height="34" rx="10"/>
+  <text class="muted" x="48" y="165">Expenses</text>
+  <text class="muted" x="48" y="205">Budgets</text>
+  <text class="muted" x="48" y="245">Stocks</text>
+  <text class="muted" x="48" y="285">AI Insights</text>
+
+  <!-- Header -->
+  <text class="title" x="296" y="64">Dashboard</text>
+  <text class="muted" x="296" y="92">All-time totals + current month budget status</text>
+
+  <!-- KPI cards -->
+  <rect class="card" x="296" y="120" width="304" height="132" rx="14"/>
+  <text class="h2" x="320" y="154">Total Income</text>
+  <text class="num" x="320" y="198">$12,500.00</text>
+  <circle class="accent" cx="566" cy="156" r="6"/>
+
+  <rect class="card" x="616" y="120" width="304" height="132" rx="14"/>
+  <text class="h2" x="640" y="154">Total Expense</text>
+  <text class="num" x="640" y="198">$8,230.55</text>
+  <circle class="warn" cx="886" cy="156" r="6"/>
+
+  <rect class="card" x="936" y="120" width="320" height="132" rx="14"/>
+  <text class="h2" x="960" y="154">Net Balance</text>
+  <text class="num" x="960" y="198">$4,269.45</text>
+  <circle class="accent" cx="1222" cy="156" r="6"/>
+
+  <!-- Charts -->
+  <rect class="card" x="296" y="270" width="640" height="426" rx="14"/>
+  <text class="h2" x="320" y="304">Monthly Trend (last 6)</text>
+  <rect class="panel" x="320" y="330" width="592" height="330" rx="10"/>
+  <path d="M340 610 L430 540 L520 570 L610 500 L700 520 L790 460 L880 490" fill="none" stroke="#66e3c4" stroke-width="3"/>
+  <path d="M340 585 L430 600 L520 560 L610 610 L700 590 L790 620 L880 595" fill="none" stroke="#ffcd6b" stroke-width="3"/>
+  <text class="muted" x="320" y="688">Green: income • Yellow: expense</text>
+
+  <rect class="card" x="960" y="270" width="296" height="250" rx="14"/>
+  <text class="h2" x="984" y="304">Over Budget</text>
+  <rect class="panel" x="984" y="330" width="248" height="46" rx="10"/>
+  <text class="muted" x="1000" y="360">Food</text>
+  <text class="muted" x="1160" y="360">+$45.20</text>
+  <rect class="panel" x="984" y="386" width="248" height="46" rx="10"/>
+  <text class="muted" x="1000" y="416">Transport</text>
+  <text class="muted" x="1160" y="416">+$12.00</text>
+  <circle class="bad" cx="1222" cy="304" r="6"/>
+
+  <rect class="card" x="960" y="536" width="296" height="160" rx="14"/>
+  <text class="h2" x="984" y="570">Top Categories</text>
+  <rect class="panel" x="984" y="590" width="248" height="18" rx="9"/>
+  <rect class="accent" x="984" y="590" width="180" height="18" rx="9"/>
+  <text class="muted" x="984" y="636">Food • Rent • Utilities</text>
+</svg>
+

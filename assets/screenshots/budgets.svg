@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .bg { fill: #0b1220; }
+      .panel { fill: #111a2c; stroke: #25324a; stroke-width: 1; }
+      .card { fill: #0f1a2f; stroke: #2a3a58; stroke-width: 1; }
+      .muted { fill: #93a4c7; font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+      .title { fill: #e6efff; font: 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .h2 { fill: #e6efff; font: 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .btn { fill: #1a2a49; stroke: #2a3a58; stroke-width: 1; }
+      .ok { fill: #66e3c4; }
+      .warn { fill: #ffcd6b; }
+      .bad { fill: #ff7a90; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+
+  <rect class="panel" x="24" y="24" width="240" height="672" rx="14"/>
+  <text class="title" x="48" y="70">Finance</text>
+  <text class="muted" x="48" y="110">Dashboard</text>
+  <text class="muted" x="48" y="165">Expenses</text>
+  <rect class="btn" x="40" y="188" width="208" height="34" rx="10"/>
+  <text class="muted" x="48" y="210">Budgets</text>
+  <text class="muted" x="48" y="245">Stocks</text>
+
+  <text class="title" x="296" y="64">Budgets</text>
+  <text class="muted" x="296" y="92">Monthly category budgets with current-month spend</text>
+
+  <!-- Create form -->
+  <rect class="card" x="296" y="120" width="960" height="150" rx="14"/>
+  <text class="h2" x="320" y="154">Create / Update Budget</text>
+  <rect class="panel" x="320" y="174" width="340" height="44" rx="10"/>
+  <text class="muted" x="332" y="202">Category</text>
+  <rect class="panel" x="672" y="174" width="260" height="44" rx="10"/>
+  <text class="muted" x="684" y="202">Monthly Limit</text>
+  <rect class="btn" x="944" y="174" width="140" height="44" rx="10"/>
+  <text class="muted" x="986" y="202">Save</text>
+  <rect class="btn" x="1096" y="174" width="136" height="44" rx="10"/>
+  <text class="muted" x="1132" y="202">Reset</text>
+
+  <!-- Status list -->
+  <rect class="card" x="296" y="290" width="960" height="406" rx="14"/>
+  <text class="h2" x="320" y="324">Budget Status (Current Month)</text>
+
+  <!-- Row 1 -->
+  <rect class="panel" x="320" y="346" width="912" height="86" rx="12"/>
+  <text class="muted" x="344" y="378">Food</text>
+  <text class="muted" x="344" y="408">Spent $700 / Limit $1500 • 46.67%</text>
+  <rect class="panel" x="760" y="370" width="432" height="14" rx="7"/>
+  <rect class="ok" x="760" y="370" width="202" height="14" rx="7"/>
+  <circle class="ok" cx="1210" cy="378" r="6"/>
+
+  <!-- Row 2 -->
+  <rect class="panel" x="320" y="444" width="912" height="86" rx="12"/>
+  <text class="muted" x="344" y="476">Transport</text>
+  <text class="muted" x="344" y="506">Spent $180 / Limit $200 • 90.00%</text>
+  <rect class="panel" x="760" y="468" width="432" height="14" rx="7"/>
+  <rect class="warn" x="760" y="468" width="388" height="14" rx="7"/>
+  <circle class="warn" cx="1210" cy="476" r="6"/>
+
+  <!-- Row 3 -->
+  <rect class="panel" x="320" y="542" width="912" height="86" rx="12"/>
+  <text class="muted" x="344" y="574">Entertainment</text>
+  <text class="muted" x="344" y="604">Spent $120 / Limit $100 • 120.00%</text>
+  <rect class="panel" x="760" y="566" width="432" height="14" rx="7"/>
+  <rect class="bad" x="760" y="566" width="432" height="14" rx="7"/>
+  <circle class="bad" cx="1210" cy="574" r="6"/>
+</svg>
+

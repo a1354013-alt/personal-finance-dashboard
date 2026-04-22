@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .bg { fill: #0b1220; }
+      .panel { fill: #111a2c; stroke: #25324a; stroke-width: 1; }
+      .card { fill: #0f1a2f; stroke: #2a3a58; stroke-width: 1; }
+      .muted { fill: #93a4c7; font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+      .title { fill: #e6efff; font: 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .h2 { fill: #e6efff; font: 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .btn { fill: #1a2a49; stroke: #2a3a58; stroke-width: 1; }
+      .ok { fill: #66e3c4; }
+      .warn { fill: #ffcd6b; }
+      .bad { fill: #ff7a90; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+
+  <rect class="panel" x="24" y="24" width="240" height="672" rx="14"/>
+  <text class="title" x="48" y="70">Finance</text>
+  <text class="muted" x="48" y="110">Dashboard</text>
+  <text class="muted" x="48" y="165">Expenses</text>
+  <text class="muted" x="48" y="205">Budgets</text>
+  <rect class="btn" x="40" y="236" width="208" height="34" rx="10"/>
+  <text class="muted" x="48" y="258">Stocks</text>
+  <text class="muted" x="48" y="300">AI Insights</text>
+
+  <text class="title" x="296" y="64">Stocks Watchlist</text>
+  <text class="muted" x="296" y="92">Track symbols, sync prices, and run fundamentals screening</text>
+
+  <!-- Add form -->
+  <rect class="card" x="296" y="120" width="960" height="150" rx="14"/>
+  <text class="h2" x="320" y="154">Add to Watchlist</text>
+  <rect class="panel" x="320" y="174" width="360" height="44" rx="10"/>
+  <text class="muted" x="332" y="202">Stock Code (e.g., AAPL)</text>
+  <rect class="btn" x="692" y="174" width="160" height="44" rx="10"/>
+  <text class="muted" x="738" y="202">Add</text>
+  <rect class="btn" x="864" y="174" width="184" height="44" rx="10"/>
+  <text class="muted" x="908" y="202">Sync Price</text>
+  <rect class="btn" x="1060" y="174" width="172" height="44" rx="10"/>
+  <text class="muted" x="1092" y="202">Sync Fundamentals</text>
+
+  <!-- Watchlist table -->
+  <rect class="card" x="296" y="290" width="960" height="406" rx="14"/>
+  <text class="h2" x="320" y="324">Watchlist</text>
+
+  <rect class="panel" x="320" y="346" width="912" height="44" rx="10"/>
+  <text class="muted" x="336" y="374">Symbol</text>
+  <text class="muted" x="460" y="374">Price</text>
+  <text class="muted" x="590" y="374">As of</text>
+  <text class="muted" x="740" y="374">Sync</text>
+  <text class="muted" x="980" y="374">Screen</text>
+
+  <rect class="panel" x="320" y="400" width="912" height="64" rx="10"/>
+  <text class="muted" x="336" y="438">AAPL</text>
+  <text class="muted" x="460" y="438">$100.00</text>
+  <text class="muted" x="590" y="438">2026-04-10</text>
+  <text class="muted" x="740" y="438">success</text>
+  <circle class="ok" cx="930" cy="428" r="6"/>
+  <text class="muted" x="980" y="438">passed</text>
+
+  <rect class="panel" x="320" y="474" width="912" height="64" rx="10"/>
+  <text class="muted" x="336" y="512">TSLA</text>
+  <text class="muted" x="460" y="512">—</text>
+  <text class="muted" x="590" y="512">—</text>
+  <text class="muted" x="740" y="512">pending</text>
+  <circle class="warn" cx="930" cy="502" r="6"/>
+  <text class="muted" x="980" y="512">unknown</text>
+
+  <rect class="panel" x="320" y="548" width="912" height="64" rx="10"/>
+  <text class="muted" x="336" y="586">NFLX</text>
+  <text class="muted" x="460" y="586">$450.20</text>
+  <text class="muted" x="590" y="586">2026-04-10</text>
+  <text class="muted" x="740" y="586">failed</text>
+  <circle class="bad" cx="930" cy="576" r="6"/>
+  <text class="muted" x="980" y="586">failed</text>
+</svg>
+

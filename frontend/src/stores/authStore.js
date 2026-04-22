@@ -3,10 +3,28 @@ import { getMe, login as loginRequest, register as registerRequest } from '@/api
 import { normalizeEmail, normalizeUser } from '@/api/contracts'
 import { toErrorMessage } from '@/stores/storeUtils'
 
+function safeLocalStorageGetItem(key) {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function safeJsonParse(value) {
+  if (!value) return null
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: normalizeUser(JSON.parse(localStorage.getItem('user') || 'null')),
-    token: localStorage.getItem('token') || null,
+    user: normalizeUser(safeJsonParse(safeLocalStorageGetItem('user'))),
+    token: safeLocalStorageGetItem('token') || null,
     loading: false,
     error: null
   }),
@@ -24,16 +42,33 @@ export const useAuthStore = defineStore('auth', {
     },
 
     persistSession() {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return
       if (this.token) {
-        localStorage.setItem('token', this.token)
+        try {
+          localStorage.setItem('token', this.token)
+        } catch {
+          // ignore storage failures (private mode / quota / blocked)
+        }
       } else {
-        localStorage.removeItem('token')
+        try {
+          localStorage.removeItem('token')
+        } catch {
+          // ignore
+        }
       }
 
       if (this.user) {
-        localStorage.setItem('user', JSON.stringify(this.user))
+        try {
+          localStorage.setItem('user', JSON.stringify(this.user))
+        } catch {
+          // ignore
+        }
       } else {
-        localStorage.removeItem('user')
+        try {
+          localStorage.removeItem('user')
+        } catch {
+          // ignore
+        }
       }
     },
 

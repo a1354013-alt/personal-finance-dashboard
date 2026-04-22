@@ -77,13 +77,10 @@ def build_budget_status(
         budget_status.append(
             {
                 "id": budget.id,
-                "user_id": budget.user_id,
                 "category": budget.category,
                 "monthly_limit": monthly_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-                "created_at": budget.created_at,
                 "current_spent": spent,
                 "percent_used": percent_used,
-                "over_budget": spent > monthly_limit,
             }
         )
 

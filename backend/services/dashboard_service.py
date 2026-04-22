@@ -55,7 +55,7 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
             "over": _money(Decimal(item["current_spent"]) - Decimal(item["monthly_limit"])),
         }
         for item in budget_status
-        if item["over_budget"]
+        if Decimal(item["current_spent"]) > Decimal(item["monthly_limit"])
     ]
 
     return {

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <style>
+      .bg { fill: #0b1220; }
+      .panel { fill: #111a2c; stroke: #25324a; stroke-width: 1; }
+      .card { fill: #0f1a2f; stroke: #2a3a58; stroke-width: 1; }
+      .muted { fill: #93a4c7; font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+      .title { fill: #e6efff; font: 24px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .h2 { fill: #e6efff; font: 16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-weight: 700; }
+      .btn { fill: #1a2a49; stroke: #2a3a58; stroke-width: 1; }
+      .accent { fill: #66e3c4; }
+      .warn { fill: #ffcd6b; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+
+  <rect class="panel" x="24" y="24" width="240" height="672" rx="14"/>
+  <text class="title" x="48" y="70">Finance</text>
+  <text class="muted" x="48" y="110">Dashboard</text>
+  <rect class="btn" x="40" y="138" width="208" height="34" rx="10"/>
+  <text class="muted" x="48" y="160">Expenses</text>
+  <text class="muted" x="48" y="205">Budgets</text>
+  <text class="muted" x="48" y="245">Stocks</text>
+
+  <text class="title" x="296" y="64">Expenses</text>
+  <text class="muted" x="296" y="92">Log income/expense records and review history</text>
+
+  <!-- Create form -->
+  <rect class="card" x="296" y="120" width="960" height="170" rx="14"/>
+  <text class="h2" x="320" y="154">Add Record</text>
+  <rect class="panel" x="320" y="170" width="220" height="42" rx="10"/>
+  <text class="muted" x="332" y="197">Amount</text>
+  <rect class="panel" x="552" y="170" width="220" height="42" rx="10"/>
+  <text class="muted" x="564" y="197">Category</text>
+  <rect class="panel" x="784" y="170" width="160" height="42" rx="10"/>
+  <text class="muted" x="796" y="197">Type</text>
+  <rect class="panel" x="956" y="170" width="160" height="42" rx="10"/>
+  <text class="muted" x="968" y="197">Date</text>
+  <rect class="btn" x="1128" y="170" width="104" height="42" rx="10"/>
+  <text class="muted" x="1156" y="197">Save</text>
+  <circle class="accent" cx="1210" cy="150" r="6"/>
+
+  <rect class="panel" x="320" y="224" width="912" height="42" rx="10"/>
+  <text class="muted" x="332" y="251">Note (optional)</text>
+
+  <!-- Table -->
+  <rect class="card" x="296" y="310" width="960" height="386" rx="14"/>
+  <text class="h2" x="320" y="344">Recent Records</text>
+
+  <rect class="panel" x="320" y="366" width="912" height="44" rx="10"/>
+  <text class="muted" x="336" y="394">Date</text>
+  <text class="muted" x="460" y="394">Category</text>
+  <text class="muted" x="700" y="394">Type</text>
+  <text class="muted" x="820" y="394">Amount</text>
+  <text class="muted" x="980" y="394">Actions</text>
+
+  <!-- Rows -->
+  <rect class="panel" x="320" y="420" width="912" height="54" rx="10"/>
+  <text class="muted" x="336" y="452">2026-04-10</text>
+  <text class="muted" x="460" y="452">Food</text>
+  <text class="muted" x="700" y="452">expense</text>
+  <text class="muted" x="820" y="452">$12.50</text>
+  <rect class="btn" x="1088" y="435" width="124" height="34" rx="10"/>
+  <text class="muted" x="1122" y="458">Delete</text>
+
+  <rect class="panel" x="320" y="484" width="912" height="54" rx="10"/>
+  <text class="muted" x="336" y="516">2026-04-09</text>
+  <text class="muted" x="460" y="516">Salary</text>
+  <text class="muted" x="700" y="516">income</text>
+  <text class="muted" x="820" y="516">$3,000.00</text>
+  <rect class="btn" x="1088" y="499" width="124" height="34" rx="10"/>
+  <text class="muted" x="1122" y="522">Delete</text>
+
+  <circle class="warn" cx="1240" cy="344" r="6"/>
+</svg>
+
