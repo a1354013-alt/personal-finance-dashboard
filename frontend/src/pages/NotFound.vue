@@ -1,12 +1,18 @@
 <template>
   <div class="auth-container">
     <div class="card auth-card">
-      <h2>Page Not Found</h2>
-      <p class="auth-subtitle">The page you are looking for does not exist or has moved.</p>
-      <router-link class="btn btn-primary auth-submit" to="/">Back to Dashboard</router-link>
+      <h2>{{ t('notFound.title') }}</h2>
+      <p class="auth-subtitle">{{ t('notFound.subtitle') }}</p>
+      <router-link class="btn btn-primary auth-submit" to="/">{{ t('common.backToDashboard') }}</router-link>
     </div>
   </div>
 </template>
+
+<script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+</script>
 
 <style scoped>
 .auth-container {

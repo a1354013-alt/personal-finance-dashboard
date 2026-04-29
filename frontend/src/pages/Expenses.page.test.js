@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { createI18nInstance } from '@/i18n'
 import Expenses from '@/pages/Expenses.vue'
 
 const getExpensesMock = vi.fn(async () => [
@@ -26,18 +27,20 @@ describe('Expenses page', () => {
 
   it('loads expenses and shows the table row', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Expenses, { global: { plugins: [pinia] } })
+    const wrapper = mount(Expenses, { global: { plugins: [pinia, i18n] } })
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Lunch')
-      expect(wrapper.text()).toContain('Food')
+      expect(wrapper.text()).toContain('食物')
     })
   })
 
   it('creates and deletes an expense via store flow', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Expenses, { global: { plugins: [pinia] } })
+    const wrapper = mount(Expenses, { global: { plugins: [pinia, i18n] } })
 
     await wrapper.find('#expense-amount').setValue('99.5')
     await wrapper.find('#expense-type').setValue('expense')

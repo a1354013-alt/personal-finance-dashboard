@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getAiSummary, getBudgetAdvice, getDashboardCharts, getDashboardSummary } from '@/api/dashboard'
 import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardCharts, normalizeDashboardSummary } from '@/api/contracts'
+import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useDashboardStore = defineStore('dashboard', () => {
@@ -26,7 +27,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       summary.value = normalizeDashboardSummary(result)
     } catch (err) {
       summary.value = null
-      error.value = toErrorMessage(err, 'Unable to load dashboard summary.')
+      error.value = toErrorMessage(err, i18n.global.t('dashboard.errors.summary'))
     } finally {
       loading.value = false
     }
@@ -40,7 +41,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       charts.value = normalizeDashboardCharts(result)
     } catch (err) {
       charts.value = null
-      chartsError.value = toErrorMessage(err, 'Unable to load chart data.')
+      chartsError.value = toErrorMessage(err, i18n.global.t('dashboard.errors.charts'))
     } finally {
       chartsLoading.value = false
     }
@@ -54,10 +55,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
       const result = await getAiSummary()
       aiSummary.value = normalizeAiSummary(result)
       if (!aiSummary.value) {
-        aiSummaryError.value = 'Unable to load AI summary.'
+        aiSummaryError.value = i18n.global.t('dashboard.errors.aiSummary')
       }
     } catch (error) {
-      aiSummaryError.value = toErrorMessage(error, 'Unable to load AI summary.')
+      aiSummaryError.value = toErrorMessage(error, i18n.global.t('dashboard.errors.aiSummary'))
     } finally {
       aiSummaryLoading.value = false
     }
@@ -71,11 +72,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
       const result = await getBudgetAdvice()
       budgetAdvice.value = normalizeBudgetAdvice(result)
       if (!budgetAdvice.value) {
-        budgetAdviceError.value = 'Unable to load budget advice.'
+        budgetAdviceError.value = i18n.global.t('dashboard.errors.budgetAdvice')
       }
     } catch (e) {
       budgetAdvice.value = ''
-      budgetAdviceError.value = toErrorMessage(e, 'Unable to load budget advice.')
+      budgetAdviceError.value = toErrorMessage(e, i18n.global.t('dashboard.errors.budgetAdvice'))
     } finally {
       budgetAdviceLoading.value = false
     }

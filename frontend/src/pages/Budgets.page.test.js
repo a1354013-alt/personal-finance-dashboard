@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { createI18nInstance } from '@/i18n'
 import Budgets from '@/pages/Budgets.vue'
 
 vi.mock('@/api/budgets', () => ({
@@ -31,25 +32,27 @@ describe('Budgets page', () => {
 
   it('loads budgets and renders status', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Budgets, { global: { plugins: [pinia] } })
+    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Food')
-      expect(wrapper.text()).toContain('20.0% used')
+      expect(wrapper.text()).toContain('食物')
+      expect(wrapper.text()).toContain('20.0% 已使用')
     })
   })
 
   it('submits a budget and shows success message', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Budgets, { global: { plugins: [pinia] } })
+    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
 
     await wrapper.find('#budget-category').setValue('Food')
     await wrapper.find('#budget-limit').setValue('1500')
     await wrapper.find('form').trigger('submit')
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Budget saved successfully.')
+      expect(wrapper.text()).toContain('預算已儲存。')
     })
   })
 })

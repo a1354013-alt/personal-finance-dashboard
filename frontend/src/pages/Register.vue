@@ -1,35 +1,35 @@
 <template>
   <div class="auth-container">
     <div class="card auth-card">
-      <h2>Create Account</h2>
-      <p class="auth-subtitle">Passwords must be at least 8 characters long.</p>
+      <h2>{{ t('auth.createAccount') }}</h2>
+      <p class="auth-subtitle">{{ t('auth.registerSubtitle') }}</p>
 
       <form @submit.prevent="handleRegister">
         <div class="form-group">
-          <label for="register-email">Email</label>
+          <label for="register-email">{{ t('auth.email') }}</label>
           <input id="register-email" v-model.trim="form.email" type="email" required placeholder="you@example.com" />
         </div>
 
         <div class="form-group">
-          <label for="register-password">Password</label>
-          <input id="register-password" v-model="form.password" type="password" required placeholder="At least 8 characters" />
+          <label for="register-password">{{ t('auth.password') }}</label>
+          <input id="register-password" v-model="form.password" type="password" required :placeholder="t('auth.passwordHint')" />
         </div>
 
         <div class="form-group">
-          <label for="register-confirm-password">Confirm Password</label>
-          <input id="register-confirm-password" v-model="form.confirmPassword" type="password" required placeholder="Repeat your password" />
+          <label for="register-confirm-password">{{ t('auth.confirmPassword') }}</label>
+          <input id="register-confirm-password" v-model="form.confirmPassword" type="password" required :placeholder="t('auth.confirmPassword')" />
         </div>
 
         <div v-if="formError || authStore.error" class="error-msg">{{ formError || authStore.error }}</div>
 
         <button class="btn btn-primary auth-submit" :disabled="authStore.loading">
-          {{ authStore.loading ? 'Creating account...' : 'Register' }}
+          {{ authStore.loading ? t('auth.registerLoading') : t('auth.registerAction') }}
         </button>
       </form>
 
       <div class="auth-footer">
-        <span>Already have an account?</span>
-        <router-link to="/login">Sign In</router-link>
+        <span>{{ t('auth.alreadyHaveAccount') }}</span>
+        <router-link to="/login">{{ t('auth.signIn') }}</router-link>
       </div>
     </div>
   </div>
@@ -37,12 +37,14 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const formError = ref('')
+const { t } = useI18n()
 
 const form = ref({
   email: '',
@@ -54,7 +56,7 @@ async function handleRegister() {
   formError.value = ''
 
   if (form.value.password !== form.value.confirmPassword) {
-    formError.value = 'Passwords do not match.'
+    formError.value = t('auth.passwordsDoNotMatch')
     return
   }
 

@@ -2,9 +2,9 @@
   <div class="stocks-page">
     <div class="page-header hero-header">
       <div>
-        <p class="eyebrow">Market Workspace</p>
-        <h1>Watchlist, cached history, fundamentals, and AI context</h1>
-        <p>Price history is cached in the backend, fundamentals sync in background jobs, and the UI never waits on yfinance.</p>
+        <p class="eyebrow">{{ t('stocks.heroTag') }}</p>
+        <h1>{{ t('stocks.heroTitle') }}</h1>
+        <p>{{ t('stocks.heroSubtitle') }}</p>
       </div>
     </div>
 
@@ -13,41 +13,41 @@
 
     <section class="card">
       <div class="section-header">
-        <h2>Watchlist Controls</h2>
+        <h2>{{ t('stocks.controls') }}</h2>
         <div class="action-group">
           <button class="btn btn-secondary" :disabled="stockStore.syncAllLoading" @click="handleSyncAll">
-            {{ stockStore.syncAllLoading ? 'Queueing...' : 'Queue Price Sync' }}
+            {{ stockStore.syncAllLoading ? t('stocks.queueing') : t('stocks.queuePriceSync') }}
           </button>
           <button class="btn btn-secondary" :disabled="stockStore.fundamentalsSyncing" @click="handleSyncFundamentals">
-            {{ stockStore.fundamentalsSyncing ? 'Queueing...' : 'Queue Fundamentals Sync' }}
+            {{ stockStore.fundamentalsSyncing ? t('stocks.queueing') : t('stocks.queueFundamentalsSync') }}
           </button>
         </div>
       </div>
 
       <form class="form-row" @submit.prevent="handleAddWatchlist">
         <div class="form-group">
-          <label for="stock-code">Stock Code</label>
+          <label for="stock-code">{{ t('stocks.stockCode') }}</label>
           <input id="stock-code" v-model.trim="newStockCode" type="text" placeholder="2330 or AAPL" required />
         </div>
         <button type="submit" class="btn btn-primary" :disabled="isAdding">
-          {{ isAdding ? 'Adding...' : 'Add to Watchlist' }}
+          {{ isAdding ? t('stocks.adding') : t('stocks.addWatchlist') }}
         </button>
       </form>
     </section>
 
     <OnboardingCard
       v-if="!stockStore.watchlist.length && !stockStore.dashboardLoading"
-      title="Build your market dashboard"
-      description="The stock workspace is strongest when price history, fundamentals, and AI explanation all refer to the same selected symbol."
+      :title="t('stocks.onboardingTitle')"
+      :description="t('stocks.onboardingDescription')"
       :steps="[
-        'Add a stock code to the watchlist.',
-        'Queue price sync to populate historical trend data.',
-        'Queue fundamentals sync and review the AI explanation panel.'
+        t('stocks.onboardingStepOne'),
+        t('stocks.onboardingStepTwo'),
+        t('stocks.onboardingStepThree')
       ]"
     />
 
     <section v-if="stockStore.watchlist.length" class="card stock-selector">
-      <h2>Selected Stock</h2>
+      <h2>{{ t('stocks.selectedStock') }}</h2>
       <div class="chip-list">
         <button
           v-for="item in stockStore.watchlist"
@@ -69,8 +69,8 @@
     <template v-else>
       <div class="stocks-grid">
         <ChartPanel
-          title="Price Trend"
-          subtitle="Cached price history from stock_price_history"
+          :title="t('stocks.priceTrend')"
+          :subtitle="t('stocks.priceTrendSubtitle')"
           :loading="stockStore.dashboardLoading"
           :error="stockStore.watchlistError || ''"
           :labels="priceTrend.labels"
@@ -78,8 +78,8 @@
         />
 
         <section class="card fundamentals-card">
-          <h2>Fundamentals Summary</h2>
-          <div v-if="!stockStore.dashboard?.fundamentals" class="empty-state">No data yet</div>
+          <h2>{{ t('stocks.fundamentalsSummary') }}</h2>
+          <div v-if="!stockStore.dashboard?.fundamentals" class="empty-state">{{ t('common.empty') }}</div>
           <div v-else class="fundamentals-grid">
             <article v-for="item in fundamentalsItems" :key="item.label" class="fundamentals-item">
               <span class="fundamentals-label">{{ item.label }}</span>
@@ -89,19 +89,19 @@
         </section>
 
         <section class="card ai-card">
-          <h2>AI Explanation Panel</h2>
+          <h2>{{ t('stocks.aiExplanation') }}</h2>
           <div v-if="stockStore.dashboard?.ai_explanation" class="ai-explanation">{{ stockStore.dashboard.ai_explanation }}</div>
-          <div v-else class="empty-state">No data yet</div>
+          <div v-else class="empty-state">{{ t('common.empty') }}</div>
         </section>
       </div>
 
       <section class="card">
         <div class="section-header">
-          <h2>Watchlist Grid</h2>
-          <span class="helper-text">Queued syncs update the status badge without blocking the request.</span>
+          <h2>{{ t('stocks.watchlistGrid') }}</h2>
+          <span class="helper-text">{{ t('stocks.helperText') }}</span>
         </div>
 
-        <div v-if="stockStore.watchlist.length === 0" class="empty-state">No data yet</div>
+        <div v-if="stockStore.watchlist.length === 0" class="empty-state">{{ t('common.empty') }}</div>
         <div v-else class="watchlist-grid">
           <article v-for="item in stockStore.watchlist" :key="item.id" class="watchlist-tile">
             <div class="tile-head">
@@ -113,13 +113,13 @@
                 {{ item.price_sync_status }}
               </span>
             </div>
-            <div class="tile-price">{{ item.price != null ? formatPrice(item.price) : 'No data yet' }}</div>
-            <div class="tile-meta">{{ item.date || 'Awaiting price history' }}</div>
+            <div class="tile-price">{{ item.price != null ? formatPrice(item.price) : t('stocks.noDataPrice') }}</div>
+            <div class="tile-meta">{{ item.date || t('stocks.awaitingPriceHistory') }}</div>
             <div class="tile-actions">
               <button class="btn btn-primary" :disabled="stockStore.isSingleSyncing(item.stock_code)" @click="handleSyncSingle(item.stock_code)">
-                {{ stockStore.isSingleSyncing(item.stock_code) ? 'Queueing...' : 'Queue Sync' }}
+                {{ stockStore.isSingleSyncing(item.stock_code) ? t('stocks.queueing') : t('stocks.queuePriceSync') }}
               </button>
-              <button class="btn btn-danger" :disabled="stockStore.deleting" @click="handleDeleteWatchlist(item.id)">Delete</button>
+              <button class="btn btn-danger" :disabled="stockStore.deleting" @click="handleDeleteWatchlist(item.id)">{{ t('common.delete') }}</button>
             </div>
             <div v-if="item.last_sync_error" class="tile-error">{{ item.last_sync_error }}</div>
           </article>
@@ -128,10 +128,10 @@
 
       <div class="stocks-grid">
         <section class="card">
-          <h2>Passed Screen</h2>
-          <div v-if="stockStore.filterLoading" class="loading-text">Loading screening results...</div>
+          <h2>{{ t('stocks.passedScreen') }}</h2>
+          <div v-if="stockStore.filterLoading" class="loading-text">{{ t('stocks.loadingScreening') }}</div>
           <div v-else-if="stockStore.filterError" class="error-msg">{{ stockStore.filterError }}</div>
-          <div v-else-if="stockStore.passedStocks.length === 0" class="empty-state">No data yet</div>
+          <div v-else-if="stockStore.passedStocks.length === 0" class="empty-state">{{ t('common.empty') }}</div>
           <ul v-else class="result-list">
             <li v-for="stock in stockStore.passedStocks" :key="stock.stock_code">
               <strong>{{ stock.stock_code }}</strong>
@@ -141,10 +141,10 @@
         </section>
 
         <section class="card">
-          <h2>Needs Attention</h2>
-          <div v-if="stockStore.filterLoading" class="loading-text">Loading screening results...</div>
+          <h2>{{ t('stocks.needsAttention') }}</h2>
+          <div v-if="stockStore.filterLoading" class="loading-text">{{ t('stocks.loadingScreening') }}</div>
           <div v-else-if="stockStore.filterError" class="error-msg">{{ stockStore.filterError }}</div>
-          <div v-else-if="stockStore.failedStocks.length === 0" class="empty-state">No data yet</div>
+          <div v-else-if="stockStore.failedStocks.length === 0" class="empty-state">{{ t('common.empty') }}</div>
           <ul v-else class="result-list">
             <li v-for="stock in stockStore.failedStocks" :key="stock.stock_code">
               <strong>{{ stock.stock_code }}</strong>
@@ -159,19 +159,22 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ChartPanel from '@/components/ChartPanel.vue'
 import OnboardingCard from '@/components/OnboardingCard.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
 import { useStockStore } from '@/stores/stockStore'
+import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
 const stockStore = useStockStore()
 const newStockCode = ref('')
 const isAdding = ref(false)
 const actionMessage = ref('')
 const actionError = ref('')
+const { t, locale } = useI18n()
 
 function formatPrice(value) {
-  return `NT$ ${Number(value).toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return formatCurrencyValue(Number(value), locale.value)
 }
 
 function statusBadgeClass(status) {
@@ -182,8 +185,8 @@ function statusBadgeClass(status) {
 
 function fundamentalsMetaText(stock) {
   const meta = stock?.meta
-  if (!meta) return 'No data yet'
-  return `${meta.provider} | ttl ${meta.ttl_hours}h | ${meta.is_stale ? 'stale' : 'fresh'}`
+  if (!meta) return t('common.empty')
+  return `${meta.provider} | ttl ${meta.ttl_hours}h | ${meta.is_stale ? t('stocks.stale') : t('stocks.fresh')}`
 }
 
 const priceTrend = computed(() => ({
@@ -204,12 +207,12 @@ const fundamentalsItems = computed(() => {
   const fundamentals = stockStore.dashboard?.fundamentals
   if (!fundamentals) return []
   return [
-    { label: 'P/E', value: fundamentals.pe_ratio != null ? fundamentals.pe_ratio.toFixed(2) : 'No data yet' },
-    { label: 'P/B', value: fundamentals.pb_ratio != null ? fundamentals.pb_ratio.toFixed(2) : 'No data yet' },
-    { label: 'Yield', value: fundamentals.dividend_yield != null ? `${fundamentals.dividend_yield.toFixed(2)}%` : 'No data yet' },
-    { label: 'Revenue Growth', value: fundamentals.revenue_growth != null ? `${fundamentals.revenue_growth.toFixed(2)}%` : 'No data yet' },
-    { label: 'EPS', value: fundamentals.eps != null ? fundamentals.eps.toFixed(2) : 'No data yet' },
-    { label: 'Status', value: fundamentals.status || 'No data yet' }
+    { label: 'P/E', value: fundamentals.pe_ratio != null ? fundamentals.pe_ratio.toFixed(2) : t('common.empty') },
+    { label: 'P/B', value: fundamentals.pb_ratio != null ? fundamentals.pb_ratio.toFixed(2) : t('common.empty') },
+    { label: 'Yield', value: fundamentals.dividend_yield != null ? `${fundamentals.dividend_yield.toFixed(2)}%` : t('common.empty') },
+    { label: 'Revenue Growth', value: fundamentals.revenue_growth != null ? `${fundamentals.revenue_growth.toFixed(2)}%` : t('common.empty') },
+    { label: 'EPS', value: fundamentals.eps != null ? fundamentals.eps.toFixed(2) : t('common.empty') },
+    { label: 'Status', value: fundamentals.status || t('common.empty') }
   ]
 })
 
@@ -229,10 +232,10 @@ async function handleAddWatchlist() {
   try {
     const response = await stockStore.addToWatchlist(newStockCode.value)
     newStockCode.value = ''
-    actionMessage.value = `${response.stock_code} added. Market data sync has been queued in the background.`
+    actionMessage.value = `${response.stock_code} ${t('stocks.syncQueued')}`
     await stockStore.fetchFilterResults()
   } catch (error) {
-    actionError.value = error.message || 'Unable to add stock.'
+    actionError.value = error.message || t('common.unknownError')
   } finally {
     isAdding.value = false
   }
@@ -243,10 +246,10 @@ async function handleDeleteWatchlist(id) {
   actionError.value = ''
   try {
     await stockStore.deleteFromWatchlist(id)
-    actionMessage.value = 'Watchlist item deleted.'
+    actionMessage.value = t('common.delete')
     await stockStore.fetchFilterResults()
   } catch (error) {
-    actionError.value = error.message || 'Unable to delete stock.'
+    actionError.value = error.message || t('common.unknownError')
   }
 }
 
@@ -255,9 +258,9 @@ async function handleSyncSingle(stockCode) {
   actionError.value = ''
   try {
     const response = await stockStore.syncSinglePrice(stockCode)
-    actionMessage.value = response?.message || `${stockCode} sync queued.`
+    actionMessage.value = response?.message || `${stockCode} ${t('stocks.syncQueued')}`
   } catch (error) {
-    actionError.value = error.message || `Unable to sync ${stockCode}.`
+    actionError.value = error.message || t('common.unknownError')
   }
 }
 
@@ -268,7 +271,7 @@ async function handleSyncAll() {
     const response = await stockStore.syncAllPrices()
     actionMessage.value = response.message || 'Watchlist sync queued.'
   } catch (error) {
-    actionError.value = error.message || 'Unable to sync watchlist prices.'
+    actionError.value = error.message || t('common.unknownError')
   }
 }
 
@@ -277,9 +280,9 @@ async function handleSyncFundamentals() {
   actionError.value = ''
   try {
     await stockStore.syncFundamentals()
-    actionMessage.value = 'Fundamentals sync queued for watchlist items.'
+    actionMessage.value = t('stocks.syncQueued')
   } catch (error) {
-    actionError.value = error.message || 'Unable to sync fundamentals.'
+    actionError.value = error.message || t('common.unknownError')
   }
 }
 

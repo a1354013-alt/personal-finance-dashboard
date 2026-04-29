@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { createI18nInstance } from '@/i18n'
 import Login from '@/pages/Login.vue'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -23,13 +24,14 @@ describe('Login page', () => {
 
   it('redirects on login success', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
     const store = useAuthStore()
     store.login = vi.fn(async () => true)
 
     const wrapper = mount(Login, {
       global: {
-        plugins: [pinia],
+        plugins: [pinia, i18n],
         stubs: { RouterLink: { template: '<a />' } }
       }
     })
@@ -44,13 +46,14 @@ describe('Login page', () => {
 
   it('does not redirect on login failure', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
     const store = useAuthStore()
     store.login = vi.fn(async () => false)
 
     const wrapper = mount(Login, {
       global: {
-        plugins: [pinia],
+        plugins: [pinia, i18n],
         stubs: { RouterLink: { template: '<a />' } }
       }
     })

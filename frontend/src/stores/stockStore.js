@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as stockApi from '@/api/stocks'
+import i18n from '@/i18n'
 import {
   normalizeFilterMetadata,
   normalizeFundamentalsFilterResult,
@@ -39,7 +40,7 @@ export const useStockStore = defineStore('stock', () => {
       watchlist.value = Array.isArray(result) ? result.map(normalizeWatchlistItem).filter(Boolean) : []
     } catch (error) {
       watchlist.value = []
-      watchlistError.value = toErrorMessage(error, 'Unable to load watchlist.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
     } finally {
       watchlistLoading.value = false
     }
@@ -54,7 +55,7 @@ export const useStockStore = defineStore('stock', () => {
       watchlist.value = dashboard.value?.watchlist || []
     } catch (error) {
       dashboard.value = null
-      watchlistError.value = toErrorMessage(error, 'Unable to load stock dashboard.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
     } finally {
       dashboardLoading.value = false
     }
@@ -67,7 +68,7 @@ export const useStockStore = defineStore('stock', () => {
       await fetchDashboard(response.stock_code)
       return normalizeWatchlistItem(response) || response
     } catch (error) {
-      watchlistError.value = toErrorMessage(error, 'Unable to add watchlist item.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     }
   }
@@ -80,7 +81,7 @@ export const useStockStore = defineStore('stock', () => {
       await stockApi.deleteFromWatchlist(id)
       await fetchDashboard()
     } catch (error) {
-      watchlistError.value = toErrorMessage(error, 'Unable to delete watchlist item.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       deleting.value = false
@@ -95,7 +96,7 @@ export const useStockStore = defineStore('stock', () => {
       await fetchDashboard(selectedStockCode.value)
       return response
     } catch (error) {
-      watchlistError.value = toErrorMessage(error, 'Unable to sync watchlist prices.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       syncAllLoading.value = false
@@ -118,7 +119,7 @@ export const useStockStore = defineStore('stock', () => {
       await fetchDashboard(stockCode)
       return response
     } catch (error) {
-      watchlistError.value = toErrorMessage(error, 'Unable to sync stock price.')
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       syncingCodes.value = syncingCodes.value.filter((code) => code !== stockCode)
@@ -139,7 +140,7 @@ export const useStockStore = defineStore('stock', () => {
     } catch (error) {
       filterResults.value = []
       filterMetadata.value = null
-      filterError.value = toErrorMessage(error, 'Unable to load fundamentals screening results.')
+      filterError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
     } finally {
       filterLoading.value = false
     }
@@ -152,7 +153,7 @@ export const useStockStore = defineStore('stock', () => {
       await stockApi.syncWatchlistFundamentals({ force })
       await fetchFilterResults()
     } catch (error) {
-      fundamentalsError.value = toErrorMessage(error, 'Unable to sync fundamentals.')
+      fundamentalsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       fundamentalsSyncing.value = false

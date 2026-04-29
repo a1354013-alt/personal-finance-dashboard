@@ -1,7 +1,7 @@
 <template>
   <section class="card onboarding-card">
     <div>
-      <p class="eyebrow">First-time guide</p>
+      <p class="eyebrow">{{ t('dashboard.onboarding.eyebrow') }}</p>
       <h2>{{ title }}</h2>
       <p class="onboarding-copy">{{ description }}</p>
     </div>
@@ -12,6 +12,10 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   title: { type: String, required: true },
   description: { type: String, required: true },

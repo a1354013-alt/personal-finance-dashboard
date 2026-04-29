@@ -1,26 +1,26 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>Budgets</h1>
-      <p>Monthly budget status is calculated from current-month expense records only.</p>
+      <h1>{{ t('budgets.title') }}</h1>
+      <p>{{ t('budgets.subtitle') }}</p>
     </div>
 
     <div v-if="message" class="success-msg">{{ message }}</div>
     <div v-if="store.error || error" class="error-msg">{{ store.error || error }}</div>
 
     <section class="card">
-      <h2>Create or Update Budget</h2>
+      <h2>{{ t('budgets.formTitle') }}</h2>
       <form class="form-row" @submit.prevent="handleAddBudget">
         <div class="form-group">
-          <label for="budget-category">Category</label>
+          <label for="budget-category">{{ t('budgets.category') }}</label>
           <select id="budget-category" v-model="newBudget.category" required>
-            <option value="" disabled>Select a category</option>
-            <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
+            <option value="" disabled>{{ t('expenses.selectCategory') }}</option>
+            <option v-for="category in categories" :key="category" :value="category">{{ translateCategory(t, category) }}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="budget-limit">Monthly Limit</label>
+          <label for="budget-limit">{{ t('budgets.monthlyLimit') }}</label>
           <input
             id="budget-limit"
             v-model.number="newBudget.monthly_limit"
@@ -33,29 +33,29 @@
         </div>
 
         <button type="submit" class="btn btn-primary" :disabled="store.submitting">
-          {{ store.submitting ? 'Saving...' : 'Save Budget' }}
+          {{ store.submitting ? t('budgets.saveLoading') : t('budgets.saveAction') }}
         </button>
       </form>
     </section>
 
     <section class="card">
-      <h2>Current Month Status</h2>
+      <h2>{{ t('budgets.currentStatus') }}</h2>
 
-      <div v-if="store.loading" class="loading-text">Loading budgets...</div>
-      <div v-else-if="store.budgets.length === 0" class="empty-state">No data yet</div>
+      <div v-if="store.loading" class="loading-text">{{ t('budgets.loading') }}</div>
+      <div v-else-if="store.budgets.length === 0" class="empty-state">{{ t('common.empty') }}</div>
 
       <div v-else class="budget-list">
         <article v-for="budget in store.budgets" :key="budget.id" class="budget-item">
           <div class="budget-topline">
             <div>
-              <strong>{{ budget.category }}</strong>
+              <strong>{{ translateCategory(t, budget.category) }}</strong>
               <div class="budget-meta">
-                Limit {{ formatCurrency(budget.monthly_limit) }} | Spent {{ formatCurrency(budget.current_spent) }}
+                {{ t('budgets.limitLabel') }} {{ formatCurrency(budget.monthly_limit) }} | {{ t('budgets.spentLabel') }} {{ formatCurrency(budget.current_spent) }}
               </div>
             </div>
 
             <button class="btn btn-danger" :disabled="store.deleting" @click="handleDeleteBudget(budget.id)">
-              {{ store.deleting ? 'Deleting...' : 'Delete' }}
+              {{ store.deleting ? t('budgets.deleteLoading') : t('common.delete') }}
             </button>
           </div>
 
@@ -68,11 +68,11 @@
           </div>
 
           <div class="budget-footer">
-            <span>{{ budget.percent_used.toFixed(1) }}% used</span>
+            <span>{{ formatPercent(budget.percent_used) }} {{ t('budgets.used') }}</span>
             <span v-if="budget.percent_used > 100" class="over-limit">
-              Over by {{ formatCurrency(budget.current_spent - budget.monthly_limit) }}
+              {{ t('budgets.overBy') }} {{ formatCurrency(budget.current_spent - budget.monthly_limit) }}
             </span>
-            <span v-else>Remaining {{ formatCurrency(budget.monthly_limit - budget.current_spent) }}</span>
+            <span v-else>{{ t('budgets.remaining') }} {{ formatCurrency(budget.monthly_limit - budget.current_spent) }}</span>
           </div>
         </article>
       </div>
@@ -82,12 +82,16 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { EXPENSE_CATEGORIES } from '@/constants/categories'
 import { useBudgetStore } from '@/stores/budgetStore'
+import { translateCategory } from '@/utils/categories'
+import { formatCurrency as formatCurrencyValue, formatPercent as formatPercentValue } from '@/utils/formatters'
 
 const store = useBudgetStore()
 const message = ref('')
 const error = ref('')
+const { t, locale } = useI18n()
 
 const categories = EXPENSE_CATEGORIES
 
@@ -97,7 +101,11 @@ const newBudget = ref({
 })
 
 function formatCurrency(value) {
-  return `NT$ ${Number(value || 0).toLocaleString('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+  return formatCurrencyValue(value, locale.value)
+}
+
+function formatPercent(value) {
+  return formatPercentValue(value, locale.value)
 }
 
 function progressClass(percentUsed) {
@@ -117,10 +125,10 @@ async function handleAddBudget() {
 
   try {
     await store.saveBudget(newBudget.value)
-    message.value = 'Budget saved successfully.'
+    message.value = t('budgets.saved')
     newBudget.value = { category: '', monthly_limit: null }
   } catch (err) {
-    error.value = err.message || 'Unable to save budget.'
+    error.value = err.message || t('common.unknownError')
   }
 }
 
@@ -130,9 +138,9 @@ async function handleDeleteBudget(id) {
 
   try {
     await store.removeBudget(id)
-    message.value = 'Budget deleted.'
+    message.value = t('budgets.deleted')
   } catch (err) {
-    error.value = err.message || 'Unable to delete budget.'
+    error.value = err.message || t('common.unknownError')
   }
 }
 

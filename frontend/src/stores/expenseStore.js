@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { createExpense, deleteExpense, getExpenses } from '@/api/expenses'
 import { normalizeExpense } from '@/api/contracts'
+import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useExpenseStore = defineStore('expense', () => {
@@ -33,7 +34,7 @@ export const useExpenseStore = defineStore('expense', () => {
       expenses.value = Array.isArray(result) ? result.map(normalizeExpense).filter(Boolean) : []
     } catch (e) {
       expenses.value = []
-      error.value = toErrorMessage(e, 'Unable to load expenses.')
+      error.value = toErrorMessage(e, i18n.global.t('expenses.loading'))
     } finally {
       loading.value = false
     }
@@ -46,7 +47,7 @@ export const useExpenseStore = defineStore('expense', () => {
       await createExpense(data)
       await fetchExpenses(lastParams.value)
     } catch (e) {
-      error.value = toErrorMessage(e, 'Unable to add expense.')
+      error.value = toErrorMessage(e, i18n.global.t('common.unknownError'))
       throw e
     } finally {
       submitting.value = false
@@ -61,7 +62,7 @@ export const useExpenseStore = defineStore('expense', () => {
       await deleteExpense(id)
       await fetchExpenses(lastParams.value)
     } catch (e) {
-      error.value = toErrorMessage(e, 'Unable to delete expense.')
+      error.value = toErrorMessage(e, i18n.global.t('common.unknownError'))
       throw e
     } finally {
       deleting.value = false

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
 import { normalizeEmail, normalizeUser } from '@/api/contracts'
+import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
 
 function safeLocalStorageGetItem(key) {
@@ -100,7 +101,7 @@ export const useAuthStore = defineStore('auth', {
         this.persistSession()
         return true
       } catch (error) {
-        this.error = toErrorMessage(error, 'Login failed.')
+        this.error = toErrorMessage(error, i18n.global.t('auth.loginFailed'))
         return false
       } finally {
         this.loading = false
@@ -115,7 +116,7 @@ export const useAuthStore = defineStore('auth', {
         await registerRequest({ email: normalizeEmail(email), password })
         return true
       } catch (error) {
-        this.error = toErrorMessage(error, 'Registration failed.')
+        this.error = toErrorMessage(error, i18n.global.t('auth.registrationFailed'))
         return false
       } finally {
         this.loading = false
@@ -141,7 +142,7 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (error) {
         this.clearSession()
-        this.error = toErrorMessage(error, 'Session expired. Please sign in again.')
+        this.error = toErrorMessage(error, i18n.global.t('auth.sessionExpired'))
         return false
       } finally {
         this.loading = false

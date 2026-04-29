@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { createI18nInstance } from '@/i18n'
 import Stocks from '@/pages/Stocks.vue'
 
 const getFilterResultsMock = vi.fn(async () => [
@@ -70,26 +71,29 @@ describe('Stocks page', () => {
 
   it('renders watchlist status and price trend sections', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Stocks, { global: { plugins: [pinia], stubs: { ChartPanel: true } } })
+    const wrapper = mount(Stocks, { global: { plugins: [pinia, i18n], stubs: { ChartPanel: true } } })
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('NVDA')
       expect(wrapper.text()).toContain('Market data sync queued.')
-      expect(wrapper.text()).toContain('Watchlist Grid')
+      expect(wrapper.text()).toContain('追蹤清單')
     })
   })
 
   it('shows queued message on add when background sync is pending', async () => {
     const pinia = createPinia()
+    const i18n = createI18nInstance()
     setActivePinia(pinia)
-    const wrapper = mount(Stocks, { global: { plugins: [pinia], stubs: { ChartPanel: true } } })
+    const wrapper = mount(Stocks, { global: { plugins: [pinia, i18n], stubs: { ChartPanel: true } } })
 
     await wrapper.find('#stock-code').setValue('AAPL')
     await wrapper.find('form.form-row').trigger('submit')
 
     await vi.waitFor(() => {
       expect(addToWatchlistMock).toHaveBeenCalled()
-      expect(wrapper.text()).toContain('added. Market data sync has been queued')
+      expect(wrapper.text()).toContain('AAPL')
+      expect(wrapper.text()).toContain('同步已排入背景工作。')
     })
   })
 })
