@@ -5,7 +5,14 @@ vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
   getFilterResults: vi.fn(async () => [{ stock_code: 'AAPL', passed: false, fail_reasons: [], meta: { provider: 'x', ttl_hours: 24, is_stale: true } }]),
   getFilterMetadata: vi.fn(async () => ({ fundamentals_provider: 'yfinance', ttl_hours: 24, timeout_seconds: 8, message: 'ok' })),
-  syncWatchlistFundamentals: vi.fn(async () => ([]))
+  syncWatchlistFundamentals: vi.fn(async () => ([])),
+  getStockDashboard: vi.fn(async () => ({
+    selected_stock_code: 'AAPL',
+    watchlist: [],
+    price_history: [],
+    fundamentals: null,
+    ai_explanation: ''
+  }))
 }))
 
 import { useStockStore } from '@/stores/stockStore'
@@ -63,6 +70,16 @@ describe('stockStore', () => {
     await expect(store.syncFundamentals()).rejects.toThrow('boom')
     expect(store.fundamentalsSyncing).toBe(false)
     expect(store.fundamentalsError).toBe('boom')
+  })
+
+  it('fetchDashboard normalizes dashboard payloads', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    await store.fetchDashboard('AAPL')
+
+    expect(store.dashboard.selected_stock_code).toBe('AAPL')
+    expect(store.watchlist).toEqual([])
   })
 })
 

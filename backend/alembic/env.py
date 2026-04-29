@@ -9,7 +9,7 @@ from sqlalchemy import engine_from_config, pool
 from db.database import Base, normalize_database_url
 
 # Import models so Alembic can discover tables via Base.metadata
-from models import budget, expense, fundamentals, stock, user  # noqa: F401
+from models import budget, expense, fundamentals, job, refresh_token, stock, user  # noqa: F401
 
 config = context.config
 

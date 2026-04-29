@@ -42,7 +42,7 @@
       <h2>Current Month Status</h2>
 
       <div v-if="store.loading" class="loading-text">Loading budgets...</div>
-      <div v-else-if="store.budgets.length === 0" class="empty-state">No budgets yet.</div>
+      <div v-else-if="store.budgets.length === 0" class="empty-state">No data yet</div>
 
       <div v-else class="budget-list">
         <article v-for="budget in store.budgets" :key="budget.id" class="budget-item">

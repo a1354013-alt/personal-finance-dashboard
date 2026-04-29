@@ -1,26 +1,16 @@
 from __future__ import annotations
 
 import time
-from datetime import date
 from decimal import Decimal
 
 import pytest
 
+from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS
+from models.job import SyncJobORM
 from providers.fundamentals.base import BaseFundamentalsProvider, FundamentalsFetchResult, FundamentalsProviderError
-from providers.fundamentals.timeout_wrapper import TimeoutFundamentalsProvider
 from providers.fundamentals.factory import reset_fundamentals_provider_cache
-
-
-def register_and_login(client, email: str) -> str:
-    register_response = client.post("/api/auth/register", json={"email": email, "password": "password123"})
-    assert register_response.status_code == 201
-    login_response = client.post("/api/auth/login", json={"email": email, "password": "password123"})
-    assert login_response.status_code == 200
-    return login_response.json()["access_token"]
-
-
-def auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+from providers.fundamentals.timeout_wrapper import TimeoutFundamentalsProvider
+from tests.conftest import auth_headers, drain_jobs, register_and_login
 
 
 class StaticProvider(BaseFundamentalsProvider):
@@ -66,17 +56,13 @@ def test_fundamentals_timeout_wrapper(monkeypatch: pytest.MonkeyPatch):
         provider.fetch(stock_code="AAPL")
 
 
-def test_fundamentals_sync_success_and_filter_reads_db(client, monkeypatch: pytest.MonkeyPatch):
+def test_fundamentals_sync_queues_job_then_filter_reads_db(client, monkeypatch: pytest.MonkeyPatch):
     provider = StaticProvider()
     reset_fundamentals_provider_cache()
 
     import routers.stocks as stocks_router
 
     monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
-    monkeypatch.setattr(
-        stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code})
-    )
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_real_price", classmethod(lambda cls, code: None))
 
     token = register_and_login(client, "fundamentals-ok@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -85,8 +71,9 @@ def test_fundamentals_sync_success_and_filter_reads_db(client, monkeypatch: pyte
     assert sync.status_code == 200
     snapshot = sync.json()[0]
     assert snapshot["stock_code"] == "AAPL"
-    assert snapshot["status"] == "success"
-    assert snapshot["source"] == "test-static"
+    assert snapshot["status"] == "pending"
+
+    drain_jobs()
 
     results = client.get("/api/stocks/filter", headers=auth_headers(token))
     assert results.status_code == 200
@@ -97,26 +84,22 @@ def test_fundamentals_sync_success_and_filter_reads_db(client, monkeypatch: pyte
     assert payload["meta"]["is_stale"] is False
 
 
-def test_fundamentals_sync_failure_is_persisted(client, monkeypatch: pytest.MonkeyPatch):
+def test_fundamentals_sync_failure_is_persisted_after_worker_runs(client, monkeypatch: pytest.MonkeyPatch):
     provider = StaticProvider(fail=True)
     reset_fundamentals_provider_cache()
 
     import routers.stocks as stocks_router
 
     monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
-    monkeypatch.setattr(
-        stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code})
-    )
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_real_price", classmethod(lambda cls, code: None))
 
     token = register_and_login(client, "fundamentals-fail@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
 
     sync = client.post("/api/stocks/fundamentals/sync", headers=auth_headers(token), json={"force": True})
     assert sync.status_code == 200
-    snapshot = sync.json()[0]
-    assert snapshot["status"] == "failed"
-    assert snapshot["error_message"]
+    assert sync.json()[0]["status"] == "pending"
+
+    drain_jobs()
 
     results = client.get("/api/stocks/filter", headers=auth_headers(token))
     assert results.status_code == 200
@@ -132,17 +115,7 @@ def test_get_watchlist_fundamentals_empty_when_no_watchlist(client):
     assert resp.json() == []
 
 
-def test_get_watchlist_fundamentals_empty_when_not_synced(client, monkeypatch: pytest.MonkeyPatch):
-    reset_fundamentals_provider_cache()
-
-    import routers.stocks as stocks_router
-
-    # Ensure watchlist creation does not call upstream during this test.
-    monkeypatch.setattr(
-        stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code})
-    )
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_real_price", classmethod(lambda cls, code: None))
-
+def test_get_watchlist_fundamentals_empty_when_not_synced(client):
     token = register_and_login(client, "fundamentals-list-nosync@example.com")
     add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
     assert add.status_code == 201
@@ -152,26 +125,20 @@ def test_get_watchlist_fundamentals_empty_when_not_synced(client, monkeypatch: p
     assert resp.json() == []
 
 
-def test_get_watchlist_fundamentals_returns_rows_after_sync(client, monkeypatch: pytest.MonkeyPatch):
+def test_job_rows_are_created_for_fundamentals_sync(client, monkeypatch: pytest.MonkeyPatch):
     provider = StaticProvider()
     reset_fundamentals_provider_cache()
 
     import routers.stocks as stocks_router
+    from db.database import SessionLocal
 
     monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
-    monkeypatch.setattr(
-        stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code})
-    )
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_real_price", classmethod(lambda cls, code: None))
 
-    token = register_and_login(client, "fundamentals-list-ok@example.com")
+    token = register_and_login(client, "fundamentals-jobs@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
+    client.post("/api/stocks/fundamentals/sync", headers=auth_headers(token), json={"force": True})
 
-    sync = client.post("/api/stocks/fundamentals/sync", headers=auth_headers(token), json={"force": True})
-    assert sync.status_code == 200
-
-    resp = client.get("/api/stocks/fundamentals", headers=auth_headers(token))
-    assert resp.status_code == 200
-    payload = resp.json()
-    assert len(payload) == 1
-    assert payload[0]["stock_code"] == "AAPL"
+    with SessionLocal() as db:
+        jobs = db.query(SyncJobORM).filter(SyncJobORM.job_type == JOB_TYPE_SYNC_FUNDAMENTALS).all()
+        assert len(jobs) == 1
+        assert jobs[0].status in {"pending", "success", "retrying", "running"}

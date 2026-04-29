@@ -11,10 +11,13 @@ from db.database import get_db
 from models.user import UserORM
 from services.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_refresh_token,
     create_access_token,
     get_current_user,
     get_password_hash,
     normalize_email,
+    revoke_refresh_token,
+    rotate_refresh_token,
     validate_password_strength,
     verify_password,
 )
@@ -41,8 +44,17 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
     user: UserResponse
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -79,7 +91,28 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
         data={"sub": normalized_email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    return {"access_token": access_token, "token_type": "bearer", "user": user}
+    refresh_token = create_refresh_token(db, user_id=user.id)
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
+    user, new_refresh_token = rotate_refresh_token(db, raw_token=payload.refresh_token)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+        "user": user,
+    }
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(payload: LogoutRequest, db: Session = Depends(get_db)):
+    revoke_refresh_token(db, raw_token=payload.refresh_token)
 
 
 @router.get("/me", response_model=UserResponse)

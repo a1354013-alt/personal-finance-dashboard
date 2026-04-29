@@ -15,6 +15,7 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("ENV", "development")
 
+from app.jobs import get_job_runner  # noqa: E402
 from db.database import engine, init_db, reset_sqlite_db  # noqa: E402
 from main import app as fastapi_app  # noqa: E402
 
@@ -43,4 +44,12 @@ def register_and_login(client: TestClient, email: str) -> str:
 
 def auth_headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def drain_jobs(max_cycles: int = 20) -> None:
+    runner = get_job_runner()
+    for _ in range(max_cycles):
+        processed = runner.drain_once()
+        if not processed:
+            break
 

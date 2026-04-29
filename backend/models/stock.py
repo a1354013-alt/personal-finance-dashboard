@@ -45,6 +45,23 @@ class StockPriceORM(Base):
     __table_args__ = (UniqueConstraint("stock_code", "trade_date", name="_stock_date_uc"),)
 
 
+class StockPriceHistoryORM(Base):
+    __tablename__ = "stock_price_history"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    stock_code = Column(String(20), nullable=False, index=True)
+    trade_date = Column(Date, nullable=False)
+    open = Column(Numeric(18, 4), nullable=True)
+    high = Column(Numeric(18, 4), nullable=True)
+    low = Column(Numeric(18, 4), nullable=True)
+    close = Column(Numeric(18, 4), nullable=False)
+    volume = Column(BigInteger, nullable=True)
+    source = Column(String(50), nullable=False, default="yfinance")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (UniqueConstraint("stock_code", "trade_date", name="_stock_history_date_uc"),)
+
+
 class WatchlistCreate(BaseModel):
     stock_code: str
 
@@ -100,3 +117,28 @@ class StockFilterResult(BaseModel):
     stock_code: str
     passed: bool
     fail_reasons: list[str]
+
+
+class StockPriceHistoryPoint(BaseModel):
+    trade_date: DateType
+    close: Decimal
+    open: Optional[Decimal] = None
+    high: Optional[Decimal] = None
+    low: Optional[Decimal] = None
+    volume: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("close", "open", "high", "low")
+    def serialize_optional_price(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class StockDashboardResponse(BaseModel):
+    selected_stock_code: Optional[str] = None
+    watchlist: list[WatchlistItemResponse]
+    price_history: list[StockPriceHistoryPoint]
+    fundamentals: Optional[dict] = None
+    ai_explanation: Optional[str] = None

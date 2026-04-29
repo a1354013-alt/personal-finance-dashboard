@@ -47,3 +47,11 @@ export function syncSingleFundamentals(stockCode, { force = false } = {}) {
 export function getWatchlistFundamentals() {
   return api.get('/stocks/fundamentals')
 }
+
+export function getStockHistory(stockCode) {
+  return api.get(`/stocks/history/${stockCode.toUpperCase()}`)
+}
+
+export function getStockDashboard(selectedCode) {
+  return api.get('/stocks/dashboard', { params: selectedCode ? { selected_code: selectedCode } : {} })
+}

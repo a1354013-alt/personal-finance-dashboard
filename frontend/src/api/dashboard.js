@@ -4,6 +4,10 @@ export function getDashboardSummary() {
   return api.get('/dashboard/summary')
 }
 
+export function getDashboardCharts() {
+  return api.get('/dashboard/charts')
+}
+
 export function getAiSummary() {
   return api.get('/ai/summary')
 }

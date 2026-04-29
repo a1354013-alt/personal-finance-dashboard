@@ -77,5 +77,6 @@ class FundamentalsSyncOptions(BaseModel):
 
 class FundamentalsSyncResponse(BaseModel):
     stock_code: str
+    status: str
     queued: bool
     message: str

@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from db.database import SessionLocal
-from models.stock import StockPriceORM, WatchlistORM
+from models.stock import StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from services.stock_data_service import StockDataService
 
 SYNC_STATUS_SUCCESS = "success"
@@ -23,8 +23,19 @@ def latest_price_for_code(db: Session, *, stock_code: str) -> StockPriceORM | No
     )
 
 
+def latest_history_for_code(db: Session, *, stock_code: str) -> StockPriceHistoryORM | None:
+    return (
+        db.query(StockPriceHistoryORM)
+        .filter(StockPriceHistoryORM.stock_code == stock_code)
+        .order_by(StockPriceHistoryORM.trade_date.desc())
+        .first()
+    )
+
+
 def build_watchlist_item(db: Session, *, item: WatchlistORM) -> dict[str, Any]:
-    latest_price = latest_price_for_code(db, stock_code=item.stock_code)
+    latest_price = latest_history_for_code(db, stock_code=item.stock_code) or latest_price_for_code(
+        db, stock_code=item.stock_code
+    )
     sync_status = item.price_sync_status or SYNC_STATUS_PENDING
 
     return {
@@ -85,6 +96,67 @@ def delete_watchlist_item(db: Session, *, user_id: int, item_id: int) -> bool:
     return True
 
 
+def update_watchlist_sync_status_for_code(
+    db: Session,
+    *,
+    stock_code: str,
+    status: str,
+    error_message: str | None,
+) -> None:
+    attempted_at = datetime.now(timezone.utc)
+    items = db.query(WatchlistORM).filter(WatchlistORM.stock_code == stock_code).all()
+    for item in items:
+        item.price_sync_status = status
+        item.last_sync_error = error_message
+        item.last_sync_attempt_at = attempted_at
+    db.commit()
+
+
+def upsert_stock_price_history(
+    db: Session,
+    *,
+    price_data: dict[str, Any],
+    source: str,
+    commit: bool = True,
+) -> None:
+    existing_history = (
+        db.query(StockPriceHistoryORM)
+        .filter(
+            StockPriceHistoryORM.stock_code == price_data["stock_code"],
+            StockPriceHistoryORM.trade_date == price_data["trade_date"],
+        )
+        .first()
+    )
+    if existing_history:
+        existing_history.open = price_data["open"]
+        existing_history.high = price_data["high"]
+        existing_history.low = price_data["low"]
+        existing_history.close = price_data["close"]
+        existing_history.volume = price_data["volume"]
+        existing_history.source = source
+    else:
+        db.add(StockPriceHistoryORM(source=source, **price_data))
+
+    existing_latest = (
+        db.query(StockPriceORM)
+        .filter(
+            StockPriceORM.stock_code == price_data["stock_code"],
+            StockPriceORM.trade_date == price_data["trade_date"],
+        )
+        .first()
+    )
+    if existing_latest:
+        existing_latest.open = price_data["open"]
+        existing_latest.high = price_data["high"]
+        existing_latest.low = price_data["low"]
+        existing_latest.close = price_data["close"]
+        existing_latest.volume = price_data["volume"]
+    else:
+        db.add(StockPriceORM(**price_data))
+    if commit:
+        db.commit()
+
+
 def sync_stock_price(db: Session, *, stock_code: str, watchlist_item: WatchlistORM) -> bool:
     # Safety: require a user-scoped watchlist item to avoid cross-user updates.
     sync_target = watchlist_item
@@ -108,23 +180,7 @@ def sync_stock_price(db: Session, *, stock_code: str, watchlist_item: WatchlistO
         db.commit()
         return False
 
-    existing = (
-        db.query(StockPriceORM)
-        .filter(
-            StockPriceORM.stock_code == price_data["stock_code"],
-            StockPriceORM.trade_date == price_data["trade_date"],
-        )
-        .first()
-    )
-
-    if existing:
-        existing.open = price_data["open"]
-        existing.high = price_data["high"]
-        existing.low = price_data["low"]
-        existing.close = price_data["close"]
-        existing.volume = price_data["volume"]
-    else:
-        db.add(StockPriceORM(**price_data))
+    upsert_stock_price_history(db, price_data=price_data, source=StockDataService.provider_name(), commit=False)
 
     sync_target.price_sync_status = SYNC_STATUS_SUCCESS
     sync_target.last_sync_error = None

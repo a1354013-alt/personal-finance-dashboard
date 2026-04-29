@@ -4,6 +4,8 @@ from datetime import date
 
 import pytest
 
+from tests.conftest import drain_jobs
+
 
 def register_and_login(client, email: str) -> str:
     register_response = client.post("/api/auth/register", json={"email": email, "password": "password123"})
@@ -48,9 +50,9 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     )
     monkeypatch.setattr(
         stocks_router.StockDataService,
-        "fetch_real_price",
+        "fetch_price_history",
         classmethod(
-            lambda cls, code: {
+            lambda cls, code: [{
                 "stock_code": code,
                 "trade_date": date(2026, 4, 10),
                 "open": 99.0,
@@ -58,7 +60,7 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
                 "low": 98.0,
                 "close": 100.0,
                 "volume": 12345,
-            }
+            }]
         ),
     )
 
@@ -67,6 +69,8 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
 
     sync = client.post("/api/stocks/AAPL/sync", headers=auth_headers(token))
     assert sync.status_code == 200
+    assert sync.json()["price_sync_status"] == "pending"
+    drain_jobs()
 
     watch_item = client.get("/api/stocks/watchlist", headers=auth_headers(token)).json()[0]
     assert watch_item["date"] == "2026-04-10"

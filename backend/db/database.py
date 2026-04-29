@@ -13,7 +13,18 @@ load_dotenv()
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DATABASE_URL = "sqlite:///./finance.db"
-EXPECTED_TABLES = {"alembic_version", "users", "expenses", "budgets", "watchlist", "stock_prices", "fundamentals"}
+EXPECTED_TABLES = {
+    "alembic_version",
+    "users",
+    "expenses",
+    "budgets",
+    "watchlist",
+    "stock_prices",
+    "stock_price_history",
+    "fundamentals",
+    "sync_jobs",
+    "refresh_tokens",
+}
 
 
 def normalize_database_url(database_url: str) -> str:

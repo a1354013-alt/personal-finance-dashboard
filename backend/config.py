@@ -9,6 +9,8 @@ load_dotenv()
 APP_VERSION = "1.0.0"
 DEFAULT_CORS_ORIGINS = "http://localhost:5173"
 DEVELOPMENT_SECRET_KEY = "dev-only-change-me-in-production"
+DEFAULT_RATE_LIMIT_PER_MINUTE = 100
+DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 14
 
 
 def get_cors_origins() -> list[str]:

@@ -48,9 +48,9 @@ function handleLogout() {
 
 <style>
 :root {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', 'Noto Sans TC', sans-serif;
   color: #22303c;
-  background: #f3f6fb;
+  background: #eef3f7;
 }
 
 * {
@@ -59,7 +59,9 @@ function handleLogout() {
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef3f8 100%);
+  background:
+    radial-gradient(circle at top left, rgba(228, 164, 93, 0.12), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #eef3f8 100%);
   color: #22303c;
 }
 
@@ -77,7 +79,8 @@ a {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 24px;
-  background: #18324a;
+  background:
+    linear-gradient(135deg, #102b44 0%, #18324a 52%, #2a6174 100%);
   color: #fff;
   box-shadow: 0 4px 18px rgba(24, 50, 74, 0.18);
 }
@@ -142,7 +145,7 @@ a {
 
 .card {
   background: #fff;
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 20px 24px;
   box-shadow: 0 8px 24px rgba(31, 52, 74, 0.08);
   margin-bottom: 20px;

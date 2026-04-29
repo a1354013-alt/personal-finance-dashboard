@@ -5,8 +5,11 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS
 from models.fundamentals import FundamentalsORM
-from providers.fundamentals.base import BaseFundamentalsProvider, FundamentalsProviderError
+from models.job import CreateJobRequest
+from providers.fundamentals import get_fundamentals_provider
+from services.job_service import create_job
 
 STATUS_PENDING = "pending"
 STATUS_SUCCESS = "success"
@@ -32,7 +35,6 @@ def is_stale(*, fetched_at: datetime | None, ttl_hours: int | None = None) -> bo
 
 
 def get_latest_fundamentals_by_code(db: Session, stock_codes: set[str]) -> dict[str, FundamentalsORM]:
-    # Shared-cache lookup: fundamentals rows are not user-scoped; callers decide which stock codes they care about.
     if not stock_codes:
         return {}
 
@@ -50,52 +52,49 @@ def get_latest_fundamentals_by_code(db: Session, stock_codes: set[str]) -> dict[
     return latest
 
 
-def sync_fundamentals(
+def queue_fundamentals_sync(
     db: Session,
     *,
     stock_code: str,
-    provider: BaseFundamentalsProvider,
+    request_id: str | None,
     force: bool = False,
 ) -> FundamentalsORM:
-    now = datetime.now(timezone.utc)
-    as_of = date.today()
-    source = provider.name
-
+    provider = get_fundamentals_provider()
     row = (
         db.query(FundamentalsORM)
         .filter(
             FundamentalsORM.stock_code == stock_code,
-            FundamentalsORM.source == source,
-            FundamentalsORM.as_of_date == as_of,
+            FundamentalsORM.source == provider.name,
+            FundamentalsORM.as_of_date == date.today(),
         )
         .first()
     )
 
-    if row and not force and row.status == STATUS_SUCCESS and not is_stale(fetched_at=row.fetched_at):
-        return row
-
-    if not row:
-        row = FundamentalsORM(stock_code=stock_code, source=source, as_of_date=as_of, status=STATUS_PENDING)
+    if row is None:
+        row = FundamentalsORM(
+            stock_code=stock_code,
+            source=provider.name,
+            as_of_date=date.today(),
+            status=STATUS_PENDING,
+            fetched_at=datetime.now(timezone.utc),
+        )
         db.add(row)
-        db.flush()
-
-    try:
-        result = provider.fetch(stock_code=stock_code)
-        row.pe_ratio = result.pe_ratio
-        row.pb_ratio = result.pb_ratio
-        row.dividend_yield = result.dividend_yield
-        row.revenue_growth = result.revenue_growth
-        row.eps = result.eps
-        row.status = STATUS_SUCCESS
+    else:
+        row.status = STATUS_PENDING
         row.error_message = None
-    except FundamentalsProviderError as exc:
-        row.status = STATUS_FAILED
-        row.error_message = str(exc)
-    except Exception as exc:
-        row.status = STATUS_FAILED
-        row.error_message = f"Unexpected error: {exc}"
-
-    row.fetched_at = now
+        if force:
+            row.fetched_at = datetime.now(timezone.utc)
     db.commit()
+    db.refresh(row)
+
+    create_job(
+        db,
+        CreateJobRequest(
+            job_type=JOB_TYPE_SYNC_FUNDAMENTALS,
+            payload={"stock_code": stock_code, "force": force},
+            request_id=request_id,
+            max_attempts=3,
+        ),
+    )
     db.refresh(row)
     return row

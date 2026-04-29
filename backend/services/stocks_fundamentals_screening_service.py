@@ -74,7 +74,7 @@ def build_filter_metadata() -> FilterMetadataResponse:
         timeout_seconds=timeout,
         message=(
             "Fundamentals screening reads cached data from the database. "
-            "Sync fundamentals explicitly to refresh; screening does not fetch live data per request."
+            "Sync requests only enqueue a background job; the API never waits on the upstream provider."
         ),
     )
 

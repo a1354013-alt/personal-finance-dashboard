@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -10,12 +12,14 @@ from passlib.context import CryptContext
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from config import get_secret_key, is_development_mode
+from config import DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS, get_secret_key, is_development_mode
 from db.database import get_db
+from models.refresh_token import RefreshTokenORM
 from models.user import UserORM
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+REFRESH_TOKEN_EXPIRE_DAYS = DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS
 MIN_PASSWORD_LENGTH = 8
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -43,6 +47,7 @@ def validate_secret_key_configuration() -> None:
     if not is_development_mode() and secret_key == "dev-only-change-me-in-production":
         raise RuntimeError("SECRET_KEY must be set in production.")
 
+
 def normalize_email(email: str) -> str:
     return str(email or "").strip().lower()
 
@@ -52,6 +57,49 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     to_encode.update({"exp": expire_at})
     return jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
+
+
+def create_refresh_token(db: Session, *, user_id: int) -> str:
+    token = secrets.token_urlsafe(48)
+    token_hash = _hash_refresh_token(token)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    db.add(
+        RefreshTokenORM(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+    )
+    db.commit()
+    return token
+
+
+def revoke_refresh_token(db: Session, *, raw_token: str) -> None:
+    token_hash = _hash_refresh_token(raw_token)
+    token_row = db.query(RefreshTokenORM).filter(RefreshTokenORM.token_hash == token_hash).first()
+    if token_row and token_row.revoked_at is None:
+        token_row.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+
+
+def rotate_refresh_token(db: Session, *, raw_token: str) -> tuple[UserORM, str]:
+    token_hash = _hash_refresh_token(raw_token)
+    token_row = db.query(RefreshTokenORM).filter(RefreshTokenORM.token_hash == token_hash).first()
+    if token_row is None or token_row.revoked_at is not None or token_row.expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+
+    user = db.query(UserORM).filter(UserORM.id == token_row.user_id).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+
+    token_row.revoked_at = datetime.now(timezone.utc)
+    token_row.last_used_at = token_row.revoked_at
+    db.commit()
+    return user, create_refresh_token(db, user_id=user.id)
+
+
+def _hash_refresh_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
 async def get_current_user(

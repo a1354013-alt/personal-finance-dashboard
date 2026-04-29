@@ -37,3 +37,17 @@ class DashboardSummaryResponse(BaseModel):
     over_budget: list[DashboardOverBudgetItem]
     summary_scope: DashboardSummaryScope
 
+
+class DashboardBudgetUsageItem(BaseModel):
+    category: str
+    monthly_limit: float
+    current_spent: float
+    percent_used: float
+
+
+class DashboardChartsResponse(BaseModel):
+    monthly_expense_trend: list[DashboardMonthlyTrendItem]
+    category_distribution: list[DashboardExpenseByCategory]
+    net_income_trend: list[DashboardMonthlyTrendItem]
+    budget_usage: list[DashboardBudgetUsageItem]
+

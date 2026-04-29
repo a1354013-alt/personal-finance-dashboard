@@ -1,18 +1,25 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as stockApi from '@/api/stocks'
-import { normalizeFilterMetadata, normalizeFundamentalsFilterResult, normalizeWatchlistItem } from '@/api/contracts'
+import {
+  normalizeFilterMetadata,
+  normalizeFundamentalsFilterResult,
+  normalizeStockDashboard,
+  normalizeWatchlistItem
+} from '@/api/contracts'
 import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useStockStore = defineStore('stock', () => {
   const watchlist = ref([])
   const filterResults = ref([])
   const filterMetadata = ref(null)
+  const dashboard = ref(null)
   const fundamentalsSyncing = ref(false)
   const fundamentalsError = ref(null)
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
+  const dashboardLoading = ref(false)
   const syncAllLoading = ref(false)
   const syncingCodes = ref([])
   const deleting = ref(false)
@@ -22,6 +29,7 @@ export const useStockStore = defineStore('stock', () => {
 
   const passedStocks = computed(() => filterResults.value.filter((stock) => stock.passed))
   const failedStocks = computed(() => filterResults.value.filter((stock) => !stock.passed))
+  const selectedStockCode = computed(() => dashboard.value?.selected_stock_code || watchlist.value[0]?.stock_code || null)
 
   async function fetchWatchlist() {
     watchlistLoading.value = true
@@ -37,11 +45,26 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  async function fetchDashboard(selectedCode = null) {
+    dashboardLoading.value = true
+    watchlistError.value = null
+    try {
+      const result = await stockApi.getStockDashboard(selectedCode)
+      dashboard.value = normalizeStockDashboard(result)
+      watchlist.value = dashboard.value?.watchlist || []
+    } catch (error) {
+      dashboard.value = null
+      watchlistError.value = toErrorMessage(error, 'Unable to load stock dashboard.')
+    } finally {
+      dashboardLoading.value = false
+    }
+  }
+
   async function addToWatchlist(stockCode) {
     watchlistError.value = null
     try {
       const response = await stockApi.addToWatchlist(stockCode)
-      await fetchWatchlist()
+      await fetchDashboard(response.stock_code)
       return normalizeWatchlistItem(response) || response
     } catch (error) {
       watchlistError.value = toErrorMessage(error, 'Unable to add watchlist item.')
@@ -55,7 +78,7 @@ export const useStockStore = defineStore('stock', () => {
       deleting.value = true
       watchlistError.value = null
       await stockApi.deleteFromWatchlist(id)
-      await fetchWatchlist()
+      await fetchDashboard()
     } catch (error) {
       watchlistError.value = toErrorMessage(error, 'Unable to delete watchlist item.')
       throw error
@@ -69,7 +92,7 @@ export const useStockStore = defineStore('stock', () => {
     watchlistError.value = null
     try {
       const response = await stockApi.syncAllPrices()
-      await fetchWatchlist()
+      await fetchDashboard(selectedStockCode.value)
       return response
     } catch (error) {
       watchlistError.value = toErrorMessage(error, 'Unable to sync watchlist prices.')
@@ -92,7 +115,7 @@ export const useStockStore = defineStore('stock', () => {
     watchlistError.value = null
     try {
       const response = await stockApi.syncSinglePrice(stockCode)
-      await fetchWatchlist()
+      await fetchDashboard(stockCode)
       return response
     } catch (error) {
       watchlistError.value = toErrorMessage(error, 'Unable to sync stock price.')
@@ -148,10 +171,12 @@ export const useStockStore = defineStore('stock', () => {
     watchlist,
     filterResults,
     filterMetadata,
+    dashboard,
     fundamentalsSyncing,
     fundamentalsError,
     watchlistLoading,
     filterLoading,
+    dashboardLoading,
     syncAllLoading,
     syncingCodes,
     deleting,
@@ -159,7 +184,9 @@ export const useStockStore = defineStore('stock', () => {
     filterError,
     passedStocks,
     failedStocks,
+    selectedStockCode,
     fetchWatchlist,
+    fetchDashboard,
     fetchFilterResults,
     syncFundamentals,
     addToWatchlist,

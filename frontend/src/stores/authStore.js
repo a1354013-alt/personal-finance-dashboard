@@ -25,6 +25,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: normalizeUser(safeJsonParse(safeLocalStorageGetItem('user'))),
     token: safeLocalStorageGetItem('token') || null,
+    refreshToken: safeLocalStorageGetItem('refresh_token') || null,
     loading: false,
     error: null
   }),
@@ -36,6 +37,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     clearSession() {
       this.token = null
+      this.refreshToken = null
       this.user = null
       this.error = null
       this.persistSession()
@@ -52,6 +54,20 @@ export const useAuthStore = defineStore('auth', {
       } else {
         try {
           localStorage.removeItem('token')
+        } catch {
+          // ignore
+        }
+      }
+
+      if (this.refreshToken) {
+        try {
+          localStorage.setItem('refresh_token', this.refreshToken)
+        } catch {
+          // ignore
+        }
+      } else {
+        try {
+          localStorage.removeItem('refresh_token')
         } catch {
           // ignore
         }
@@ -79,6 +95,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await loginRequest({ email: normalizeEmail(email), password })
         this.token = response.access_token
+        this.refreshToken = response.refresh_token
         this.user = normalizeUser(response.user)
         this.persistSession()
         return true

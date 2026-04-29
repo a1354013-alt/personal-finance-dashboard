@@ -69,7 +69,7 @@
       <h2>Records</h2>
 
       <div v-if="store.loading" class="loading-text">Loading records...</div>
-      <div v-else-if="store.expenses.length === 0" class="empty-state">No records yet.</div>
+      <div v-else-if="store.expenses.length === 0" class="empty-state">No data yet</div>
 
       <template v-else>
         <table class="table">

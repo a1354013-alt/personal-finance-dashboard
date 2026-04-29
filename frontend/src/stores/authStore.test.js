@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('@/api/auth', () => ({
-  login: vi.fn(async () => ({ access_token: 'token-123', user: { id: 1, email: 'a@example.com' } })),
+  login: vi.fn(async () => ({ access_token: 'token-123', refresh_token: 'refresh-123', user: { id: 1, email: 'a@example.com' } })),
   register: vi.fn(async () => ({})),
   getMe: vi.fn(async () => ({ id: 1, email: 'a@example.com' }))
 }))
@@ -33,6 +33,7 @@ describe('authStore', () => {
     expect(loginRequest).toHaveBeenCalledWith({ email: 'a@example.com', password: 'password123' })
     expect(store.isAuthenticated).toBe(true)
     expect(localStorage.getItem('token')).toBe('token-123')
+    expect(localStorage.getItem('refresh_token')).toBe('refresh-123')
     expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({ email: 'a@example.com' })
   })
 

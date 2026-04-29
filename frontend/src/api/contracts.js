@@ -155,6 +155,16 @@ export function normalizeDashboardSummary(payload) {
   }
 }
 
+export function normalizeDashboardCharts(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    monthly_expense_trend: Array.isArray(payload.monthly_expense_trend) ? payload.monthly_expense_trend : [],
+    category_distribution: Array.isArray(payload.category_distribution) ? payload.category_distribution : [],
+    net_income_trend: Array.isArray(payload.net_income_trend) ? payload.net_income_trend : [],
+    budget_usage: Array.isArray(payload.budget_usage) ? payload.budget_usage : []
+  }
+}
+
 /**
  * @param {any} payload
  * @returns {string}
@@ -237,6 +247,29 @@ export function normalizeFundamentalsFilterResult(row) {
     fail_reasons: Array.isArray(row.fail_reasons) ? row.fail_reasons : [],
     fundamentals: normalizeFundamentalsSnapshot(row.fundamentals),
     meta: normalizeFundamentalsMeta(row.meta)
+  }
+}
+
+export function normalizePriceHistoryPoint(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    trade_date: row.trade_date || null,
+    close: toNumberOrNull(row.close),
+    open: toNumberOrNull(row.open),
+    high: toNumberOrNull(row.high),
+    low: toNumberOrNull(row.low),
+    volume: toNumberOrNull(row.volume)
+  }
+}
+
+export function normalizeStockDashboard(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    selected_stock_code: payload.selected_stock_code || null,
+    watchlist: Array.isArray(payload.watchlist) ? payload.watchlist.map(normalizeWatchlistItem).filter(Boolean) : [],
+    price_history: Array.isArray(payload.price_history) ? payload.price_history.map(normalizePriceHistoryPoint).filter(Boolean) : [],
+    fundamentals: payload.fundamentals ? normalizeFundamentalsSnapshot(payload.fundamentals) : null,
+    ai_explanation: toTrimmedStringOrEmpty(payload.ai_explanation)
   }
 }
 

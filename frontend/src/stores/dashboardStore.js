@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getAiSummary, getBudgetAdvice, getDashboardSummary } from '@/api/dashboard'
-import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardSummary } from '@/api/contracts'
+import { getAiSummary, getBudgetAdvice, getDashboardCharts, getDashboardSummary } from '@/api/dashboard'
+import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardCharts, normalizeDashboardSummary } from '@/api/contracts'
 import { toErrorMessage } from '@/stores/storeUtils'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const summary = ref(null)
+  const charts = ref(null)
   const aiSummary = ref('')
   const aiSummaryLoading = ref(false)
   const aiSummaryError = ref(null)
@@ -13,7 +14,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const budgetAdviceLoading = ref(false)
   const budgetAdviceError = ref(null)
   const loading = ref(false)
+  const chartsLoading = ref(false)
   const error = ref(null)
+  const chartsError = ref(null)
 
   async function fetchSummary() {
     loading.value = true
@@ -26,6 +29,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
       error.value = toErrorMessage(err, 'Unable to load dashboard summary.')
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchCharts() {
+    chartsLoading.value = true
+    chartsError.value = null
+    try {
+      const result = await getDashboardCharts()
+      charts.value = normalizeDashboardCharts(result)
+    } catch (err) {
+      charts.value = null
+      chartsError.value = toErrorMessage(err, 'Unable to load chart data.')
+    } finally {
+      chartsLoading.value = false
     }
   }
 
@@ -66,6 +83,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   return {
     summary,
+    charts,
     aiSummary,
     aiSummaryLoading,
     aiSummaryError,
@@ -73,8 +91,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
     budgetAdviceLoading,
     budgetAdviceError,
     loading,
+    chartsLoading,
     error,
+    chartsError,
     fetchSummary,
+    fetchCharts,
     fetchAiSummary,
     fetchBudgetAdvice
   }
