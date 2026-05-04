@@ -15,18 +15,21 @@ class BudgetORM(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    month = Column(String(7), nullable=False, index=True)  # YYYY-MM
     category = Column(String(50), nullable=False)
-    monthly_limit = Column(Numeric(18, 2), nullable=False)
+    amount = Column(Numeric(18, 2), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("UserORM", back_populates="budgets")
 
-    __table_args__ = (UniqueConstraint("user_id", "category", name="_user_budget_category_uc"),)
+    __table_args__ = (UniqueConstraint("user_id", "month", "category", name="_user_month_category_uc"),)
 
 
 class BudgetBase(BaseModel):
+    month: str = Field(..., pattern=r"^\d{4}-\d{2}$")
     category: str = Field(..., min_length=1, max_length=50)
-    monthly_limit: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., ge=0)
 
     @field_validator("category")
     @classmethod
@@ -34,13 +37,33 @@ class BudgetBase(BaseModel):
         category = value.strip()
         if not category:
             raise ValueError("category is required.")
-        if len(category) > 50:
-            raise ValueError("category must be 50 characters or fewer.")
         return category
 
 
 class BudgetCreate(BudgetBase):
     pass
+
+
+class BudgetUpdate(BaseModel):
+    category: str | None = Field(None, min_length=1, max_length=50)
+    amount: Decimal | None = Field(None, ge=0)
+
+
+class BudgetItem(BaseModel):
+    category: str
+    budget: float
+    used: float
+    remaining: float
+    usageRate: float
+    status: str
+
+
+class BudgetSummaryResponse(BaseModel):
+    month: str
+    totalBudget: float
+    totalUsed: float
+    totalRemaining: float
+    items: list[BudgetItem]
 
 
 class BudgetResponse(BudgetBase):
@@ -50,6 +73,6 @@ class BudgetResponse(BudgetBase):
 
     model_config = {"from_attributes": True}
 
-    @field_serializer("monthly_limit", "current_spent")
+    @field_serializer("amount", "current_spent")
     def serialize_decimals(self, value: Decimal) -> float:
         return float(value)

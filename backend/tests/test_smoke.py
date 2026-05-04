@@ -43,21 +43,22 @@ def test_expenses_budgets_and_dashboard_flow(client):
     token = register_and_login(client, "budget@example.com")
 
     client.post("/api/budgets", headers=auth_headers(token), json={"category": "Food", "monthly_limit": 1000})
+    today = date.today().strftime("%Y-%m-%d")
     client.post(
         "/api/expenses",
         headers=auth_headers(token),
-        json={"amount": 3000, "category": "Salary", "type": "income", "date": "2026-04-01", "note": "Salary"},
+        json={"amount": 3000, "category": "Salary", "type": "income", "date": today, "note": "Salary"},
     )
     client.post(
         "/api/expenses",
         headers=auth_headers(token),
-        json={"amount": 700, "category": "Food", "type": "expense", "date": "2026-04-05", "note": "Groceries"},
+        json={"amount": 700, "category": "Food", "type": "expense", "date": today, "note": "Groceries"},
     )
 
     dashboard = client.get("/api/dashboard/summary", headers=auth_headers(token))
     assert dashboard.status_code == 200
-    assert dashboard.json()["total_income"] == 3000
-    assert dashboard.json()["total_expense"] == 700
+    assert dashboard.json()["monthlyIncome"] == 3000
+    assert dashboard.json()["monthlyExpense"] == 700
 
     charts = client.get("/api/dashboard/charts", headers=auth_headers(token))
     assert charts.status_code == 200

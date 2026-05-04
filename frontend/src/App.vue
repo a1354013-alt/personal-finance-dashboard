@@ -67,8 +67,10 @@ const navItems = computed(() => [
 ])
 
 const localeOptions = computed(() => [
-  { value: 'zh-TW', label: t('common.chinese') },
-  { value: 'en', label: t('common.english') }
+  { value: 'zh-TW', label: '繁中' },
+  { value: 'zh-CN', label: '简中' },
+  { value: 'en', label: 'EN' },
+  { value: 'ja', label: '日本語' }
 ])
 
 onMounted(async () => {

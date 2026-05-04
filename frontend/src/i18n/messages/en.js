@@ -75,7 +75,17 @@ export default {
       incomeNote: 'Aggregated from recorded income.',
       expenseNote: 'A quick read on current spending scale.',
       balanceNote: 'Positive values mean you still have room.',
-      budgetUsageNote: 'Estimated from this month’s budget usage.'
+      budgetUsageNote: 'Estimated from this month’s budget usage.',
+      monthlyIncome: 'Monthly Income',
+      monthlyExpense: 'Monthly Expense',
+      monthlyBalance: 'Monthly Balance',
+      topExpenseCategory: 'Top Expense Category',
+      noTopCategory: 'No expenses'
+    },
+    recentTransactions: {
+      title: 'Recent Transactions',
+      subtitle: 'Showing the last 10 records',
+      noTransactions: 'No transactions yet'
     },
     insight: {
       expenseTrend: 'Monthly Expense Trend',
@@ -170,7 +180,12 @@ export default {
     used: 'used',
     remaining: 'Remaining',
     overBy: 'Over by',
-    deleteLoading: 'Deleting...'
+    deleteLoading: 'Deleting...',
+    status: {
+      safe: 'Safe',
+      warning: 'Warning',
+      over: 'Overspent'
+    }
   },
   stocks: {
     title: 'Stocks',

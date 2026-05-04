@@ -33,11 +33,34 @@
 </template>
 
 <script setup>
-import { Chart, ArcElement, CategoryScale, Filler, Legend, LineElement, LinearScale, PointElement, Tooltip } from 'chart.js'
+import {
+  Chart,
+  ArcElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  Filler,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip
+} from 'chart.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-Chart.register(ArcElement, CategoryScale, Filler, Legend, LineElement, LinearScale, PointElement, Tooltip)
+Chart.register(
+  ArcElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  Filler,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip
+)
 
 const props = defineProps({
   title: { type: String, required: true },

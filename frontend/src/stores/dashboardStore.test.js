@@ -4,21 +4,22 @@ import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardCharts, no
 describe('dashboardStore', () => {
   it('normalizeDashboardSummary coerces numbers and arrays', () => {
     const normalized = normalizeDashboardSummary({
-      total_income: '1234',
-      total_expense: 200,
-      net_balance: null,
-      expense_by_category: null,
-      monthly_trend: [{ month: '2026-04', income: 1, expense: 2 }],
-      over_budget: undefined
+      monthlyIncome: '1234',
+      monthlyExpense: 200,
+      monthlyBalance: null,
+      topExpenseCategory: 'Housing',
+      expenseByCategory: null,
+      monthlyTrend: [{ month: '2026-04', income: 1, expense: 2 }],
+      recentTransactions: undefined
     })
 
-    expect(normalized.total_income).toBe(1234)
-    expect(normalized.total_expense).toBe(200)
-    expect(normalized.net_balance).toBe(0)
-    expect(normalized.expense_by_category).toEqual([])
-    expect(normalized.monthly_trend).toHaveLength(1)
-    expect(normalized.over_budget).toEqual([])
-    expect(normalized.summary_scope.totals).toBe('all_time')
+    expect(normalized.monthlyIncome).toBe(1234)
+    expect(normalized.monthlyExpense).toBe(200)
+    expect(normalized.monthlyBalance).toBe(0)
+    expect(normalized.topExpenseCategory).toBe('Housing')
+    expect(normalized.expenseByCategory).toEqual([])
+    expect(normalized.monthlyTrend).toHaveLength(1)
+    expect(normalized.recentTransactions).toEqual([])
   })
 
   it('normalizeAiSummary returns a stable string', () => {
@@ -47,4 +48,3 @@ describe('dashboardStore', () => {
     expect(normalized.budget_usage).toHaveLength(1)
   })
 })
-

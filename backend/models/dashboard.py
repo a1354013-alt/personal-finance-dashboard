@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,14 +28,21 @@ class DashboardSummaryScope(BaseModel):
     over_budget: Literal["current_month"]
 
 
+class DashboardRecentTransaction(BaseModel):
+    date: str
+    category: str
+    type: str
+    amount: float
+
+
 class DashboardSummaryResponse(BaseModel):
-    total_income: float
-    total_expense: float
-    net_balance: float
-    expense_by_category: list[DashboardExpenseByCategory]
-    monthly_trend: list[DashboardMonthlyTrendItem]
-    over_budget: list[DashboardOverBudgetItem]
-    summary_scope: DashboardSummaryScope
+    monthlyIncome: float
+    monthlyExpense: float
+    monthlyBalance: float
+    topExpenseCategory: Optional[str]
+    monthlyTrend: list[DashboardMonthlyTrendItem]
+    expenseByCategory: list[DashboardExpenseByCategory]
+    recentTransactions: list[DashboardRecentTransaction]
 
 
 class DashboardBudgetUsageItem(BaseModel):

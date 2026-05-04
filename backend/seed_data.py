@@ -33,6 +33,8 @@ FIXED_MOCK_EXPENSES = [
     {"amount": 2900.0, "category": "Utilities", "type": "expense", "date": date(2026, 4, 8), "note": "Utilities"},
     {"amount": 6200.0, "category": "Healthcare", "type": "expense", "date": date(2026, 4, 9), "note": "Clinic and medicine"},
     {"amount": 2800.0, "category": "Travel", "type": "expense", "date": date(2026, 5, 2), "note": "Future booking"},
+    {"amount": 50000.0, "category": "Salary", "type": "income", "date": date.today(), "note": "Current month salary"},
+    {"amount": 1500.0, "category": "Food", "type": "expense", "date": date.today(), "note": "Lunch"},
 ]
 
 MOCK_BUDGETS = [

@@ -6,9 +6,9 @@
 
 | Feature | Description |
 |--------|-------------|
-| Budget Tracking | Create monthly category budgets with current-month spend status |
+| Budget Management | Monthly category budgets with status tracking (Safe/Warning/Overspent) and historical month selection |
 | Expense Logging | Track income/expense records with categories, dates, and optional notes |
-| Dashboard | Aggregated insights (totals, trends, category breakdown, over-budget list) |
+| Dashboard | Aggregated insights (totals, trends, category breakdown, recent transactions, AI summaries) |
 | Stocks Watchlist | Track selected symbols and sync cached prices/fundamentals |
 | AI Insights | Generate deterministic summaries/advice with provider metadata |
 
@@ -120,9 +120,46 @@ GitHub Actions workflow runs on clean machines:
 
 See `.github/workflows/ci.yml`.
 
+## Budget Management Features
+
+The new Monthly Budget Management provides:
+- **Month Selection**: Manage budgets for any specific month.
+- **Budget Summary**: Real-time calculation of total budget, used amount, and remaining balance.
+- **Status Tracking**: Visual indicators for budget health (Safe < 80%, Warning 80-100%, Overspent > 100%).
+- **CRUD Operations**: Create, update, and delete budgets per category per month.
+
+### API Endpoints (Budgets)
+
+- `GET /api/budgets?month=YYYY-MM`: List budgets for a specific month.
+- `GET /api/budgets/summary?month=YYYY-MM`: Get detailed budget usage summary.
+- `POST /api/budgets`: Create or update a budget.
+- `PUT /api/budgets/{id}`: Update budget amount.
+- `DELETE /api/budgets/{id}`: Remove a budget.
+
+## Dashboard Features
+
+The Visual Dashboard integrates budget status:
+- **Summary Cards**: Monthly income, expense, balance, and **remaining budget**.
+- **Budget Health Widget**: Quick view of all category budget statuses with progress bars.
+- **Monthly Trend**: 6-month historical view of income vs. expenses.
+- **Category Breakdown**: Donut chart showing expense distribution.
+- **Recent Transactions**: Quick view of the last 10 activities.
+- **AI Insights**: Automated financial summary and budget advice.
+
+### API Endpoints (Dashboard)
+
+- `GET /api/dashboard/summary`: Returns current month totals, trend, category breakdown, recent transactions, and **integrated budget summary**.
+- `GET /api/dashboard/charts`: Returns detailed chart data.
+
+### Tech Stack (Dashboard)
+
+- **Frontend**: Vue 3, Pinia, Chart.js
+- **Backend**: FastAPI, SQLAlchemy, Pydantic
+
 ## Future Improvements
 
 - Recurring transactions
 - Budget alerts
 - Export reports
+- Multi-currency support
 

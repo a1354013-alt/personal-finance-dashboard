@@ -75,7 +75,17 @@ export default {
       incomeNote: '已整合所有已記錄收入。',
       expenseNote: '可快速掌握本期支出規模。',
       balanceNote: '正值代表目前整體仍有餘裕。',
-      budgetUsageNote: '根據本月預算與支出估算。'
+      budgetUsageNote: '根據本月預算與支出估算。',
+      monthlyIncome: '本月收入',
+      monthlyExpense: '本月支出',
+      monthlyBalance: '本月結餘',
+      topExpenseCategory: '最大支出分類',
+      noTopCategory: '尚無支出'
+    },
+    recentTransactions: {
+      title: '最近交易',
+      subtitle: '顯示最近 10 筆收支紀錄',
+      noTransactions: '尚無交易紀錄'
     },
     insight: {
       expenseTrend: '月支出趨勢',
@@ -170,7 +180,12 @@ export default {
     used: '已使用',
     remaining: '剩餘',
     overBy: '超支',
-    deleteLoading: '刪除中...'
+    deleteLoading: '刪除中...',
+    status: {
+      safe: '正常',
+      warning: '接近上限',
+      over: '已超支'
+    }
   },
   stocks: {
     title: '股票',

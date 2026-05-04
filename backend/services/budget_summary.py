@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session
@@ -11,77 +10,102 @@ from models.budget import BudgetORM
 from models.expense import ExpenseORM
 
 
-@dataclass
-class MonthRange:
-    month_start: date
-    next_month_start: date
-
-
-def get_month_range(reference_date: date | None = None) -> MonthRange:
-    current = reference_date or date.today()
-    month_start = current.replace(day=1)
-    if month_start.month == 12:
-        next_month_start = month_start.replace(year=month_start.year + 1, month=1)
+def get_month_range_from_str(month_str: str) -> tuple[date, date]:
+    """Given YYYY-MM, return (start_date, end_date) for filtering."""
+    dt = datetime.strptime(month_str, "%Y-%m")
+    start_date = dt.date().replace(day=1)
+    if start_date.month == 12:
+        end_date = start_date.replace(year=start_date.year + 1, month=1)
     else:
-        next_month_start = month_start.replace(month=month_start.month + 1)
-    return MonthRange(month_start=month_start, next_month_start=next_month_start)
+        end_date = start_date.replace(month=start_date.month + 1)
+    return start_date, end_date
 
 
-def get_month_expense_rows(
-    db: Session,
-    user_id: int,
-    reference_date: date | None = None,
-) -> list[ExpenseORM]:
-    month_range = get_month_range(reference_date)
-    return (
+def build_budget_summary(db: Session, user_id: int, month: str) -> dict:
+    start_date, end_date = get_month_range_from_str(month)
+    
+    # Get all expenses for the user in the given month
+    expenses = (
         db.query(ExpenseORM)
         .filter(
             ExpenseORM.user_id == user_id,
             ExpenseORM.type == "expense",
-            ExpenseORM.date >= month_range.month_start,
-            ExpenseORM.date < month_range.next_month_start,
+            ExpenseORM.date >= start_date,
+            ExpenseORM.date < end_date,
         )
         .all()
     )
-
-
-def get_current_month_spend_by_category(
-    db: Session,
-    user_id: int,
-    reference_date: date | None = None,
-) -> dict[str, Decimal]:
-    totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
-    for expense in get_month_expense_rows(db, user_id, reference_date):
-        totals[expense.category] += Decimal(expense.amount)
-    return dict(totals)
-
-
-def build_budget_status(
-    db: Session,
-    user_id: int,
-    reference_date: date | None = None,
-) -> list[dict]:
-    spend_by_category = get_current_month_spend_by_category(db, user_id, reference_date)
+    
+    spend_by_category = defaultdict(Decimal)
+    for exp in expenses:
+        spend_by_category[exp.category] += Decimal(str(exp.amount))
+        
+    # Get all budgets for the user in the given month
     budgets = (
         db.query(BudgetORM)
-        .filter(BudgetORM.user_id == user_id)
-        .order_by(BudgetORM.category.asc())
+        .filter(BudgetORM.user_id == user_id, BudgetORM.month == month)
         .all()
     )
+    
+    total_budget = Decimal("0")
+    total_used = Decimal("0")
+    items = []
+    
+    # Track which categories have budgets to identify expenses without budgets later if needed
+    # But requirement says "items" based on budgets.
+    
+    for b in budgets:
+        cat = b.category
+        budget_amt = Decimal(str(b.amount))
+        used_amt = spend_by_category.get(cat, Decimal("0"))
+        remaining = budget_amt - used_amt
+        usage_rate = (float(used_amt) / float(budget_amt) * 100) if budget_amt > 0 else (100.0 if used_amt > 0 else 0.0)
+        
+        status = "safe"
+        if usage_rate > 100:
+            status = "over"
+        elif usage_rate >= 80:
+            status = "warning"
+            
+        items.append({
+            "category": cat,
+            "budget": float(budget_amt),
+            "used": float(used_amt),
+            "remaining": float(remaining),
+            "usageRate": round(usage_rate, 1),
+            "status": status,
+            "id": b.id  # Useful for frontend
+        })
+        
+        total_budget += budget_amt
+        total_used += used_amt
+        
+    return {
+        "month": month,
+        "totalBudget": float(total_budget),
+        "totalUsed": float(total_used),
+        "totalRemaining": float(total_budget - total_used),
+        "items": sorted(items, key=lambda x: x["usageRate"], reverse=True)
+    }
 
-    budget_status = []
-    for budget in budgets:
-        monthly_limit = Decimal(budget.monthly_limit)
-        spent = spend_by_category.get(budget.category, Decimal("0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        percent_used = round((float(spent) / float(monthly_limit)) * 100, 2) if monthly_limit else 0.0
-        budget_status.append(
-            {
-                "id": budget.id,
-                "category": budget.category,
-                "monthly_limit": monthly_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-                "current_spent": spent,
-                "percent_used": percent_used,
-            }
-        )
 
-    return budget_status
+def build_budget_status(db: Session, user_id: int, month: str | None = None) -> list[dict]:
+    """Legacy compatibility or simple list view."""
+    if not month:
+        month = date.today().strftime("%Y-%m")
+        
+    summary = build_budget_summary(db, user_id, month)
+    
+    # Map summary items back to the format expected by BudgetResponse if needed,
+    # but we'll likely update the router to use the new summary.
+    res = []
+    for item in summary["items"]:
+        res.append({
+            "id": item.get("id"),
+            "month": month,
+            "category": item["category"],
+            "amount": item["budget"],
+            "current_spent": item["used"],
+            "percent_used": item["usageRate"]
+        })
+    return res

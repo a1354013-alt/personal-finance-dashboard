@@ -130,10 +130,36 @@ export function normalizeBudget(row) {
   if (id == null) return null
   return {
     id,
+    month: toStringOrEmpty(row.month),
     category: toStringOrEmpty(row.category),
-    monthly_limit: toNumberOrZero(row.monthly_limit),
+    amount: toNumberOrZero(row.amount || row.monthly_limit),
     current_spent: toNumberOrZero(row.current_spent),
     percent_used: toNumberOrZero(row.percent_used)
+  }
+}
+
+/**
+ * @param {any} payload
+ * @returns {any|null}
+ */
+export function normalizeBudgetSummary(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    month: toStringOrEmpty(payload.month),
+    totalBudget: toNumberOrZero(payload.totalBudget),
+    totalUsed: toNumberOrZero(payload.totalUsed),
+    totalRemaining: toNumberOrZero(payload.totalRemaining),
+    items: Array.isArray(payload.items)
+      ? payload.items.map(item => ({
+        id: toNumberOrNull(item.id),
+        category: toStringOrEmpty(item.category),
+        budget: toNumberOrZero(item.budget),
+        used: toNumberOrZero(item.used),
+        remaining: toNumberOrZero(item.remaining),
+        usageRate: toNumberOrZero(item.usageRate),
+        status: toStringOrEmpty(item.status)
+      }))
+      : []
   }
 }
 
@@ -145,13 +171,46 @@ export function normalizeDashboardSummary(payload) {
   if (!payload || typeof payload !== 'object') return null
 
   return {
-    total_income: toNumberOrZero(payload.total_income),
-    total_expense: toNumberOrZero(payload.total_expense),
-    net_balance: toNumberOrZero(payload.net_balance),
-    expense_by_category: Array.isArray(payload.expense_by_category) ? payload.expense_by_category : [],
-    monthly_trend: Array.isArray(payload.monthly_trend) ? payload.monthly_trend : [],
-    over_budget: Array.isArray(payload.over_budget) ? payload.over_budget : [],
-    summary_scope: payload.summary_scope ?? { totals: 'all_time', over_budget: 'current_month' }
+    monthlyIncome: toNumberOrZero(payload.monthlyIncome),
+    monthlyExpense: toNumberOrZero(payload.monthlyExpense),
+    monthlyBalance: toNumberOrZero(payload.monthlyBalance),
+    topExpenseCategory: payload.topExpenseCategory ? String(payload.topExpenseCategory) : null,
+    monthlyTrend: Array.isArray(payload.monthlyTrend)
+      ? payload.monthlyTrend.map(item => ({
+        month: String(item.month || ''),
+        income: toNumberOrZero(item.income),
+        expense: toNumberOrZero(item.expense)
+      }))
+      : [],
+    expenseByCategory: Array.isArray(payload.expenseByCategory)
+      ? payload.expenseByCategory.map(item => ({
+        category: String(item.category || ''),
+        amount: toNumberOrZero(item.amount)
+      }))
+      : [],
+    recentTransactions: Array.isArray(payload.recentTransactions)
+      ? payload.recentTransactions.map(item => ({
+        date: String(item.date || ''),
+        category: String(item.category || ''),
+        type: String(item.type || ''),
+        amount: toNumberOrZero(item.amount)
+      }))
+      : [],
+    totalBudget: toNumberOrZero(payload.totalBudget),
+    totalUsed: toNumberOrZero(payload.totalUsed),
+    totalRemaining: toNumberOrZero(payload.totalRemaining),
+    budgetOverCount: toNumberOrZero(payload.budgetOverCount),
+    budgetWarningCount: toNumberOrZero(payload.budgetWarningCount),
+    budgetItems: Array.isArray(payload.budgetItems)
+      ? payload.budgetItems.map(item => ({
+        category: String(item.category || ''),
+        budget: toNumberOrZero(item.budget),
+        used: toNumberOrZero(item.used),
+        remaining: toNumberOrZero(item.remaining),
+        usageRate: toNumberOrZero(item.usageRate),
+        status: String(item.status || 'safe')
+      }))
+      : []
   }
 }
 

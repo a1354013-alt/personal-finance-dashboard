@@ -1,9 +1,11 @@
 import { createI18n } from 'vue-i18n'
 import en from './messages/en'
 import zhTW from './messages/zh-TW'
+import zhCN from './messages/zh-CN'
+import ja from './messages/ja'
 
 export const DEFAULT_LOCALE = 'zh-TW'
-export const SUPPORTED_LOCALES = ['zh-TW', 'en']
+export const SUPPORTED_LOCALES = ['zh-TW', 'en', 'zh-CN', 'ja']
 const LOCALE_KEY = 'locale'
 
 function getInitialLocale() {
@@ -27,7 +29,9 @@ export function createI18nInstance() {
     globalInjection: true,
     messages: {
       'zh-TW': zhTW,
-      en
+      en,
+      'zh-CN': zhCN,
+      ja
     }
   })
 }

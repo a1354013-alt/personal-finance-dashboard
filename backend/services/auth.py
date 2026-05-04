@@ -82,31 +82,24 @@ def revoke_refresh_token(db: Session, *, raw_token: str) -> None:
         db.commit()
 
 
-def _as_utc_aware(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
-
-
 def rotate_refresh_token(db: Session, *, raw_token: str) -> tuple[UserORM, str]:
     token_hash = _hash_refresh_token(raw_token)
     token_row = db.query(RefreshTokenORM).filter(RefreshTokenORM.token_hash == token_hash).first()
-
     now = datetime.now(timezone.utc)
+    # Ensure token_row.expires_at is aware for comparison if it comes back naive from DB
+    expires_at = token_row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    if token_row is None or token_row.revoked_at is not None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
-
-    expires_at = _as_utc_aware(token_row.expires_at)
-    if expires_at <= now:
+    if token_row is None or token_row.revoked_at is not None or expires_at <= now:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
 
     user = db.query(UserORM).filter(UserORM.id == token_row.user_id).first()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
 
-    token_row.revoked_at = now
-    token_row.last_used_at = now
+    token_row.revoked_at = datetime.now(timezone.utc)
+    token_row.last_used_at = token_row.revoked_at
     db.commit()
     return user, create_refresh_token(db, user_id=user.id)
 
