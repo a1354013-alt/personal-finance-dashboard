@@ -2,22 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from models.month import MONTH_PATTERN
-
-
-class MonthlyReportQuery(BaseModel):
-    month: str = Field(..., pattern=MONTH_PATTERN)
-    format: str
-
-    @field_validator("format")
-    @classmethod
-    def validate_format(cls, value: str) -> str:
-        normalized = value.strip().lower()
-        if normalized not in {"csv", "pdf"}:
-            raise ValueError("format must be either csv or pdf.")
-        return normalized
 
 
 class MonthlyReportBudgetItem(BaseModel):
