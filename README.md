@@ -1,165 +1,191 @@
 # Personal Finance Dashboard
 
-> Full-stack personal finance dashboard with budgeting, expense tracking, stock watchlist, and AI insights — built with FastAPI + Vue 3.
+Full-stack personal finance dashboard built with FastAPI and Vue 3. The project covers budgeting, expense tracking, stock watchlists, dashboard analytics, AI summaries, and monthly report export.
 
-## Feature Table
+## Features
 
-| Feature | Description |
-|--------|-------------|
-| Budget Management | Monthly category budgets with status tracking (Safe/Warning/Overspent) and historical month selection |
-| Expense Logging | Track income/expense records with categories, dates, and optional notes |
-| Dashboard | Aggregated insights (totals, trends, category breakdown, recent transactions, AI summaries) |
-| Stocks Watchlist | Track selected symbols and sync cached prices/fundamentals |
-| AI Insights | Generate deterministic summaries/advice with provider metadata |
+- Budget management by month and category
+- Expense and income tracking
+- Dashboard summary with trends, category spend, budget health, and recent transactions
+- Stock watchlist with cached market data and fundamentals sync jobs
+- AI-generated summary and budget guidance
+- Monthly report export in CSV and PDF
 
-## Screenshots
+## Architecture
 
-![Dashboard](assets/screenshots/dashboard.svg)
-![Expenses](assets/screenshots/expenses.svg)
-![Budgets](assets/screenshots/budgets.svg)
-![Stocks Watchlist](assets/screenshots/stocks-watchlist.svg)
+- Backend: FastAPI routers, service layer, Pydantic contracts, SQLAlchemy ORM, Alembic migrations
+- Frontend: Vue 3 pages, Pinia stores, Axios API layer, contract normalizers
+- Database: SQLite by default
+- Background work: queued sync jobs for market data and fundamentals
 
-## Architecture Overview
-
-- Backend: FastAPI routers + Pydantic response contracts + SQLAlchemy ORM + Alembic migrations
-- Frontend: Vue 3 pages + Pinia stores + Axios API client + contract normalizers
-- Database: SQLite by default (via `DATABASE_URL`)
-- External Providers: LLM provider (OpenAI/fallback/mock), fundamentals provider (`yfinance`) with DB cache
-
-High-level flow:
-
-```text
-Frontend (Vue)
-       ↓
-API (FastAPI Routers)
-       ↓
-Services
-       ↓
-Database + Providers
-```
-
-## Data Flow
-
-```text
-User → Router → Service → DB → Response → Frontend Store → UI
-```
-
-## Quick Start
-
-### 1) Environment
-
-```bash
-cp .env.example .env
-```
-
-Windows PowerShell:
+## Backend Setup
 
 ```powershell
-Copy-Item .env.example .env
-```
-
-### 2) Backend (FastAPI)
-
-```bash
 cd backend
 python -m pip install -r requirements.txt
 alembic upgrade head
 uvicorn main:app --reload
 ```
 
-Optional (SQLite demo data/reset):
+Backend URLs:
 
-```bash
+- API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+
+## Migration Commands
+
+```powershell
+cd backend
+alembic upgrade head
+```
+
+If you need a clean demo database:
+
+```powershell
 cd backend
 python seed_data.py --reset
 ```
 
-Backend URLs:
+## Demo Seed Data
 
-- API: http://localhost:8000
-- Swagger: http://localhost:8000/docs
+```powershell
+cd backend
+python seed_data.py --reset
+```
 
-### 3) Frontend (Vue 3)
+This creates demo data for:
 
-```bash
+- demo user
+- transactions
+- budgets
+- stock watchlist
+- cached stock prices
+
+Demo account:
+
+- Email: `demo@example.com`
+- Password: `demo1234`
+
+## Frontend Setup
+
+```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend URL: http://localhost:5173
+Frontend URL:
 
-## API Design Principles
+- App: `http://localhost:5173`
 
-- RESTful routes with clear resource boundaries (`/api/expenses`, `/api/budgets`, `/api/stocks/*`, `/api/ai/*`)
-- `204 No Content` for successful DELETE (empty body)
-- Normalized responses (typed response models; consistent serialization for money/date fields)
-- User-scoped resources (JWT bearer auth; CRUD is scoped to the current user)
+## Testing Commands
 
-## Testing Strategy
+Backend:
 
-- Backend: `pytest` (SQLite in-memory), provider calls mocked in tests
-- Frontend: `vitest` + `@vue/test-utils` + `jsdom`
-- Contract tests: validate serialization + response shape (no user-scoped leakage)
-- Smoke tests: end-to-end API flows (auth → CRUD → dashboard aggregates)
+```powershell
+cd backend
+python -m compileall .
+python -m pytest -q
+```
 
-## Why This Project Stands Out
+Frontend:
 
-- Provider abstraction design
-- Shared cache architecture
-- API contract normalization
-- Full CI pipeline
-- Production-style layering
+```powershell
+cd frontend
+npm ci
+npm run lint
+npm run build
+npm run test:run
+```
+
+## Monthly Report Export
+
+Monthly report export is available from both backend API and the Dashboard page.
+
+Backend API:
+
+- `GET /api/reports/monthly?month=YYYY-MM&format=csv`
+- `GET /api/reports/monthly?month=YYYY-MM&format=pdf`
+
+Rules:
+
+- Authentication is required
+- Only the current user's data is exported
+- `month` must use `YYYY-MM`
+- `format` only supports `csv` and `pdf`
+- Empty months still export a valid empty report
+
+Report contents include:
+
+- report month
+- exported time
+- `monthlyIncome`
+- `monthlyExpense`
+- `monthlyBalance`
+- `expenseByCategory`
+- `budgetItems`
+- `recentTransactions`
+- disclaimer
+
+CSV details:
+
+- UTF-8 BOM for Excel compatibility
+- Filename: `finance-report-YYYY-MM.csv`
+- Sections:
+  - `Monthly Summary`
+  - `Expense By Category`
+  - `Budget Status`
+  - `Recent Transactions`
+
+PDF details:
+
+- Generated by backend service
+- English-only PDF labels to avoid runtime font issues
+- Filename: `finance-report-YYYY-MM.pdf`
+
+## API Examples
+
+```http
+GET /api/reports/monthly?month=2026-05&format=csv
+Authorization: Bearer <token>
+```
+
+```http
+GET /api/reports/monthly?month=2026-05&format=pdf
+Authorization: Bearer <token>
+```
+
+## Frontend Export Entry
+
+The Dashboard page includes:
+
+- month picker (`input type="month"`)
+- `Export CSV` button
+- `Export PDF` button
+- loading state
+- error message
+
+The frontend download flow uses a blob response and preserves the backend filename.
 
 ## CI
 
-GitHub Actions workflow runs on clean machines:
+GitHub Actions workflow runs:
 
-- backend: import smoke + `alembic upgrade head` smoke + `compileall` + `pytest`
-- frontend: `lint` + `test` + `build`
+- backend import smoke
+- backend `alembic upgrade head`
+- backend `compileall`
+- backend `pytest`
+- frontend `npm ci`
+- frontend lint
+- frontend build
+- frontend tests
 
-See `.github/workflows/ci.yml`.
+Workflow file:
 
-## Budget Management Features
+- [ci.yml](/D:/git/personal-finance-dashboard/.github/workflows/ci.yml)
 
-The new Monthly Budget Management provides:
-- **Month Selection**: Manage budgets for any specific month.
-- **Budget Summary**: Real-time calculation of total budget, used amount, and remaining balance.
-- **Status Tracking**: Visual indicators for budget health (Safe < 80%, Warning 80-100%, Overspent > 100%).
-- **CRUD Operations**: Create, update, and delete budgets per category per month.
+## Portfolio Value
 
-### API Endpoints (Budgets)
+本功能將 Dashboard 中的收支、分類支出、預算健康度與最近交易整合成可下載月報，讓系統不只停留在畫面展示，而是能輸出可交付的財務報表，提升實務應用與面試展示價值。
 
-- `GET /api/budgets?month=YYYY-MM`: List budgets for a specific month.
-- `GET /api/budgets/summary?month=YYYY-MM`: Get detailed budget usage summary.
-- `POST /api/budgets`: Create or update a budget.
-- `PUT /api/budgets/{id}`: Update budget amount.
-- `DELETE /api/budgets/{id}`: Remove a budget.
-
-## Dashboard Features
-
-The Visual Dashboard integrates budget status:
-- **Summary Cards**: Monthly income, expense, balance, and **remaining budget**.
-- **Budget Health Widget**: Quick view of all category budget statuses with progress bars.
-- **Monthly Trend**: 6-month historical view of income vs. expenses.
-- **Category Breakdown**: Donut chart showing expense distribution.
-- **Recent Transactions**: Quick view of the last 10 activities.
-- **AI Insights**: Automated financial summary and budget advice.
-
-### API Endpoints (Dashboard)
-
-- `GET /api/dashboard/summary`: Returns current month totals, trend, category breakdown, recent transactions, and **integrated budget summary**.
-- `GET /api/dashboard/charts`: Returns detailed chart data.
-
-### Tech Stack (Dashboard)
-
-- **Frontend**: Vue 3, Pinia, Chart.js
-- **Backend**: FastAPI, SQLAlchemy, Pydantic
-
-## Future Improvements
-
-- Recurring transactions
-- Budget alerts
-- Export reports
-- Multi-currency support
-
+This makes the project stronger as a portfolio piece because it demonstrates not only dashboard visualization, but also real deliverable output, backend-generated files, user-scoped reporting, and maintainable cross-layer contracts.

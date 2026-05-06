@@ -225,6 +225,16 @@ export default {
     title: 'Page Not Found',
     subtitle: 'The page you are looking for does not exist or may have moved.'
   },
+  reports: {
+    title: 'Monthly Reports',
+    subtitle: 'Choose a month and export a CSV or PDF report from backend-generated data.',
+    exportCsv: 'Export CSV',
+    exportingCsv: 'Exporting CSV...',
+    exportPdf: 'Export PDF',
+    exportingPdf: 'Exporting PDF...',
+    invalidMonth: 'Please choose a valid month.',
+    error: 'Unable to export the report right now.'
+  },
   categories: {
     Salary: 'Salary',
     Freelance: 'Freelance',

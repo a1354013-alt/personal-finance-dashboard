@@ -17,14 +17,16 @@ os.environ.setdefault("ENV", "development")
 
 from app.jobs import get_job_runner  # noqa: E402
 from db.database import engine, init_db, reset_sqlite_db  # noqa: E402
-from main import app as fastapi_app  # noqa: E402
+from main import app as fastapi_app, rate_limiter  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def clean_db():
     reset_sqlite_db()
     init_db()
+    rate_limiter._windows.clear()
     yield
+    rate_limiter._windows.clear()
     reset_sqlite_db()
 
 

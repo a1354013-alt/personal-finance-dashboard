@@ -132,7 +132,7 @@ export function normalizeBudget(row) {
     id,
     month: toStringOrEmpty(row.month),
     category: toStringOrEmpty(row.category),
-    amount: toNumberOrZero(row.amount || row.monthly_limit),
+    amount: toNumberOrZero(row.amount),
     current_spent: toNumberOrZero(row.current_spent),
     percent_used: toNumberOrZero(row.percent_used)
   }
@@ -204,10 +204,10 @@ export function normalizeDashboardSummary(payload) {
     budgetItems: Array.isArray(payload.budgetItems)
       ? payload.budgetItems.map(item => ({
         category: String(item.category || ''),
-        budget: toNumberOrZero(item.budget),
+        amount: toNumberOrZero(item.amount ?? item.budget),
         used: toNumberOrZero(item.used),
         remaining: toNumberOrZero(item.remaining),
-        usageRate: toNumberOrZero(item.usageRate),
+        usagePercent: toNumberOrZero(item.usagePercent ?? item.usageRate),
         status: String(item.status || 'safe')
       }))
       : []
@@ -220,7 +220,15 @@ export function normalizeDashboardCharts(payload) {
     monthly_expense_trend: Array.isArray(payload.monthly_expense_trend) ? payload.monthly_expense_trend : [],
     category_distribution: Array.isArray(payload.category_distribution) ? payload.category_distribution : [],
     net_income_trend: Array.isArray(payload.net_income_trend) ? payload.net_income_trend : [],
-    budget_usage: Array.isArray(payload.budget_usage) ? payload.budget_usage : []
+    budget_usage: Array.isArray(payload.budget_usage)
+      ? payload.budget_usage.map(item => ({
+        category: String(item.category || ''),
+        amount: toNumberOrZero(item.amount),
+        currentSpent: toNumberOrZero(item.currentSpent ?? item.current_spent),
+        usagePercent: toNumberOrZero(item.usagePercent ?? item.percent_used),
+        status: String(item.status || 'safe')
+      }))
+      : []
   }
 }
 

@@ -42,7 +42,8 @@ def test_refresh_token_flow(client):
 def test_expenses_budgets_and_dashboard_flow(client):
     token = register_and_login(client, "budget@example.com")
 
-    client.post("/api/budgets", headers=auth_headers(token), json={"category": "Food", "monthly_limit": 1000})
+    current_month = date.today().strftime("%Y-%m")
+    client.post("/api/budgets", headers=auth_headers(token), json={"month": current_month, "category": "Food", "amount": 1000})
     today = date.today().strftime("%Y-%m-%d")
     client.post(
         "/api/expenses",
@@ -59,10 +60,12 @@ def test_expenses_budgets_and_dashboard_flow(client):
     assert dashboard.status_code == 200
     assert dashboard.json()["monthlyIncome"] == 3000
     assert dashboard.json()["monthlyExpense"] == 700
+    assert dashboard.json()["budgetItems"][0]["amount"] == 1000
 
     charts = client.get("/api/dashboard/charts", headers=auth_headers(token))
     assert charts.status_code == 200
     assert charts.json()["category_distribution"][0]["category"] == "Food"
+    assert charts.json()["budget_usage"][0]["amount"] == 1000
 
 
 def test_stocks_watchlist_syncs_in_background(client, monkeypatch: pytest.MonkeyPatch):

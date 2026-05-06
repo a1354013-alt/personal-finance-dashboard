@@ -1,6 +1,5 @@
 <template>
   <div class="dashboard-page">
-    <!-- Hero Section -->
     <section class="hero-panel">
       <div class="hero-copy">
         <p class="hero-tag">{{ t('dashboard.heroTag') }}</p>
@@ -33,7 +32,6 @@
       </div>
     </section>
 
-    <!-- Onboarding for new users -->
     <OnboardingCard
       v-if="isFirstTimeUser"
       :title="t('dashboard.onboarding.title')"
@@ -45,7 +43,6 @@
       ]"
     />
 
-    <!-- Summary Cards -->
     <div v-if="store.loading && !store.summary" class="stats-grid">
       <SkeletonCard v-for="index in 4" :key="index" />
     </div>
@@ -67,7 +64,27 @@
 
     <div v-if="store.error && !store.summary" class="error-msg">{{ store.error }}</div>
 
-    <!-- Charts Section -->
+    <section class="card report-export-card">
+      <div class="section-heading">
+        <div>
+          <h2>{{ t('reports.title') }}</h2>
+          <p>{{ t('reports.subtitle') }}</p>
+        </div>
+      </div>
+
+      <div class="report-controls">
+        <input v-model="reportMonth" class="month-input" type="month" :max="maxReportMonth">
+        <button class="btn btn-secondary" :disabled="reportLoading" @click="downloadReport('csv')">
+          {{ reportLoading && reportFormat === 'csv' ? t('reports.exportingCsv') : t('reports.exportCsv') }}
+        </button>
+        <button class="btn btn-primary" :disabled="reportLoading" @click="downloadReport('pdf')">
+          {{ reportLoading && reportFormat === 'pdf' ? t('reports.exportingPdf') : t('reports.exportPdf') }}
+        </button>
+      </div>
+
+      <p v-if="reportError" class="error-msg">{{ reportError }}</p>
+    </section>
+
     <section class="insight-section">
       <div class="section-copy">
         <h2>{{ t('nav.dashboard') }}</h2>
@@ -75,7 +92,6 @@
       </div>
 
       <div class="insight-grid">
-        <!-- Monthly Trend Chart -->
         <ChartPanel
           :title="t('dashboard.insight.expenseTrend')"
           :subtitle="t('dashboard.insight.expenseTrendSubtitle')"
@@ -84,8 +100,7 @@
           :labels="monthlyTrend.labels"
           :datasets="monthlyTrend.datasets"
         />
-        
-        <!-- Category Distribution Chart -->
+
         <ChartPanel
           :title="t('dashboard.insight.categoryDistribution')"
           :subtitle="t('dashboard.insight.categoryDistributionSubtitle')"
@@ -96,7 +111,6 @@
           :datasets="categoryDistribution.datasets"
         />
 
-        <!-- Recent Transactions Chart -->
         <ChartPanel
           :title="t('dashboard.recentTransactions.title')"
           :subtitle="t('dashboard.recentTransactions.subtitle')"
@@ -109,9 +123,7 @@
       </div>
     </section>
 
-    <!-- Recent Transactions List & Budget Health -->
     <div class="bottom-grid">
-      <!-- Recent Transactions List -->
       <section class="card recent-list-card">
         <div class="section-heading">
           <div>
@@ -142,7 +154,6 @@
         </div>
       </section>
 
-      <!-- Budget Health -->
       <section class="budget-health-shell card">
         <div class="section-heading">
           <div>
@@ -174,12 +185,12 @@
                 <strong>{{ translateCategory(t, item.category) }}</strong>
                 <div class="budget-inline-meta">
                   <span>{{ t('dashboard.budgetHealth.spent') }} {{ formatCurrency(item.used) }}</span>
-                  <span>{{ t('dashboard.budgetHealth.limit') }} {{ formatCurrency(item.budget) }}</span>
+                  <span>{{ t('dashboard.budgetHealth.limit') }} {{ formatCurrency(item.amount) }}</span>
                 </div>
               </div>
               <div class="budget-status-meta">
                 <span class="budget-status-pill">{{ t(`budgets.status.${item.status}`) }}</span>
-                <strong>{{ item.usageRate }}%</strong>
+                <strong>{{ item.usagePercent }}%</strong>
               </div>
             </div>
 
@@ -187,7 +198,7 @@
               <div
                 class="progress-fill"
                 :class="`progress-fill-${item.status}`"
-                :style="{ width: `${Math.min(item.usageRate, 100)}%` }"
+                :style="{ width: `${Math.min(item.usagePercent, 100)}%` }"
               />
             </div>
 
@@ -204,7 +215,6 @@
       </section>
     </div>
 
-    <!-- AI Insights -->
     <section class="ai-grid">
       <article class="card ai-card">
         <div class="section-heading">
@@ -258,18 +268,24 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { exportMonthlyReport } from '@/api/reports'
 import ChartPanel from '@/components/ChartPanel.vue'
 import OnboardingCard from '@/components/OnboardingCard.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
 import { VERSION } from '@/constants/version'
 import { useDashboardStore } from '@/stores/dashboardStore'
+import { toErrorMessage } from '@/stores/storeUtils'
 import { translateCategory } from '@/utils/categories'
 import { formatCurrency as formatCurrencyValue, formatPercent as formatPercentValue } from '@/utils/formatters'
 
 const store = useDashboardStore()
 const { t, locale } = useI18n()
+const reportMonth = ref(new Date().toISOString().slice(0, 7))
+const reportLoading = ref(false)
+const reportError = ref('')
+const reportFormat = ref('')
 
 const todayLabel = computed(() =>
   new Intl.DateTimeFormat(locale.value, {
@@ -278,6 +294,8 @@ const todayLabel = computed(() =>
     day: 'numeric'
   }).format(new Date())
 )
+
+const maxReportMonth = computed(() => new Date().toISOString().slice(0, 7))
 
 function formatCurrency(value) {
   return formatCurrencyValue(value, locale.value)
@@ -293,7 +311,6 @@ const isFirstTimeUser = computed(() => {
   return summary.monthlyIncome === 0 && summary.monthlyExpense === 0 && !summary.expenseByCategory.length
 })
 
-// Charts Computeds
 const monthlyTrend = computed(() => ({
   labels: store.summary?.monthlyTrend?.map((item) => item.month) || [],
   datasets: [
@@ -330,7 +347,7 @@ const recentTransactionsChart = computed(() => ({
     {
       label: t('common.amount'),
       data: store.summary?.recentTransactions?.map((item) => item.amount) || [],
-      backgroundColor: store.summary?.recentTransactions?.map((item) => 
+      backgroundColor: store.summary?.recentTransactions?.map((item) =>
         item.type === 'income' ? 'rgba(130, 201, 188, 0.6)' : 'rgba(221, 159, 115, 0.6)'
       )
     }
@@ -338,7 +355,7 @@ const recentTransactionsChart = computed(() => ({
 }))
 
 const budgetUsage = computed(() =>
-  [...(store.summary?.budgetItems || [])].sort((a, b) => b.usageRate - a.usageRate)
+  [...(store.summary?.budgetItems || [])].sort((a, b) => b.usagePercent - a.usagePercent)
 )
 
 const budgetHealthLabel = computed(() => {
@@ -352,8 +369,8 @@ const budgetHealthLabel = computed(() => {
 const budgetHealthDescription = computed(() => {
   const over = store.summary?.budgetOverCount || 0
   const warning = store.summary?.budgetWarningCount || 0
-  if (over > 0) return `${over} ${t('dashboard.budgetHealth.overTitle')}`
-  if (warning > 0) return `${warning} ${t('dashboard.budgetHealth.warningTitle')}`
+  if (over > 0) return `${over} ${t('dashboard.budgetHealth.overBy')}`
+  if (warning > 0) return `${warning} ${t('budgets.status.warning')}`
   return t('dashboard.statusAiReady')
 })
 
@@ -365,13 +382,17 @@ const aiStatusDescription = computed(() => {
   if (store.aiSummaryError || store.budgetAdviceError) {
     return t('dashboard.ai.fallbackDescription')
   }
-  return budgetUsage.value.length ? `${t('dashboard.budgetHealth.title')} ${formatPercent(store.summary?.totalUsed / store.summary?.totalBudget * 100 || 0)}` : t('dashboard.statusAiReady')
+
+  const ratio = store.summary?.totalBudget ? store.summary.totalUsed / store.summary.totalBudget : 0
+  return budgetUsage.value.length
+    ? `${t('dashboard.budgetHealth.title')} ${formatPercent(ratio * 100)}`
+    : t('dashboard.statusAiReady')
 })
 
 const statCards = computed(() => [
   {
     key: 'income',
-    icon: '💰',
+    icon: '$',
     tone: 'income',
     title: t('dashboard.summary.monthlyIncome'),
     value: formatCurrency(store.summary?.monthlyIncome || 0),
@@ -380,7 +401,7 @@ const statCards = computed(() => [
   },
   {
     key: 'expense',
-    icon: '💸',
+    icon: '-',
     tone: 'expense',
     title: t('dashboard.summary.monthlyExpense'),
     value: formatCurrency(store.summary?.monthlyExpense || 0),
@@ -389,7 +410,7 @@ const statCards = computed(() => [
   },
   {
     key: 'balance',
-    icon: '⚖️',
+    icon: '=',
     tone: 'balance',
     title: t('dashboard.summary.monthlyBalance'),
     value: formatCurrency(store.summary?.monthlyBalance || 0),
@@ -398,7 +419,7 @@ const statCards = computed(() => [
   },
   {
     key: 'budget-remaining',
-    icon: '🎯',
+    icon: '%',
     tone: 'budget',
     title: t('budgets.remaining'),
     value: formatCurrency(store.summary?.totalRemaining || 0),
@@ -429,7 +450,7 @@ const displayBudgetAdvice = computed(() => {
   if (topBudget) {
     const statusText = t(`budgets.status.${topBudget.status}`)
     return {
-      text: `${t('dashboard.ai.fallbackAdviceDefault')} ${translateCategory(t, topBudget.category)} ${statusText}，${topBudget.usageRate}%。`,
+      text: `${t('dashboard.ai.fallbackAdviceDefault')} ${translateCategory(t, topBudget.category)} ${statusText} (${topBudget.usagePercent}%)`,
       isFallback: true
     }
   }
@@ -439,6 +460,37 @@ const displayBudgetAdvice = computed(() => {
     isFallback: Boolean(store.budgetAdviceError || !store.budgetAdvice)
   }
 })
+
+async function downloadReport(format) {
+  if (!reportMonth.value) {
+    reportError.value = t('reports.invalidMonth')
+    return
+  }
+
+  reportLoading.value = true
+  reportFormat.value = format
+  reportError.value = ''
+
+  try {
+    const response = await exportMonthlyReport(reportMonth.value, format)
+    const blob = new Blob([response.data], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const disposition = response.headers?.['content-disposition'] || ''
+    const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] || `finance-report-${reportMonth.value}.${format}`
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    reportError.value = toErrorMessage(error, t('reports.error'))
+  } finally {
+    reportLoading.value = false
+    reportFormat.value = ''
+  }
+}
 
 onMounted(() => {
   store.fetchSummary()
@@ -534,8 +586,15 @@ onMounted(() => {
   z-index: 1;
 }
 
+.hero-status-card,
+.report-export-card,
+.recent-list-card,
+.budget-health-shell,
+.ai-card {
+  padding: 24px;
+}
+
 .hero-status-card {
-  padding: 18px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.76);
   border: 1px solid rgba(224, 232, 236, 0.82);
@@ -640,6 +699,21 @@ onMounted(() => {
   background: linear-gradient(135deg, #f6f8f0 0%, #edf2e1 100%);
 }
 
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.month-input {
+  min-width: 180px;
+  padding: 10px 12px;
+  border: 1px solid #d6dee6;
+  border-radius: 10px;
+  background: #fff;
+}
+
 .insight-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -647,36 +721,32 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-.bottom-grid {
+.bottom-grid,
+.ai-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
 
-.recent-list-card {
-  padding: 24px;
+.transaction-list,
+.budget-health-list {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
 }
 
-.transaction-list {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.transaction-item,
+.budget-health-item {
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafb;
+  border: 1px solid #e4ebf2;
 }
 
 .transaction-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  background: #f8fafb;
-  transition: transform 0.2s;
-}
-
-.transaction-item:hover {
-  transform: translateX(4px);
-  background: #f1f4f6;
 }
 
 .tx-info {
@@ -701,24 +771,12 @@ onMounted(() => {
   font-size: 15px;
 }
 
-.tx-amount.income { color: #1f8f5f; }
-.tx-amount.expense { color: #d04d48; }
-
-.budget-health-shell {
-  padding: 24px;
+.tx-amount.income {
+  color: #1f8f5f;
 }
 
-.budget-health-list {
-  display: grid;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.budget-health-item {
-  padding: 16px;
-  border-radius: 16px;
-  background: #f9fbfd;
-  border: 1px solid #e4ebf2;
+.tx-amount.expense {
+  color: #d04d48;
 }
 
 .budget-topline {
@@ -751,9 +809,20 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.budget-health-safe .budget-status-pill { background: #e6f4ea; color: #1e7e34; }
-.budget-health-warning .budget-status-pill { background: #fff3e0; color: #ef6c00; }
-.budget-health-over .budget-status-pill { background: #fdecea; color: #d93025; }
+.budget-health-safe .budget-status-pill {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.budget-health-warning .budget-status-pill {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.budget-health-over .budget-status-pill {
+  background: #fdecea;
+  color: #d93025;
+}
 
 .progress-track {
   width: 100%;
@@ -764,31 +833,28 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-.progress-fill { height: 100%; transition: width 0.4s ease; }
-.progress-fill-safe { background: #1f8f5f; }
-.progress-fill-warning { background: #d6a300; }
-.progress-fill-over { background: #d04d48; }
-
-.budget-footer {
-  font-size: 12px;
-  font-weight: 600;
-  color: #546575;
+.progress-fill {
+  height: 100%;
+  transition: width 0.4s ease;
 }
 
-.ai-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+.progress-fill-safe {
+  background: #1f8f5f;
 }
 
-.ai-card {
-  padding: 24px;
+.progress-fill-warning {
+  background: #d6a300;
 }
 
+.progress-fill-over {
+  background: #d04d48;
+}
+
+.budget-footer,
 .ai-text {
-  margin-top: 16px;
+  font-size: 12px;
   line-height: 1.8;
-  color: #455a64;
+  color: #546575;
 }
 
 .ai-warning {
@@ -812,14 +878,14 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .hero-panel {
+  .hero-panel,
+  .bottom-grid,
+  .ai-grid {
     grid-template-columns: 1fr;
   }
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .bottom-grid, .ai-grid {
-    grid-template-columns: 1fr;
   }
 }
 

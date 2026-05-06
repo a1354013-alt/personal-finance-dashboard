@@ -107,7 +107,15 @@ async function tryRefreshSession() {
 }
 
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    if (response.config?.responseType === 'blob') {
+      return {
+        data: response.data,
+        headers: response.headers
+      }
+    }
+    return response.data
+  },
   async (error) => {
     const originalRequest = error.config || {}
     const isUnauthorized = error.response?.status === 401

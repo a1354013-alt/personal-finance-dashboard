@@ -17,6 +17,12 @@ def test_dashboard_summary_api_empty_state(client):
     assert all(item["income"] == 0 for item in payload["monthlyTrend"])
     assert len(payload["expenseByCategory"]) == 0
     assert len(payload["recentTransactions"]) == 0
+    assert payload["totalBudget"] == 0
+    assert payload["totalUsed"] == 0
+    assert payload["totalRemaining"] == 0
+    assert payload["budgetOverCount"] == 0
+    assert payload["budgetWarningCount"] == 0
+    assert payload["budgetItems"] == []
 
 
 def test_dashboard_summary_api_with_data(client):
@@ -40,6 +46,16 @@ def test_dashboard_summary_api_with_data(client):
         headers=auth_headers(token),
         json={"amount": 3000, "category": "Housing", "type": "expense", "date": today.strftime("%Y-%m-%d")},
     )
+    client.post(
+        "/api/budgets",
+        headers=auth_headers(token),
+        json={"month": current_month, "category": "Food", "amount": 2500},
+    )
+    client.post(
+        "/api/budgets",
+        headers=auth_headers(token),
+        json={"month": current_month, "category": "Housing", "amount": 2800},
+    )
     
     response = client.get("/api/dashboard/summary", headers=auth_headers(token))
     assert response.status_code == 200
@@ -54,6 +70,15 @@ def test_dashboard_summary_api_with_data(client):
     assert payload["expenseByCategory"][0]["amount"] == 3000
     assert len(payload["recentTransactions"]) == 3
     assert payload["recentTransactions"][0]["category"] == "Housing"
+    assert payload["totalBudget"] == 5300
+    assert payload["totalUsed"] == 5000
+    assert payload["totalRemaining"] == 300
+    assert payload["budgetOverCount"] == 1
+    assert payload["budgetWarningCount"] == 1
+    assert payload["budgetItems"][0]["category"] == "Housing"
+    assert payload["budgetItems"][0]["amount"] == 2800
+    assert payload["budgetItems"][0]["used"] == 3000
+    assert payload["budgetItems"][0]["usagePercent"] > 100
 
 
 def test_dashboard_summary_user_isolation(client):

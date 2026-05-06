@@ -86,13 +86,15 @@ def rotate_refresh_token(db: Session, *, raw_token: str) -> tuple[UserORM, str]:
     token_hash = _hash_refresh_token(raw_token)
     token_row = db.query(RefreshTokenORM).filter(RefreshTokenORM.token_hash == token_hash).first()
     now = datetime.now(timezone.utc)
-    # Ensure token_row.expires_at is aware for comparison if it comes back naive from DB
+    if token_row is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+    if token_row.revoked_at is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has been revoked.")
     expires_at = token_row.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if token_row is None or token_row.revoked_at is not None or expires_at <= now:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+    if expires_at <= now:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has expired.")
 
     user = db.query(UserORM).filter(UserORM.id == token_row.user_id).first()
     if user is None:

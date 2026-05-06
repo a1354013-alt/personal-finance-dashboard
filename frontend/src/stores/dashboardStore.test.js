@@ -20,6 +20,7 @@ describe('dashboardStore', () => {
     expect(normalized.expenseByCategory).toEqual([])
     expect(normalized.monthlyTrend).toHaveLength(1)
     expect(normalized.recentTransactions).toEqual([])
+    expect(normalized.budgetItems).toEqual([])
   })
 
   it('normalizeAiSummary returns a stable string', () => {
@@ -39,12 +40,13 @@ describe('dashboardStore', () => {
       monthly_expense_trend: null,
       category_distribution: [{ category: 'Food', amount: 50 }],
       net_income_trend: undefined,
-      budget_usage: [{ category: 'Food', percent_used: 20 }]
+      budget_usage: [{ category: 'Food', amount: 100, currentSpent: 20, usagePercent: 20, status: 'safe' }]
     })
 
     expect(normalized.monthly_expense_trend).toEqual([])
     expect(normalized.category_distribution).toHaveLength(1)
     expect(normalized.net_income_trend).toEqual([])
     expect(normalized.budget_usage).toHaveLength(1)
+    expect(normalized.budget_usage[0].amount).toBe(100)
   })
 })

@@ -225,6 +225,16 @@ export default {
     title: '找不到頁面',
     subtitle: '你要查看的頁面不存在，或可能已被移動。'
   },
+  reports: {
+    title: '月報匯出',
+    subtitle: '選擇月份後，可下載由後端產生的 CSV 或 PDF 月報。',
+    exportCsv: '匯出 CSV',
+    exportingCsv: '匯出 CSV 中...',
+    exportPdf: '匯出 PDF',
+    exportingPdf: '匯出 PDF 中...',
+    invalidMonth: '請選擇有效月份。',
+    error: '目前無法匯出月報。'
+  },
   categories: {
     Salary: '薪資',
     Freelance: '接案',

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -60,9 +61,28 @@ def test_fundamentals_sync_queues_job_then_filter_reads_db(client, monkeypatch: 
     provider = StaticProvider()
     reset_fundamentals_provider_cache()
 
+    import app.jobs.job_runner as job_runner
+    import services.fundamentals_service as fundamentals_service
     import routers.stocks as stocks_router
 
-    monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
+    monkeypatch.setattr(
+        stocks_router.StockDataService,
+        "fetch_price_history",
+        classmethod(
+            lambda cls, code: [{
+                "stock_code": code,
+                "trade_date": date(2026, 4, 10),
+                "open": 99.0,
+                "high": 101.0,
+                "low": 98.0,
+                "close": 100.0,
+                "volume": 12345,
+            }]
+        ),
+    )
 
     token = register_and_login(client, "fundamentals-ok@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -88,9 +108,28 @@ def test_fundamentals_sync_failure_is_persisted_after_worker_runs(client, monkey
     provider = StaticProvider(fail=True)
     reset_fundamentals_provider_cache()
 
+    import app.jobs.job_runner as job_runner
+    import services.fundamentals_service as fundamentals_service
     import routers.stocks as stocks_router
 
-    monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
+    monkeypatch.setattr(
+        stocks_router.StockDataService,
+        "fetch_price_history",
+        classmethod(
+            lambda cls, code: [{
+                "stock_code": code,
+                "trade_date": date(2026, 4, 10),
+                "open": 99.0,
+                "high": 101.0,
+                "low": 98.0,
+                "close": 100.0,
+                "volume": 12345,
+            }]
+        ),
+    )
 
     token = register_and_login(client, "fundamentals-fail@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -129,10 +168,30 @@ def test_job_rows_are_created_for_fundamentals_sync(client, monkeypatch: pytest.
     provider = StaticProvider()
     reset_fundamentals_provider_cache()
 
-    import routers.stocks as stocks_router
     from db.database import SessionLocal
 
-    monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
+    import services.fundamentals_service as fundamentals_service
+    import app.jobs.job_runner as job_runner
+    import routers.stocks as stocks_router
+
+    monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
+    monkeypatch.setattr(
+        stocks_router.StockDataService,
+        "fetch_price_history",
+        classmethod(
+            lambda cls, code: [{
+                "stock_code": code,
+                "trade_date": date(2026, 4, 10),
+                "open": 99.0,
+                "high": 101.0,
+                "low": 98.0,
+                "close": 100.0,
+                "volume": 12345,
+            }]
+        ),
+    )
 
     token = register_and_login(client, "fundamentals-jobs@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})

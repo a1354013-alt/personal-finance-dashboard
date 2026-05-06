@@ -40,21 +40,37 @@ class DashboardSummaryResponse(BaseModel):
     monthlyExpense: float
     monthlyBalance: float
     topExpenseCategory: Optional[str]
-    monthlyTrend: list[DashboardMonthlyTrendItem]
-    expenseByCategory: list[DashboardExpenseByCategory]
-    recentTransactions: list[DashboardRecentTransaction]
+    monthlyTrend: list[DashboardMonthlyTrendItem] = Field(default_factory=list)
+    expenseByCategory: list[DashboardExpenseByCategory] = Field(default_factory=list)
+    recentTransactions: list[DashboardRecentTransaction] = Field(default_factory=list)
+    totalBudget: float
+    totalUsed: float
+    totalRemaining: float
+    budgetOverCount: int
+    budgetWarningCount: int
+    budgetItems: list["DashboardBudgetSummaryItem"] = Field(default_factory=list)
 
 
 class DashboardBudgetUsageItem(BaseModel):
     category: str
-    monthly_limit: float
-    current_spent: float
-    percent_used: float
+    amount: float
+    currentSpent: float
+    usagePercent: float
+    status: str
+
+
+class DashboardBudgetSummaryItem(BaseModel):
+    category: str
+    amount: float
+    used: float
+    remaining: float
+    usagePercent: float
+    status: str
 
 
 class DashboardChartsResponse(BaseModel):
-    monthly_expense_trend: list[DashboardMonthlyTrendItem]
-    category_distribution: list[DashboardExpenseByCategory]
-    net_income_trend: list[DashboardMonthlyTrendItem]
-    budget_usage: list[DashboardBudgetUsageItem]
+    monthly_expense_trend: list[DashboardMonthlyTrendItem] = Field(default_factory=list)
+    category_distribution: list[DashboardExpenseByCategory] = Field(default_factory=list)
+    net_income_trend: list[DashboardMonthlyTrendItem] = Field(default_factory=list)
+    budget_usage: list[DashboardBudgetUsageItem] = Field(default_factory=list)
 

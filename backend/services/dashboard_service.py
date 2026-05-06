@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session
@@ -111,6 +111,17 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
     
     over_count = sum(1 for item in budget_summary["items"] if item["status"] == "over")
     warning_count = sum(1 for item in budget_summary["items"] if item["status"] == "warning")
+    budget_items = [
+        {
+            "category": item["category"],
+            "amount": float(item["budget"]),
+            "used": float(item["used"]),
+            "remaining": float(item["remaining"]),
+            "usagePercent": float(item["usageRate"]),
+            "status": item["status"],
+        }
+        for item in budget_summary["items"]
+    ]
 
     return {
         "monthlyIncome": _money(monthly_income),
@@ -126,7 +137,7 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         "totalRemaining": budget_summary["totalRemaining"],
         "budgetOverCount": over_count,
         "budgetWarningCount": warning_count,
-        "budgetItems": budget_summary["items"]
+        "budgetItems": budget_items,
     }
 
 
@@ -154,9 +165,10 @@ def build_dashboard_charts(*, db: Session, user_id: int) -> dict:
     budget_usage = [
         {
             "category": item["category"],
-            "monthly_limit": float(item["monthly_limit"]),
-            "current_spent": float(item["current_spent"]),
-            "percent_used": float(item["percent_used"]),
+            "amount": float(item["amount"]),
+            "currentSpent": float(item["current_spent"]),
+            "usagePercent": float(item["percent_used"]),
+            "status": "over" if float(item["percent_used"]) > 100 else ("warning" if float(item["percent_used"]) >= 80 else "safe"),
         }
         for item in budget_status
     ]

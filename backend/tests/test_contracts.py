@@ -36,7 +36,7 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     budget = client.post(
         "/api/budgets",
         headers=auth_headers(token),
-        json={"category": "Food", "monthly_limit": 1000},
+        json={"month": "2026-04", "category": "Food", "amount": 1000},
     )
     assert budget.status_code in {200, 201}
     budget_payload = budget.json()

@@ -38,11 +38,11 @@ FIXED_MOCK_EXPENSES = [
 ]
 
 MOCK_BUDGETS = [
-    {"category": "Food", "monthly_limit": 9000.0},
-    {"category": "Transport", "monthly_limit": 3500.0},
-    {"category": "Housing", "monthly_limit": 13000.0},
-    {"category": "Utilities", "monthly_limit": 2500.0},
-    {"category": "Healthcare", "monthly_limit": 5000.0},
+    {"category": "Food", "amount": 9000.0},
+    {"category": "Transport", "amount": 3500.0},
+    {"category": "Housing", "amount": 13000.0},
+    {"category": "Utilities", "amount": 2500.0},
+    {"category": "Healthcare", "amount": 5000.0},
 ]
 
 MOCK_WATCHLIST = [
@@ -98,6 +98,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         init_db()
 
     mock_expenses, mock_prices = build_demo_dates(relative_dates)
+    budget_month = date.today().strftime("%Y-%m") if relative_dates else "2026-05"
 
     db = SessionLocal()
     try:
@@ -120,7 +121,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             db.add(ExpenseORM(user_id=demo_user.id, **item))
 
         for item in MOCK_BUDGETS:
-            db.add(BudgetORM(user_id=demo_user.id, **item))
+            db.add(BudgetORM(user_id=demo_user.id, month=budget_month, **item))
 
         for item in MOCK_WATCHLIST:
             db.add(

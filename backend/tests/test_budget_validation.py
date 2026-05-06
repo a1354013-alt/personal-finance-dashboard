@@ -25,7 +25,7 @@ def test_budget_category_trim_only_rejected(client, category: str):
     response = client.post(
         "/api/budgets",
         headers=auth_headers(token),
-        json={"category": category, "monthly_limit": 1000},
+        json={"month": "2026-05", "category": category, "amount": 1000},
     )
     assert response.status_code == 422
 
@@ -40,7 +40,7 @@ def test_build_budget_status_matches_budget_response_schema_shape(client):
     create_budget = client.post(
         "/api/budgets",
         headers=auth_headers(token),
-        json={"category": "Food", "monthly_limit": 500},
+        json={"month": "2026-05", "category": "Food", "amount": 500},
     )
     assert create_budget.status_code in {200, 201}
 

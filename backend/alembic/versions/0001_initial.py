@@ -36,12 +36,15 @@ def upgrade() -> None:
         "budgets",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("month", sa.String(length=7), nullable=False),
         sa.Column("category", sa.String(length=50), nullable=False),
-        sa.Column("monthly_limit", sa.Numeric(18, 2), nullable=False),
+        sa.Column("amount", sa.Numeric(18, 2), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=True),
-        sa.UniqueConstraint("user_id", "category", name="_user_budget_category_uc"),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
+        sa.UniqueConstraint("user_id", "month", "category", name="_user_month_category_uc"),
     )
     op.create_index("ix_budgets_id", "budgets", ["id"])
+    op.create_index("ix_budgets_month", "budgets", ["month"])
 
     op.create_table(
         "watchlist",
@@ -106,6 +109,7 @@ def downgrade() -> None:
     op.drop_index("ix_watchlist_id", table_name="watchlist")
     op.drop_table("watchlist")
 
+    op.drop_index("ix_budgets_month", table_name="budgets")
     op.drop_index("ix_budgets_id", table_name="budgets")
     op.drop_table("budgets")
 

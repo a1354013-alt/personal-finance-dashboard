@@ -6,19 +6,18 @@
         <p>{{ t('budgets.subtitle') }}</p>
       </div>
       <div class="month-selector">
-        <input 
-          type="month" 
-          v-model="store.selectedMonth" 
-          @change="handleMonthChange"
+        <input
+          v-model="store.selectedMonth"
+          type="month"
           class="month-input"
-        />
+          @change="handleMonthChange"
+        >
       </div>
     </div>
 
     <div v-if="message" class="success-msg">{{ message }}</div>
     <div v-if="store.error || error" class="error-msg">{{ store.error || error }}</div>
 
-    <!-- Summary Section -->
     <section v-if="store.summary" class="budget-summary-grid">
       <div class="card summary-card">
         <span class="label">{{ t('dashboard.summary.income') }} ({{ t('common.all') }})</span>
@@ -36,9 +35,8 @@
       </div>
     </section>
 
-    <!-- Budget Form -->
     <section class="card form-card">
-      <h2>{{ editingId ? t('budgets.formTitle') : t('budgets.formTitle') }}</h2>
+      <h2>{{ t('budgets.formTitle') }}</h2>
       <form class="form-row" @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="budget-category">{{ t('budgets.category') }}</label>
@@ -58,7 +56,7 @@
             min="0"
             placeholder="10000"
             required
-          />
+          >
         </div>
 
         <div class="form-actions">
@@ -72,7 +70,6 @@
       </form>
     </section>
 
-    <!-- Budget List -->
     <section class="card list-card">
       <h2>{{ t('budgets.currentStatus') }}</h2>
 
@@ -109,8 +106,8 @@
 
           <div class="budget-footer">
             <div class="usage-rate">
-              <span class="status-icon" v-if="item.status === 'over'">⚠️</span>
-              <span class="status-icon" v-if="item.status === 'warning'">⚡</span>
+              <span class="status-icon" v-if="item.status === 'over'">!</span>
+              <span class="status-icon" v-else-if="item.status === 'warning'">~</span>
               {{ item.usageRate }}% {{ t('budgets.used') }}
             </div>
             <div class="remaining" :class="{ 'text-danger': item.remaining < 0 }">
@@ -177,11 +174,10 @@ async function handleSubmit() {
   try {
     if (editingId.value) {
       await store.modifyBudget(editingId.value, { amount: form.value.amount })
-      message.value = t('budgets.saved')
     } else {
       await store.saveBudget(form.value)
-      message.value = t('budgets.saved')
     }
+    message.value = t('budgets.saved')
     cancelEdit()
   } catch (err) {
     error.value = err.message || t('common.unknownError')
@@ -218,137 +214,85 @@ onMounted(() => {
   gap: 20px;
 }
 
-.month-input {
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid #d1d9e0;
-  font-family: inherit;
-  font-size: 15px;
-  color: #233441;
-}
-
 .budget-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
-.summary-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 20px;
-}
-
-.summary-card .label {
-  font-size: 13px;
-  color: #627484;
-  font-weight: 700;
-}
-
-.summary-card .value {
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.form-card {
-  padding: 24px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 12px;
-}
-
+.form-card,
 .list-card {
   padding: 24px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.form-group {
+  display: grid;
+  gap: 8px;
 }
 
 .budget-list {
   display: grid;
   gap: 16px;
-  margin-top: 16px;
 }
 
 .budget-item {
-  padding: 20px;
-  border: 1px solid #e4ebf2;
+  padding: 16px;
   border-radius: 16px;
+  border: 1px solid #e4ebf2;
   background: #f9fbfd;
-  transition: transform 0.2s ease;
 }
 
-.budget-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
-}
-
-.budget-topline {
+.budget-topline,
+.budget-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.budget-topline .actions {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-sm {
-  min-height: 32px;
-  padding: 4px 12px;
+.budget-meta,
+.usage-rate,
+.remaining {
   font-size: 12px;
-}
-
-.budget-meta {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #66788a;
+  color: #546575;
 }
 
 .progress-track {
   width: 100%;
-  height: 12px;
+  height: 8px;
   border-radius: 999px;
   background: #e8eef4;
   overflow: hidden;
+  margin: 12px 0;
 }
 
 .progress-fill {
   height: 100%;
-  transition: width 0.4s ease;
 }
 
-.progress-fill-safe { background: #1f8f5f; }
-.progress-fill-warning { background: #d6a300; }
-.progress-fill-over { background: #d04d48; }
-
-.budget-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 12px;
-  font-size: 14px;
-  font-weight: 600;
+.progress-fill-safe {
+  background: #1f8f5f;
 }
 
-.status-icon {
-  margin-right: 4px;
+.progress-fill-warning {
+  background: #d6a300;
 }
 
-.text-danger {
-  color: #d04d48 !important;
+.progress-fill-over {
+  background: #d04d48;
 }
 
-@media (max-width: 640px) {
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
+@media (max-width: 960px) {
+  .page-header,
+  .budget-summary-grid,
   .form-row {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 }
 </style>

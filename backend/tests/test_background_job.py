@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS
@@ -42,9 +43,28 @@ def test_background_job_creation_retry_and_failure_recovery(client, monkeypatch)
     provider = FlakyProvider()
     reset_fundamentals_provider_cache()
 
+    import app.jobs.job_runner as job_runner
+    import services.fundamentals_service as fundamentals_service
     import routers.stocks as stocks_router
 
-    monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
+    monkeypatch.setattr(
+        stocks_router.StockDataService,
+        "fetch_price_history",
+        classmethod(
+            lambda cls, code: [{
+                "stock_code": code,
+                "trade_date": date(2026, 4, 10),
+                "open": 99.0,
+                "high": 101.0,
+                "low": 98.0,
+                "close": 100.0,
+                "volume": 12345,
+            }]
+        ),
+    )
 
     token = register_and_login(client, "jobs@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -65,9 +85,28 @@ def test_background_job_marks_failed_after_max_retries(client, monkeypatch):
     provider = AlwaysFailProvider()
     reset_fundamentals_provider_cache()
 
+    import app.jobs.job_runner as job_runner
+    import services.fundamentals_service as fundamentals_service
     import routers.stocks as stocks_router
 
-    monkeypatch.setattr(stocks_router, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
+    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
+    monkeypatch.setattr(
+        stocks_router.StockDataService,
+        "fetch_price_history",
+        classmethod(
+            lambda cls, code: [{
+                "stock_code": code,
+                "trade_date": date(2026, 4, 10),
+                "open": 99.0,
+                "high": 101.0,
+                "low": 98.0,
+                "close": 100.0,
+                "volume": 12345,
+            }]
+        ),
+    )
 
     token = register_and_login(client, "jobs-fail@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})

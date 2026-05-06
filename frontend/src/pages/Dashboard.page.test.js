@@ -1,14 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18nInstance } from '@/i18n'
 import Dashboard from '@/pages/Dashboard.vue'
 
-// Mock ChartPanel to avoid canvas issues
 vi.mock('@/components/ChartPanel.vue', () => ({
   default: {
     name: 'ChartPanel',
-    template: '<div class="chart-panel-mock"><slot /></div>',
+    template: '<div class="chart-panel-mock"></div>',
     props: ['title', 'subtitle', 'loading', 'error', 'labels', 'datasets', 'type']
   }
 }))
@@ -19,15 +18,21 @@ vi.mock('@/api/dashboard', () => ({
     monthlyExpense: 5000,
     monthlyBalance: 5000,
     topExpenseCategory: 'Housing',
-    monthlyTrend: [
-      { month: '2026-05', income: 10000, expense: 5000 }
-    ],
+    monthlyTrend: [{ month: '2026-05', income: 10000, expense: 5000 }],
     expenseByCategory: [
       { category: 'Housing', amount: 3000 },
       { category: 'Food', amount: 2000 }
     ],
     recentTransactions: [
       { date: '2026-05-01', category: 'Housing', type: 'expense', amount: 3000 }
+    ],
+    totalBudget: 6000,
+    totalUsed: 3000,
+    totalRemaining: 3000,
+    budgetOverCount: 0,
+    budgetWarningCount: 1,
+    budgetItems: [
+      { category: 'Housing', amount: 6000, used: 3000, remaining: 3000, usagePercent: 50, status: 'safe' }
     ]
   })),
   getDashboardCharts: vi.fn(async () => ({
@@ -40,51 +45,50 @@ vi.mock('@/api/dashboard', () => ({
   getBudgetAdvice: vi.fn(async () => ({ advice: 'Budget Advice' }))
 }))
 
+vi.mock('@/api/reports', () => ({
+  exportMonthlyReport: vi.fn(async () => ({
+    data: new Blob(['csv']),
+    headers: { 'content-disposition': 'attachment; filename="finance-report-2026-05.csv"' }
+  }))
+}))
+
 describe('Dashboard page', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
-  it('renders summary cards correctly', async () => {
+  it('renders summary cards and budget health', async () => {
     const pinia = createPinia()
     const i18n = createI18nInstance()
-    setActivePinia(pinia)
-    const wrapper = mount(Dashboard, { 
-      global: { 
+    const wrapper = mount(Dashboard, {
+      global: {
         plugins: [pinia, i18n],
-        stubs: {
-          RouterLink: true
-        }
-      } 
+        stubs: { RouterLink: true }
+      }
     })
-    
+
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('本月收入')
       expect(wrapper.text()).toContain('NT$ 10,000')
-      expect(wrapper.text()).toContain('本月支出')
       expect(wrapper.text()).toContain('NT$ 5,000')
-      expect(wrapper.text()).toContain('最大支出分類')
       expect(wrapper.text()).toContain('住房')
+      expect(wrapper.text()).toContain('NT$ 6,000')
     })
   })
 
-  it('renders recent transactions', async () => {
+  it('renders recent transactions and export controls', async () => {
     const pinia = createPinia()
     const i18n = createI18nInstance()
-    setActivePinia(pinia)
-    const wrapper = mount(Dashboard, { 
-      global: { 
+    const wrapper = mount(Dashboard, {
+      global: {
         plugins: [pinia, i18n],
-        stubs: {
-          RouterLink: true
-        }
-      } 
+        stubs: { RouterLink: true }
+      }
     })
-    
+
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('最近交易')
-      expect(wrapper.text()).toContain('住房')
+      expect(wrapper.text()).toContain('2026-05-01')
       expect(wrapper.text()).toContain('- NT$ 3,000')
+      expect(wrapper.find('input[type="month"]').exists()).toBe(true)
     })
   })
 })
