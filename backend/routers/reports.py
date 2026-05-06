@@ -5,8 +5,8 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from models.report import MONTH_PATTERN
 from models.user import UserORM
+from routers._validators import month_query
 from services.auth import get_current_user
 from services.report_service import build_monthly_report, render_monthly_report_csv, render_monthly_report_pdf
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 @router.get("/monthly")
 def export_monthly_report(
-    month: str = Query(..., pattern=MONTH_PATTERN),
+    month: str = month_query(required=True),
     format: str = Query(...),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from models.budget import BudgetCreate, BudgetORM, BudgetResponse, BudgetSummaryResponse, BudgetUpdate
 from models.user import UserORM
+from routers._validators import month_query
 from services.auth import get_current_user
 from services.budget_summary import build_budget_status, build_budget_summary
 
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/api/budgets", tags=["Budgets"])
 
 @router.get("", response_model=list[BudgetResponse])
 def get_budgets(
-    month: str | None = None,
+    month: str | None = month_query(),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
@@ -26,7 +27,7 @@ def get_budgets(
 
 @router.get("/summary", response_model=BudgetSummaryResponse)
 def get_budget_summary(
-    month: str | None = None,
+    month: str | None = month_query(),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):

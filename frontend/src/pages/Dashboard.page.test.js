@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18nInstance } from '@/i18n'
+import { exportMonthlyReport } from '@/api/reports'
 import Dashboard from '@/pages/Dashboard.vue'
 
 vi.mock('@/components/ChartPanel.vue', () => ({
@@ -46,15 +47,40 @@ vi.mock('@/api/dashboard', () => ({
 }))
 
 vi.mock('@/api/reports', () => ({
-  exportMonthlyReport: vi.fn(async () => ({
-    data: new Blob(['csv']),
-    headers: { 'content-disposition': 'attachment; filename="finance-report-2026-05.csv"' }
+  exportMonthlyReport: vi.fn(async (month, format) => ({
+    data: new Blob([format]),
+    headers: {
+      'content-disposition': `attachment; filename="finance-report-${month}.${format}"`
+    }
   }))
 }))
 
 describe('Dashboard page', () => {
+  let originalCreateElement
+  let createObjectURLSpy
+  let revokeObjectURLSpy
+  let clickSpy
+
   beforeEach(() => {
     setActivePinia(createPinia())
+    originalCreateElement = document.createElement.bind(document)
+    if (!URL.createObjectURL) {
+      URL.createObjectURL = () => 'blob:placeholder'
+    }
+    if (!URL.revokeObjectURL) {
+      URL.revokeObjectURL = () => {}
+    }
+    createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test')
+    revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    clickSpy = vi.fn()
+
+    vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+      const element = originalCreateElement(tagName)
+      if (tagName === 'a') {
+        element.click = clickSpy
+      }
+      return element
+    })
   })
 
   it('renders summary cards and budget health', async () => {
@@ -89,6 +115,51 @@ describe('Dashboard page', () => {
       expect(wrapper.text()).toContain('2026-05-01')
       expect(wrapper.text()).toContain('- NT$ 3,000')
       expect(wrapper.find('input[type="month"]').exists()).toBe(true)
+    })
+  })
+
+  it('clicking Export CSV calls exportMonthlyReport(month, "csv")', async () => {
+    const wrapper = mount(Dashboard, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()],
+        stubs: { RouterLink: true }
+      }
+    })
+
+    await wrapper.find('button.btn-secondary').trigger('click')
+
+    expect(exportMonthlyReport).toHaveBeenCalledWith('2026-05', 'csv')
+    expect(createObjectURLSpy).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:test')
+  })
+
+  it('clicking Export PDF calls exportMonthlyReport(month, "pdf")', async () => {
+    const wrapper = mount(Dashboard, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()],
+        stubs: { RouterLink: true }
+      }
+    })
+
+    await wrapper.find('button.btn-primary').trigger('click')
+
+    expect(exportMonthlyReport).toHaveBeenCalledWith('2026-05', 'pdf')
+  })
+
+  it('shows an error message when export fails', async () => {
+    exportMonthlyReport.mockRejectedValueOnce(new Error('Export failed'))
+    const wrapper = mount(Dashboard, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()],
+        stubs: { RouterLink: true }
+      }
+    })
+
+    await wrapper.find('button.btn-secondary').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Export failed')
     })
   })
 })

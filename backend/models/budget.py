@@ -8,6 +8,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, U
 from sqlalchemy.orm import relationship
 
 from db.database import Base
+from models.month import MONTH_PATTERN
 
 
 class BudgetORM(Base):
@@ -18,8 +19,13 @@ class BudgetORM(Base):
     month = Column(String(7), nullable=False, index=True)  # YYYY-MM
     category = Column(String(50), nullable=False)
     amount = Column(Numeric(18, 2), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     user = relationship("UserORM", back_populates="budgets")
 
@@ -27,7 +33,7 @@ class BudgetORM(Base):
 
 
 class BudgetBase(BaseModel):
-    month: str = Field(..., pattern=r"^\d{4}-\d{2}$")
+    month: str = Field(..., pattern=MONTH_PATTERN)
     category: str = Field(..., min_length=1, max_length=50)
     amount: Decimal = Field(..., ge=0)
 

@@ -53,3 +53,22 @@ def test_build_budget_status_matches_budget_response_schema_shape(client):
     for item in items:
         assert set(item.keys()) == expected_keys
 
+
+@pytest.mark.parametrize("month", ["2026-00", "2026-99"])
+def test_budget_create_rejects_invalid_month_values(client, month: str):
+    token = register_and_login(client, f"budget-invalid-create-{month}@example.com")
+    response = client.post(
+        "/api/budgets",
+        headers=auth_headers(token),
+        json={"month": month, "category": "Food", "amount": 1000},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("path", ["/api/budgets", "/api/budgets/summary"])
+@pytest.mark.parametrize("month", ["2026-00", "2026-99"])
+def test_budget_query_rejects_invalid_month_values(client, path: str, month: str):
+    token = register_and_login(client, f"budget-invalid-query-{path.split('/')[-1]}-{month}@example.com")
+    response = client.get(f"{path}?month={month}", headers=auth_headers(token))
+    assert response.status_code == 422
+

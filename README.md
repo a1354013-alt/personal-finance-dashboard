@@ -215,7 +215,7 @@ GitHub Actions workflow runs:
 
 Workflow file:
 
-- [ci.yml](/D:/git/personal-finance-dashboard/.github/workflows/ci.yml)
+- [ci.yml](.github/workflows/ci.yml)
 
 ## Portfolio Value
 

@@ -4,8 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-
-MONTH_PATTERN = r"^\d{4}-\d{2}$"
+from models.month import MONTH_PATTERN
 
 
 class MonthlyReportQuery(BaseModel):

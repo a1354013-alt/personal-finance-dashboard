@@ -51,6 +51,9 @@ def test_monthly_report_rejects_invalid_params(client):
     bad_month = client.get("/api/reports/monthly?month=2026/01&format=csv", headers=auth_headers(token))
     assert bad_month.status_code == 422
 
+    bad_month_range = client.get("/api/reports/monthly?month=2026-99&format=csv", headers=auth_headers(token))
+    assert bad_month_range.status_code == 422
+
     bad_format = client.get("/api/reports/monthly?month=2026-01&format=xlsx", headers=auth_headers(token))
     assert bad_format.status_code == 422
 
