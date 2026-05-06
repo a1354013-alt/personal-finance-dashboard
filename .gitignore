@@ -1,6 +1,9 @@
 backend/finance.db
 backend/test_smoke.db
 backend/*.db
+*.db
+*.sqlite
+*.sqlite3
 backend/*.db-journal
 backend/*.db-wal
 backend/*.db-shm
