@@ -49,6 +49,7 @@ describe('Budgets page', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 15, 12, 0, 0))
+    localStorage.setItem('locale', 'en')
     setActivePinia(createPinia())
   })
 
@@ -56,21 +57,26 @@ describe('Budgets page', () => {
     vi.useRealTimers()
   })
 
-  it('loads budgets and renders status', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
+  it('loads budgets with the correct total budget and edit copy', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('食物')
-      expect(wrapper.text()).toContain('20')
+      expect(wrapper.text()).toContain('Total Budget (All)')
+      expect(wrapper.text()).toContain('Food')
+      expect(wrapper.text()).toContain('Edit')
     })
   })
 
-  it('submits a budget', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
+  it('submits a budget and keeps the English success copy intact', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
 
     await wrapper.find('#budget-category').setValue('Food')
     await wrapper.find('#budget-limit').setValue('1500')
@@ -82,8 +88,8 @@ describe('Budgets page', () => {
         amount: 1500,
         month: '2026-05'
       })
-      expect(wrapper.text()).toContain('預算已儲存')
-      expect(wrapper.text()).toContain('食物')
+      expect(wrapper.text()).toContain('Budget saved.')
+      expect(wrapper.text()).toContain('Total Budget (All)')
     })
   })
 })

@@ -6,7 +6,7 @@ let refreshInFlight = null
 
 export function isAuthRoute(url) {
   const value = typeof url === 'string' ? url : ''
-  return value.includes('/auth/login') || value.includes('/auth/register') || value.includes('/auth/me') || value.includes('/auth/refresh')
+  return value.includes('/auth/login') || value.includes('/auth/register') || value.includes('/auth/refresh')
 }
 
 export function setUnauthorizedHandler(handler) {

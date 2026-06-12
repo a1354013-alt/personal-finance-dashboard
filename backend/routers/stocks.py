@@ -124,6 +124,7 @@ def sync_watchlist_fundamentals(
     rows = [
         queue_fundamentals_sync(
             db,
+            user_id=current_user.id,
             stock_code=item.stock_code,
             request_id=getattr(request.state, "request_id", None),
             force=payload.force,
@@ -152,6 +153,7 @@ def sync_single_fundamentals(
 
     row = queue_fundamentals_sync(
         db,
+        user_id=current_user.id,
         stock_code=formatted_code,
         request_id=getattr(request.state, "request_id", None),
         force=payload.force,

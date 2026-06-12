@@ -36,6 +36,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 The script checks Python, Node.js, and npm, creates `backend\.venv` if needed, installs backend and frontend dependencies, runs `alembic upgrade head`, and opens separate dev-server terminals.
+If `backend\.env` or `frontend\.env` is missing, the script also copies it from the matching `.env.example` file before startup.
 
 ### macOS / Linux start
 
@@ -67,6 +68,29 @@ Dev URLs:
 - Backend API: `http://localhost:8000`
 - Swagger: `http://localhost:8000/docs`
 - Frontend: `http://localhost:5173`
+
+## Troubleshooting
+
+### PowerShell script cannot run
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+### Port already in use
+
+Backend default: `http://localhost:8000`  
+Frontend default: `http://localhost:5173`
+
+Close the existing process or change the port before starting the dev script.
+
+### First launch takes longer
+
+The startup script creates `backend/.venv`, installs backend dependencies, installs frontend packages, and applies migrations on the first run.
+
+### Database migration failed
+
+Check `backend/.env` and `DATABASE_URL`, then rerun the startup script or `alembic upgrade head`.
 
 ## Backend Setup
 
@@ -173,6 +197,16 @@ npm run lint
 npm run build
 npm run test:run
 ```
+
+## API Naming Notes
+
+The project intentionally keeps naming strategy stable at each layer instead of forcing one naming style everywhere:
+
+- Python services, SQLAlchemy models, and DB-oriented payloads may use `snake_case`
+- Vue components, Pinia stores, and display-oriented state use `camelCase`
+- Frontend contract normalizers in [frontend/src/api/contracts.js](frontend/src/api/contracts.js) are the boundary that accepts mixed API field styles and returns stable UI shapes
+
+When extending an API response, prefer updating the response model or the matching normalizer rather than renaming every field across the stack in one pass.
 
 ## Monthly Report Export
 

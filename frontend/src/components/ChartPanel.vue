@@ -41,8 +41,10 @@ import {
   CategoryScale,
   Filler,
   Legend,
+  LineController,
   LineElement,
   LinearScale,
+  PieController,
   PointElement,
   Tooltip
 } from 'chart.js'
@@ -56,8 +58,10 @@ Chart.register(
   CategoryScale,
   Filler,
   Legend,
+  LineController,
   LineElement,
   LinearScale,
+  PieController,
   PointElement,
   Tooltip
 )
