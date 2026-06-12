@@ -96,19 +96,25 @@ def delete_watchlist_item(db: Session, *, user_id: int, item_id: int) -> bool:
     return True
 
 
-def update_watchlist_sync_status_for_code(
+def update_watchlist_sync_status(
     db: Session,
     *,
-    stock_code: str,
+    watchlist_item_id: int,
+    user_id: int,
     status: str,
     error_message: str | None,
 ) -> None:
     attempted_at = datetime.now(timezone.utc)
-    items = db.query(WatchlistORM).filter(WatchlistORM.stock_code == stock_code).all()
-    for item in items:
-        item.price_sync_status = status
-        item.last_sync_error = error_message
-        item.last_sync_attempt_at = attempted_at
+    item = (
+        db.query(WatchlistORM)
+        .filter(WatchlistORM.id == watchlist_item_id, WatchlistORM.user_id == user_id)
+        .first()
+    )
+    if not item:
+        return
+    item.price_sync_status = status
+    item.last_sync_error = error_message
+    item.last_sync_attempt_at = attempted_at
     db.commit()
 
 

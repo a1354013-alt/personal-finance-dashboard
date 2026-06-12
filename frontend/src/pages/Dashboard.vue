@@ -95,8 +95,8 @@
         <ChartPanel
           :title="t('dashboard.insight.expenseTrend')"
           :subtitle="t('dashboard.insight.expenseTrendSubtitle')"
-          :loading="store.loading"
-          :error="store.error || ''"
+          :loading="store.chartsLoading"
+          :error="store.chartsError || ''"
           :labels="monthlyTrend.labels"
           :datasets="monthlyTrend.datasets"
         />
@@ -105,20 +105,20 @@
           :title="t('dashboard.insight.categoryDistribution')"
           :subtitle="t('dashboard.insight.categoryDistributionSubtitle')"
           type="pie"
-          :loading="store.loading"
-          :error="store.error || ''"
+          :loading="store.chartsLoading"
+          :error="store.chartsError || ''"
           :labels="categoryDistribution.labels"
           :datasets="categoryDistribution.datasets"
         />
 
         <ChartPanel
-          :title="t('dashboard.recentTransactions.title')"
-          :subtitle="t('dashboard.recentTransactions.subtitle')"
+          :title="t('dashboard.insight.netIncomeTrend')"
+          :subtitle="t('dashboard.insight.netIncomeTrendSubtitle')"
           type="bar"
-          :loading="store.loading"
-          :error="store.error || ''"
-          :labels="recentTransactionsChart.labels"
-          :datasets="recentTransactionsChart.datasets"
+          :loading="store.chartsLoading"
+          :error="store.chartsError || ''"
+          :labels="incomeExpenseTrend.labels"
+          :datasets="incomeExpenseTrend.datasets"
         />
       </div>
     </section>
@@ -278,11 +278,12 @@ import { VERSION } from '@/constants/version'
 import { useDashboardStore } from '@/stores/dashboardStore'
 import { toErrorMessage } from '@/stores/storeUtils'
 import { translateCategory } from '@/utils/categories'
+import { getLocalMonth } from '@/utils/date'
 import { formatCurrency as formatCurrencyValue, formatPercent as formatPercentValue } from '@/utils/formatters'
 
 const store = useDashboardStore()
 const { t, locale } = useI18n()
-const reportMonth = ref(new Date().toISOString().slice(0, 7))
+const reportMonth = ref(getLocalMonth())
 const reportLoading = ref(false)
 const reportError = ref('')
 const reportFormat = ref('')
@@ -295,7 +296,7 @@ const todayLabel = computed(() =>
   }).format(new Date())
 )
 
-const maxReportMonth = computed(() => new Date().toISOString().slice(0, 7))
+const maxReportMonth = computed(() => getLocalMonth())
 
 function formatCurrency(value) {
   return formatCurrencyValue(value, locale.value)
@@ -312,18 +313,11 @@ const isFirstTimeUser = computed(() => {
 })
 
 const monthlyTrend = computed(() => ({
-  labels: store.summary?.monthlyTrend?.map((item) => item.month) || [],
+  labels: store.charts?.monthly_expense_trend?.map((item) => item.month) || [],
   datasets: [
     {
-      label: t('dashboard.summary.income'),
-      data: store.summary?.monthlyTrend?.map((item) => item.income) || [],
-      borderColor: '#2f7a76',
-      backgroundColor: 'rgba(130, 201, 188, 0.24)',
-      tension: 0.32
-    },
-    {
       label: t('dashboard.summary.expense'),
-      data: store.summary?.monthlyTrend?.map((item) => item.expense) || [],
+      data: store.charts?.monthly_expense_trend?.map((item) => item.expense) || [],
       borderColor: '#25465b',
       backgroundColor: 'rgba(157, 180, 197, 0.16)',
       tension: 0.32
@@ -332,24 +326,27 @@ const monthlyTrend = computed(() => ({
 }))
 
 const categoryDistribution = computed(() => ({
-  labels: store.summary?.expenseByCategory?.map((item) => translateCategory(t, item.category)) || [],
+  labels: store.charts?.category_distribution?.map((item) => translateCategory(t, item.category)) || [],
   datasets: [
     {
-      data: store.summary?.expenseByCategory?.map((item) => item.amount) || [],
+      data: store.charts?.category_distribution?.map((item) => item.amount) || [],
       backgroundColor: ['#27556f', '#dd9f73', '#75a68f', '#8aa6c1', '#d4c1a5', '#b9d4cf']
     }
   ]
 }))
 
-const recentTransactionsChart = computed(() => ({
-  labels: store.summary?.recentTransactions?.map((item, idx) => `${item.date} #${idx + 1}`) || [],
+const incomeExpenseTrend = computed(() => ({
+  labels: store.charts?.net_income_trend?.map((item) => item.month) || [],
   datasets: [
     {
-      label: t('common.amount'),
-      data: store.summary?.recentTransactions?.map((item) => item.amount) || [],
-      backgroundColor: store.summary?.recentTransactions?.map((item) =>
-        item.type === 'income' ? 'rgba(130, 201, 188, 0.6)' : 'rgba(221, 159, 115, 0.6)'
-      )
+      label: t('dashboard.summary.income'),
+      data: store.charts?.net_income_trend?.map((item) => item.income) || [],
+      backgroundColor: 'rgba(130, 201, 188, 0.6)'
+    },
+    {
+      label: t('dashboard.summary.expense'),
+      data: store.charts?.net_income_trend?.map((item) => item.expense) || [],
+      backgroundColor: 'rgba(221, 159, 115, 0.6)'
     }
   ]
 }))
@@ -494,6 +491,7 @@ async function downloadReport(format) {
 
 onMounted(() => {
   store.fetchSummary()
+  store.fetchCharts()
   store.fetchAiSummary()
   store.fetchBudgetAdvice()
 })

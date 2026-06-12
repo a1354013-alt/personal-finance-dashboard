@@ -18,6 +18,56 @@ Full-stack personal finance dashboard built with FastAPI and Vue 3. The project 
 - Database: SQLite by default
 - Background work: queued sync jobs for market data and fundamentals
 
+## Quick Start
+
+### Windows one-click start
+
+From the repository root:
+
+```powershell
+.\start-dev.bat
+```
+
+PowerShell directly:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\start-dev.ps1
+```
+
+The script checks Python, Node.js, and npm, creates `backend\.venv` if needed, installs backend and frontend dependencies, runs `alembic upgrade head`, and opens separate dev-server terminals.
+
+### macOS / Linux start
+
+```bash
+chmod +x scripts/start-dev.sh
+./scripts/start-dev.sh
+```
+
+### Environment files
+
+The app runs with demo-safe defaults. To customize local settings:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+```
+
+macOS / Linux:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+Use a real `SECRET_KEY` and external API keys only in private local files or deployment secrets.
+
+Dev URLs:
+
+- Backend API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- Frontend: `http://localhost:5173`
+
 ## Backend Setup
 
 ```powershell
@@ -99,6 +149,10 @@ npm run dev
 Frontend URL:
 
 - App: `http://localhost:5173`
+
+## Rate Limiting
+
+The current rate limiter is an in-memory, demo-level guard intended for a single local API process. It does not share counters across multiple workers or multiple deployed instances. Production deployments should replace it with a Redis-backed or otherwise centralized rate limiter.
 
 ## Testing Commands
 

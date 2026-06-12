@@ -24,7 +24,7 @@ from models.job import (
 from providers.fundamentals import get_fundamentals_provider
 from providers.fundamentals.base import FundamentalsProviderError
 from services.stock_data_service import StockDataService
-from services.watchlist_service import update_watchlist_sync_status_for_code, upsert_stock_price_history
+from services.watchlist_service import update_watchlist_sync_status, upsert_stock_price_history
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +182,29 @@ class JobRunner:
 
     def _handle_stock_market_data_sync(self, db: Session, job: SyncJobORM, payload: dict) -> None:
         stock_code = StockDataService.normalize_stock_code(str(payload["stock_code"]))
+        user_id = int(payload["user_id"])
+        watchlist_item_id = int(payload["watchlist_item_id"])
+        from models.stock import WatchlistORM
+
+        watchlist_item = (
+            db.query(WatchlistORM)
+            .filter(
+                WatchlistORM.id == watchlist_item_id,
+                WatchlistORM.user_id == user_id,
+                WatchlistORM.stock_code == stock_code,
+            )
+            .first()
+        )
+        if not watchlist_item:
+            raise RuntimeError("watchlist item no longer exists")
+
         history = StockDataService.fetch_price_history(stock_code)
         info = StockDataService.fetch_stock_info(stock_code)
         if not history:
-            update_watchlist_sync_status_for_code(
+            update_watchlist_sync_status(
                 db,
-                stock_code=stock_code,
+                watchlist_item_id=watchlist_item_id,
+                user_id=user_id,
                 status=JOB_STATUS_FAILED,
                 error_message="Unable to fetch latest price data from the upstream provider.",
             )
@@ -201,15 +218,17 @@ class JobRunner:
                 commit=False,
             )
         db.commit()
-        update_watchlist_sync_status_for_code(db, stock_code=stock_code, status=JOB_STATUS_SUCCESS, error_message=None)
+        update_watchlist_sync_status(
+            db,
+            watchlist_item_id=watchlist_item_id,
+            user_id=user_id,
+            status=JOB_STATUS_SUCCESS,
+            error_message=None,
+        )
 
         display_name = (info or {}).get("shortName") or (info or {}).get("longName")
         if display_name:
-            from models.stock import WatchlistORM
-
-            items = db.query(WatchlistORM).filter(WatchlistORM.stock_code == stock_code).all()
-            for item in items:
-                item.name = str(display_name)[:100]
+            watchlist_item.name = str(display_name)[:100]
             db.commit()
 
 

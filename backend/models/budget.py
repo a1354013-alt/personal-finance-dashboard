@@ -56,12 +56,15 @@ class BudgetUpdate(BaseModel):
 
 
 class BudgetItem(BaseModel):
+    id: int
     category: str
     budget: float
     used: float
     remaining: float
     usageRate: float
     status: str
+    over_budget: bool
+    warning: bool
 
 
 class BudgetSummaryResponse(BaseModel):
@@ -76,6 +79,8 @@ class BudgetResponse(BudgetBase):
     id: int
     percent_used: float = 0.0
     current_spent: Decimal = Decimal("0.0")
+    over_budget: bool = False
+    warning: bool = False
 
     model_config = {"from_attributes": True}
 

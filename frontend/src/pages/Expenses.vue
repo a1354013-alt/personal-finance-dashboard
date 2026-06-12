@@ -126,12 +126,13 @@ import { useI18n } from 'vue-i18n'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/categories'
 import { useExpenseStore } from '@/stores/expenseStore'
 import { translateCategory } from '@/utils/categories'
+import { getLocalDate } from '@/utils/date'
 import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
 const store = useExpenseStore()
 const filterType = ref('')
 const formError = ref('')
-const today = new Date().toISOString().split('T')[0]
+const today = getLocalDate()
 const { t, locale } = useI18n()
 
 const form = ref({

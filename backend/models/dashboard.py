@@ -57,6 +57,8 @@ class DashboardBudgetUsageItem(BaseModel):
     currentSpent: float
     usagePercent: float
     status: str
+    overBudget: bool
+    warning: bool
 
 
 class DashboardBudgetSummaryItem(BaseModel):
@@ -66,6 +68,8 @@ class DashboardBudgetSummaryItem(BaseModel):
     remaining: float
     usagePercent: float
     status: str
+    overBudget: bool
+    warning: bool
 
 
 class DashboardChartsResponse(BaseModel):

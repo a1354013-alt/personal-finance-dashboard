@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getMe, login as loginRequest, register as registerRequest } from '@/api/auth'
+import { getMe, login as loginRequest, logout as logoutRequest, register as registerRequest } from '@/api/auth'
 import { normalizeEmail, normalizeUser } from '@/api/contracts'
 import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
@@ -123,8 +123,17 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    logout() {
-      this.clearSession()
+    async logout() {
+      const token = this.refreshToken
+      try {
+        if (token) {
+          await logoutRequest(token)
+        }
+      } catch {
+        // Local logout must still complete if the revoke request cannot reach the API.
+      } finally {
+        this.clearSession()
+      }
     },
 
     async fetchMe() {

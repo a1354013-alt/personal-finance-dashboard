@@ -85,8 +85,9 @@ const emptyDescriptionComputed = computed(() => props.emptyDescription || t('das
 const errorTitleComputed = computed(() => props.errorTitle || t('dashboard.errors.charts'))
 
 function renderChart() {
-  if (!canvasRef.value || props.loading || props.error || !hasData.value) return
   if (chart) chart.destroy()
+  chart = null
+  if (!canvasRef.value || props.loading || props.error || !hasData.value) return
 
   chart = new Chart(canvasRef.value, {
     type: props.type,

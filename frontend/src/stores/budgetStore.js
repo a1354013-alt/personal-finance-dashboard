@@ -4,6 +4,7 @@ import { deleteBudget, getBudgets, getBudgetSummary, updateBudget, upsertBudget 
 import { normalizeBudget, normalizeBudgetSummary } from '@/api/contracts'
 import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
+import { getLocalMonth } from '@/utils/date'
 
 export const useBudgetStore = defineStore('budget', () => {
   const budgets = ref([])
@@ -13,7 +14,7 @@ export const useBudgetStore = defineStore('budget', () => {
   const submitting = ref(false)
   const deleting = ref(false)
   const error = ref(null)
-  const selectedMonth = ref(new Date().toISOString().slice(0, 7))
+  const selectedMonth = ref(getLocalMonth())
 
   async function fetchBudgets() {
     loading.value = true

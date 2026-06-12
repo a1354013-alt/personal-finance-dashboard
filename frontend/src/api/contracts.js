@@ -157,7 +157,9 @@ export function normalizeBudgetSummary(payload) {
         used: toNumberOrZero(item.used),
         remaining: toNumberOrZero(item.remaining),
         usageRate: toNumberOrZero(item.usageRate),
-        status: toStringOrEmpty(item.status)
+        status: toStringOrEmpty(item.status),
+        over_budget: Boolean(item.over_budget),
+        warning: Boolean(item.warning)
       }))
       : []
   }
@@ -208,7 +210,9 @@ export function normalizeDashboardSummary(payload) {
         used: toNumberOrZero(item.used),
         remaining: toNumberOrZero(item.remaining),
         usagePercent: toNumberOrZero(item.usagePercent ?? item.usageRate),
-        status: String(item.status || 'safe')
+        status: String(item.status || 'safe'),
+        overBudget: Boolean(item.overBudget ?? item.over_budget),
+        warning: Boolean(item.warning)
       }))
       : []
   }
@@ -226,7 +230,9 @@ export function normalizeDashboardCharts(payload) {
         amount: toNumberOrZero(item.amount),
         currentSpent: toNumberOrZero(item.currentSpent ?? item.current_spent),
         usagePercent: toNumberOrZero(item.usagePercent ?? item.percent_used),
-        status: String(item.status || 'safe')
+        status: String(item.status || 'safe'),
+        overBudget: Boolean(item.overBudget ?? item.over_budget),
+        warning: Boolean(item.warning)
       }))
       : []
   }

@@ -66,15 +66,19 @@ def build_budget_summary(db: Session, user_id: int, month: str) -> dict:
             status = "over"
         elif usage_rate >= 80:
             status = "warning"
+        over_budget = usage_rate > 100
+        warning = 80 <= usage_rate <= 100
             
         items.append({
+            "id": b.id,
             "category": cat,
             "budget": float(budget_amt),
             "used": float(used_amt),
             "remaining": float(remaining),
             "usageRate": round(usage_rate, 1),
             "status": status,
-            "id": b.id  # Useful for frontend
+            "over_budget": over_budget,
+            "warning": warning,
         })
         
         total_budget += budget_amt
@@ -106,6 +110,8 @@ def build_budget_status(db: Session, user_id: int, month: str | None = None) -> 
             "category": item["category"],
             "amount": item["budget"],
             "current_spent": item["used"],
-            "percent_used": item["usageRate"]
+            "percent_used": item["usageRate"],
+            "over_budget": item["over_budget"],
+            "warning": item["warning"],
         })
     return res

@@ -4,11 +4,12 @@ import { createPinia, setActivePinia } from 'pinia'
 vi.mock('@/api/auth', () => ({
   login: vi.fn(async () => ({ access_token: 'token-123', refresh_token: 'refresh-123', user: { id: 1, email: 'a@example.com' } })),
   register: vi.fn(async () => ({})),
-  getMe: vi.fn(async () => ({ id: 1, email: 'a@example.com' }))
+  getMe: vi.fn(async () => ({ id: 1, email: 'a@example.com' })),
+  logout: vi.fn(async () => ({}))
 }))
 
 import { useAuthStore } from '@/stores/authStore'
-import { login as loginRequest } from '@/api/auth'
+import { login as loginRequest, logout as logoutRequest } from '@/api/auth'
 
 describe('authStore', () => {
   beforeEach(() => {
@@ -49,6 +50,35 @@ describe('authStore', () => {
     expect(store.user).toBeNull()
     expect(localStorage.getItem('token')).toBeNull()
     expect(localStorage.getItem('user')).toBeNull()
+  })
+
+  it('logout revokes refresh token and clears local session', async () => {
+    setActivePinia(createPinia())
+    const store = useAuthStore()
+    store.token = 'access'
+    store.refreshToken = 'refresh-123'
+    store.user = { id: 1, email: 'x@example.com' }
+    store.persistSession()
+
+    await store.logout()
+
+    expect(logoutRequest).toHaveBeenCalledWith('refresh-123')
+    expect(store.token).toBeNull()
+    expect(store.refreshToken).toBeNull()
+    expect(localStorage.getItem('refresh_token')).toBeNull()
+  })
+
+  it('logout clears local session even when revoke fails', async () => {
+    logoutRequest.mockRejectedValueOnce(new Error('network failed'))
+    setActivePinia(createPinia())
+    const store = useAuthStore()
+    store.token = 'access'
+    store.refreshToken = 'refresh-failing'
+    store.user = { id: 1, email: 'x@example.com' }
+
+    await store.logout()
+    expect(store.token).toBeNull()
+    expect(store.refreshToken).toBeNull()
   })
 })
 

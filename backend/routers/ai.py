@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -39,10 +40,10 @@ def ai_finance_summary(
     total_income = sum(r.amount for r in records if r.type == "income")
     total_expense = sum(r.amount for r in records if r.type == "expense")
 
-    category_map: dict[str, float] = defaultdict(float)
+    category_map: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
     for record in records:
         if record.type == "expense":
-            category_map[record.category] += record.amount
+            category_map[record.category] += Decimal(str(record.amount))
 
     top_category = max(category_map, key=category_map.get) if category_map else "N/A"
     service = AIInsightsService(get_llm_provider())

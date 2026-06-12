@@ -37,13 +37,13 @@ class InMemoryRateLimiter:
         return True
 
 
-validate_secret_key_configuration()
-init_db()
 rate_limiter = InMemoryRateLimiter()
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    validate_secret_key_configuration()
+    init_db()
     runner = get_job_runner()
     runner.start()
     yield

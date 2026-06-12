@@ -14,7 +14,7 @@ from providers.llm import get_llm_provider
 from services.ai_service import AIInsightsService
 from services.auth import get_current_user
 from services.fundamentals_service import get_latest_fundamentals_by_code, queue_fundamentals_sync
-from services.job_service import create_job
+from services.job_service import create_job, find_active_job_by_payload
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
@@ -24,10 +24,42 @@ from services.watchlist_service import (
     create_watchlist_item,
     delete_watchlist_item,
     list_watchlist,
-    update_watchlist_sync_status_for_code,
+    update_watchlist_sync_status,
 )
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
+
+
+def _queue_price_sync_job(
+    db: Session,
+    *,
+    watchlist_item: WatchlistORM,
+    request_id: str | None,
+):
+    job_payload = {
+        "user_id": watchlist_item.user_id,
+        "watchlist_item_id": watchlist_item.id,
+        "stock_code": watchlist_item.stock_code,
+    }
+    existing_job = find_active_job_by_payload(
+        db,
+        job_type=JOB_TYPE_SYNC_STOCK_MARKET_DATA,
+        expected_payload={
+            "user_id": watchlist_item.user_id,
+            "watchlist_item_id": watchlist_item.id,
+            "stock_code": watchlist_item.stock_code,
+        },
+    )
+    if existing_job:
+        return existing_job
+    return create_job(
+        db,
+        CreateJobRequest(
+            job_type=JOB_TYPE_SYNC_STOCK_MARKET_DATA,
+            payload=job_payload,
+            request_id=request_id,
+        ),
+    )
 
 
 @router.get("/watchlist", response_model=list[WatchlistItemResponse])
@@ -50,19 +82,17 @@ def add_to_watchlist(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    update_watchlist_sync_status_for_code(
+    update_watchlist_sync_status(
         db,
-        stock_code=new_item.stock_code,
+        watchlist_item_id=new_item.id,
+        user_id=current_user.id,
         status=SYNC_STATUS_PENDING,
         error_message="Market data sync queued.",
     )
-    create_job(
+    _queue_price_sync_job(
         db,
-        CreateJobRequest(
-            job_type=JOB_TYPE_SYNC_STOCK_MARKET_DATA,
-            payload={"stock_code": new_item.stock_code},
-            request_id=getattr(http_request.state, "request_id", None),
-        ),
+        watchlist_item=new_item,
+        request_id=getattr(http_request.state, "request_id", None),
     )
     refreshed_item = (
         db.query(WatchlistORM)
@@ -230,19 +260,17 @@ def sync_all_watchlist_prices(
 ):
     watchlist = db.query(WatchlistORM).filter(WatchlistORM.user_id == current_user.id).all()
     for item in watchlist:
-        update_watchlist_sync_status_for_code(
+        update_watchlist_sync_status(
             db,
-            stock_code=item.stock_code,
+            watchlist_item_id=item.id,
+            user_id=current_user.id,
             status=SYNC_STATUS_PENDING,
             error_message="Market data sync queued.",
         )
-        create_job(
+        _queue_price_sync_job(
             db,
-            CreateJobRequest(
-                job_type=JOB_TYPE_SYNC_STOCK_MARKET_DATA,
-                payload={"stock_code": item.stock_code},
-                request_id=getattr(request.state, "request_id", None),
-            ),
+            watchlist_item=item,
+            request_id=getattr(request.state, "request_id", None),
         )
 
     return {
@@ -268,19 +296,17 @@ def sync_single_stock_price(
     if not watchlist_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
 
-    update_watchlist_sync_status_for_code(
+    update_watchlist_sync_status(
         db,
-        stock_code=formatted_code,
+        watchlist_item_id=watchlist_item.id,
+        user_id=current_user.id,
         status=SYNC_STATUS_PENDING,
         error_message="Market data sync queued.",
     )
-    job = create_job(
+    job = _queue_price_sync_job(
         db,
-        CreateJobRequest(
-            job_type=JOB_TYPE_SYNC_STOCK_MARKET_DATA,
-            payload={"stock_code": formatted_code},
-            request_id=getattr(request.state, "request_id", None),
-        ),
+        watchlist_item=watchlist_item,
+        request_id=getattr(request.state, "request_id", None),
     )
     return {
         "message": f"Queued market data sync for {formatted_code}.",

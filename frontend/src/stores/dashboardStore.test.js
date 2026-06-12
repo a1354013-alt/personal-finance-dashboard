@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeAiSummary, normalizeBudgetAdvice, normalizeDashboardCharts, normalizeDashboardSummary } from '@/api/contracts'
+import { getLocalDate, getLocalMonth } from '@/utils/date'
 
 describe('dashboardStore', () => {
   it('normalizeDashboardSummary coerces numbers and arrays', () => {
@@ -48,5 +49,11 @@ describe('dashboardStore', () => {
     expect(normalized.net_income_trend).toEqual([])
     expect(normalized.budget_usage).toHaveLength(1)
     expect(normalized.budget_usage[0].amount).toBe(100)
+  })
+
+  it('uses local calendar helpers without UTC conversion', () => {
+    const date = new Date(2026, 4, 15, 23, 30, 0)
+    expect(getLocalMonth(date)).toBe('2026-05')
+    expect(getLocalDate(date)).toBe('2026-05-15')
   })
 })

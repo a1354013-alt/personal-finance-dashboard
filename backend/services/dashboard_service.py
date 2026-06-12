@@ -119,6 +119,8 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
             "remaining": float(item["remaining"]),
             "usagePercent": float(item["usageRate"]),
             "status": item["status"],
+            "overBudget": bool(item["over_budget"]),
+            "warning": bool(item["warning"]),
         }
         for item in budget_summary["items"]
     ]
@@ -168,7 +170,9 @@ def build_dashboard_charts(*, db: Session, user_id: int) -> dict:
             "amount": float(item["amount"]),
             "currentSpent": float(item["current_spent"]),
             "usagePercent": float(item["percent_used"]),
-            "status": "over" if float(item["percent_used"]) > 100 else ("warning" if float(item["percent_used"]) >= 80 else "safe"),
+            "status": "over" if item["over_budget"] else ("warning" if item["warning"] else "safe"),
+            "overBudget": bool(item["over_budget"]),
+            "warning": bool(item["warning"]),
         }
         for item in budget_status
     ]

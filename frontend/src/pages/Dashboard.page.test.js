@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18nInstance } from '@/i18n'
 import { exportMonthlyReport } from '@/api/reports'
 import Dashboard from '@/pages/Dashboard.vue'
+import { getDashboardCharts } from '@/api/dashboard'
 
 vi.mock('@/components/ChartPanel.vue', () => ({
   default: {
@@ -62,6 +63,8 @@ describe('Dashboard page', () => {
   let clickSpy
 
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 4, 15, 12, 0, 0))
     setActivePinia(createPinia())
     originalCreateElement = document.createElement.bind(document)
     if (!URL.createObjectURL) {
@@ -81,6 +84,11 @@ describe('Dashboard page', () => {
       }
       return element
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('renders summary cards and budget health', async () => {
@@ -115,6 +123,19 @@ describe('Dashboard page', () => {
       expect(wrapper.text()).toContain('2026-05-01')
       expect(wrapper.text()).toContain('- NT$ 3,000')
       expect(wrapper.find('input[type="month"]').exists()).toBe(true)
+    })
+  })
+
+  it('loads charts for dashboard visualizations', async () => {
+    mount(Dashboard, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()],
+        stubs: { RouterLink: true }
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(getDashboardCharts).toHaveBeenCalled()
     })
   })
 
