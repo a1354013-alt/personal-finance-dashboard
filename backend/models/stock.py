@@ -9,6 +9,7 @@ from sqlalchemy import BigInteger, Column, Date, DateTime, ForeignKey, Integer, 
 from sqlalchemy.orm import relationship
 
 from db.database import Base
+from models.ai import AIProviderMeta
 
 
 class WatchlistORM(Base):
@@ -136,9 +137,20 @@ class StockPriceHistoryPoint(BaseModel):
         return float(value)
 
 
+class StockAIExplanationResponse(BaseModel):
+    status: Literal["ready", "sync_required", "sync_queued", "unsupported"]
+    stock_code: str
+    message: Optional[str] = None
+    explanation: Optional[str] = None
+    can_sync: bool = False
+    job_id: Optional[int] = None
+    request_id: Optional[str] = None
+    meta: Optional[AIProviderMeta] = None
+
+
 class StockDashboardResponse(BaseModel):
     selected_stock_code: Optional[str] = None
     watchlist: list[WatchlistItemResponse]
     price_history: list[StockPriceHistoryPoint]
     fundamentals: Optional[dict] = None
-    ai_explanation: Optional[str] = None
+    ai_explanation: Optional[StockAIExplanationResponse] = None

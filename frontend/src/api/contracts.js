@@ -343,6 +343,47 @@ export function normalizePriceHistoryPoint(row) {
   }
 }
 
+export function normalizeStockAiExplanation(payload) {
+  if (!payload) return null
+  if (typeof payload === 'string') {
+    const explanation = toTrimmedStringOrEmpty(payload)
+    return explanation
+      ? {
+          status: 'ready',
+          stock_code: '',
+          message: '',
+          explanation,
+          can_sync: false,
+          job_id: null,
+          request_id: null,
+          meta: null
+        }
+      : null
+  }
+  if (typeof payload !== 'object') return null
+
+  const status = ['ready', 'sync_required', 'sync_queued', 'unsupported'].includes(payload.status)
+    ? payload.status
+    : 'sync_required'
+
+  return {
+    status,
+    stock_code: String(payload.stock_code || '').toUpperCase(),
+    message: toTrimmedStringOrEmpty(payload.message),
+    explanation: toTrimmedStringOrEmpty(payload.explanation),
+    can_sync: Boolean(payload.can_sync),
+    job_id: toNumberOrNull(payload.job_id),
+    request_id: toTrimmedStringOrEmpty(payload.request_id),
+    meta: payload.meta && typeof payload.meta === 'object'
+      ? {
+          provider: toTrimmedStringOrEmpty(payload.meta.provider),
+          is_fallback: Boolean(payload.meta.is_fallback),
+          error: toTrimmedStringOrEmpty(payload.meta.error)
+        }
+      : null
+  }
+}
+
 export function normalizeStockDashboard(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
@@ -350,7 +391,7 @@ export function normalizeStockDashboard(payload) {
     watchlist: Array.isArray(payload.watchlist) ? payload.watchlist.map(normalizeWatchlistItem).filter(Boolean) : [],
     price_history: Array.isArray(payload.price_history) ? payload.price_history.map(normalizePriceHistoryPoint).filter(Boolean) : [],
     fundamentals: payload.fundamentals ? normalizeFundamentalsSnapshot(payload.fundamentals) : null,
-    ai_explanation: toTrimmedStringOrEmpty(payload.ai_explanation)
+    ai_explanation: normalizeStockAiExplanation(payload.ai_explanation)
   }
 }
 

@@ -5,48 +5,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createI18nInstance } from '@/i18n'
 import Stocks from '@/pages/Stocks.vue'
 
-const getFilterResultsMock = vi.fn(async () => [
-  { stock_code: 'NVDA', passed: false, fail_reasons: ['No fundamentals cached yet. Sync required.'], fundamentals: null, meta: { provider: 'x', status: null, as_of_date: null, ttl_hours: 24, is_stale: true } }
-])
-
-const getFilterMetadataMock = vi.fn(async () => ({
-  fundamentals_provider: 'test',
-  ttl_hours: 24,
-  timeout_seconds: 8,
-  message: 'metadata'
-}))
-
-const getStockDashboardMock = vi.fn(async () => ({
-  selected_stock_code: 'NVDA',
-  watchlist: [
-    {
-      id: 1,
-      stock_code: 'NVDA',
-      name: 'NVIDIA',
-      price: 100,
-      date: '2026-04-10',
-      volume: 123,
-      price_sync_status: 'pending',
-      last_sync_error: 'Market data sync queued.',
-      last_sync_attempt_at: '2026-04-10T00:00:00Z'
-    }
-  ],
-  price_history: [{ trade_date: '2026-04-10', close: 100 }],
-  fundamentals: null,
-  ai_explanation: ''
-}))
-
-const addToWatchlistMock = vi.fn(async () => ({
-  id: 2,
-  stock_code: 'AAPL',
-  name: 'AAPL',
-  price: null,
-  date: null,
-  volume: null,
-  price_sync_status: 'pending',
-  last_sync_error: null,
-  last_sync_attempt_at: null
-}))
+const getFilterResultsMock = vi.fn()
+const getFilterMetadataMock = vi.fn()
+const getStockDashboardMock = vi.fn()
+const addToWatchlistMock = vi.fn()
+const syncSingleFundamentalsMock = vi.fn()
 
 vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
@@ -59,38 +22,152 @@ vi.mock('@/api/stocks', () => ({
   syncSinglePrice: vi.fn(async () => ({ message: 'Queued market data sync for NVDA.', price_sync_status: 'pending' })),
   filterSingleStock: vi.fn(async () => ({ stock_code: 'AAPL', passed: true, fail_reasons: [] })),
   getAiStockExplain: vi.fn(async () => ({ text: 'ok' })),
-  syncWatchlistFundamentals: vi.fn(async () => ([]))
+  syncWatchlistFundamentals: vi.fn(async () => ([])),
+  syncSingleFundamentals: (...args) => syncSingleFundamentalsMock(...args)
 }))
+
+function buildDashboard(aiExplanation) {
+  return {
+    selected_stock_code: 'NVDA',
+    watchlist: [
+      {
+        id: 1,
+        stock_code: 'NVDA',
+        name: 'NVIDIA',
+        price: 100,
+        date: '2026-04-10',
+        volume: 123,
+        price_sync_status: 'pending',
+        last_sync_error: 'Market data sync queued.',
+        last_sync_attempt_at: '2026-04-10T00:00:00Z'
+      }
+    ],
+    price_history: [{ trade_date: '2026-04-10', close: 100 }],
+    fundamentals: null,
+    ai_explanation: aiExplanation
+  }
+}
 
 describe('Stocks page', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    getStockDashboardMock.mockClear()
-    addToWatchlistMock.mockClear()
+    getFilterResultsMock.mockReset()
+    getFilterMetadataMock.mockReset()
+    getStockDashboardMock.mockReset()
+    addToWatchlistMock.mockReset()
+    syncSingleFundamentalsMock.mockReset()
+
+    getFilterResultsMock.mockResolvedValue([
+      {
+        stock_code: 'NVDA',
+        passed: false,
+        fail_reasons: ['Fundamentals data is not available yet. Sync required.'],
+        fundamentals: null,
+        meta: { provider: 'x', status: 'sync_required', as_of_date: null, ttl_hours: 24, is_stale: true }
+      }
+    ])
+    getFilterMetadataMock.mockResolvedValue({
+      fundamentals_provider: 'test',
+      ttl_hours: 24,
+      timeout_seconds: 8,
+      message: 'metadata'
+    })
+    addToWatchlistMock.mockResolvedValue({
+      id: 2,
+      stock_code: 'AAPL',
+      name: 'AAPL',
+      price: null,
+      date: null,
+      volume: null,
+      price_sync_status: 'pending',
+      last_sync_error: null,
+      last_sync_attempt_at: null
+    })
+    syncSingleFundamentalsMock.mockResolvedValue({ stock_code: 'NVDA', status: 'pending' })
   })
 
-  it('renders watchlist status and price trend sections', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Stocks, { global: { plugins: [pinia, i18n], stubs: { ChartPanel: true } } })
+  it('renders friendly sync-required AI state without fallback debug text', async () => {
+    getStockDashboardMock.mockResolvedValue(
+      buildDashboard({
+        status: 'sync_required',
+        stock_code: 'NVDA',
+        message: 'Fundamentals data is not available yet. Please sync first.',
+        explanation: null,
+        can_sync: true,
+        request_id: 'abc123'
+      })
+    )
+
+    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('NVDA')
-      expect(wrapper.text()).toContain('Market data sync queued.')
+      expect(wrapper.text()).toContain('目前尚未取得 NVDA 的基本面資料')
+    })
+
+    expect(wrapper.text()).toContain('同步基本面資料')
+    expect(wrapper.text()).not.toContain('[Fallback AI]')
+    expect(wrapper.text()).not.toContain('request_id')
+  })
+
+  it('sync button triggers single-stock fundamentals sync and shows queued message', async () => {
+    getStockDashboardMock
+      .mockResolvedValueOnce(
+        buildDashboard({
+          status: 'sync_required',
+          stock_code: 'NVDA',
+          message: 'Fundamentals data is not available yet. Please sync first.',
+          explanation: null,
+          can_sync: true
+        })
+      )
+      .mockResolvedValue(
+        buildDashboard({
+          status: 'sync_queued',
+          stock_code: 'NVDA',
+          message: 'Fundamentals sync has been queued. Please retry later.',
+          explanation: null,
+          can_sync: true
+        })
+      )
+
+    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('同步基本面資料')
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('.ai-card .btn.btn-primary').exists()).toBe(true)
+    })
+
+    const syncButton = wrapper.find('.ai-card .btn.btn-primary')
+    await syncButton.trigger('click')
+
+    await vi.waitFor(() => {
+      expect(syncSingleFundamentalsMock).toHaveBeenCalledWith('NVDA', { force: false })
+      expect(wrapper.text()).toContain('已開始同步基本面資料')
     })
   })
 
-  it('shows queued message on add when background sync is pending', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Stocks, { global: { plugins: [pinia, i18n], stubs: { ChartPanel: true } } })
+  it('renders successful AI explanation content', async () => {
+    getStockDashboardMock.mockResolvedValue(
+      buildDashboard({
+        status: 'ready',
+        stock_code: 'NVDA',
+        message: null,
+        explanation: 'NVDA currently does not pass the baseline screen.',
+        can_sync: true,
+        meta: { provider: 'fallback', is_fallback: true, error: null }
+      })
+    )
 
-    await wrapper.find('#stock-code').setValue('AAPL')
-    await wrapper.find('form.form-row').trigger('submit')
+    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
 
     await vi.waitFor(() => {
-      expect(addToWatchlistMock).toHaveBeenCalled()
-      expect(wrapper.text()).toContain('AAPL')
+      expect(wrapper.text()).toContain('NVDA currently does not pass the baseline screen.')
     })
+
+    expect(wrapper.text()).not.toContain('[Fallback AI]')
+    expect(wrapper.text()).not.toContain('request_id')
   })
 })

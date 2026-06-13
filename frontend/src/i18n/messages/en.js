@@ -212,6 +212,14 @@ export default {
     priceTrendSubtitle: 'Cached historical prices from the backend.',
     fundamentalsSummary: 'Fundamentals Summary',
     aiExplanation: 'AI Explanation',
+    ai: {
+      syncRequired: 'Fundamentals data for {stockCode} is not available yet. Please sync first, then generate the AI explanation again.',
+      syncQueued: 'Fundamentals sync has started. Please retry the AI explanation shortly.',
+      unsupported: 'The current data source does not provide fundamentals for this stock, so a complete AI explanation is unavailable.',
+      syncFundamentals: 'Sync Fundamentals',
+      retryExplanation: 'Retry Explanation',
+      explanationUnavailable: 'AI explanation is currently unavailable.'
+    },
     watchlistGrid: 'Watchlist Grid',
     helperText: 'Queued syncs update status without blocking this UI.',
     syncQueued: 'Sync queued.',

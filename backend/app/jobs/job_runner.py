@@ -22,7 +22,7 @@ from models.job import (
     SyncJobORM,
 )
 from providers.fundamentals import get_fundamentals_provider
-from providers.fundamentals.base import FundamentalsProviderError
+from providers.fundamentals.base import FundamentalsDataUnavailableError, FundamentalsProviderError
 from services.stock_data_service import StockDataService
 from services.watchlist_service import update_watchlist_sync_status, upsert_stock_price_history
 
@@ -157,6 +157,12 @@ class JobRunner:
 
         try:
             result = provider.fetch(stock_code=stock_code)
+        except FundamentalsDataUnavailableError as exc:
+            row.status = "unsupported"
+            row.error_message = str(exc)
+            row.fetched_at = datetime.now(timezone.utc)
+            db.commit()
+            return
         except FundamentalsProviderError as exc:
             row.status = JOB_STATUS_FAILED
             row.error_message = str(exc)

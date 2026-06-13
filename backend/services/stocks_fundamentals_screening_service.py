@@ -28,7 +28,7 @@ def build_filter_results(*, db: Session, user_id: int) -> list[StockFundamentals
                 StockFundamentalsFilterResult(
                     stock_code=code,
                     passed=False,
-                    fail_reasons=["No fundamentals cached yet. Sync required."],
+                    fail_reasons=["Fundamentals data is not available yet. Sync required."],
                     fundamentals=None,
                     meta=FundamentalsStatusMeta(
                         provider=provider_name,
@@ -36,7 +36,7 @@ def build_filter_results(*, db: Session, user_id: int) -> list[StockFundamentals
                         is_stale=True,
                         fetched_at=None,
                         as_of_date=None,
-                        status=None,
+                        status="sync_required",
                         error_message=None,
                     ),
                 )
@@ -77,4 +77,3 @@ def build_filter_metadata() -> FilterMetadataResponse:
             "Sync requests only enqueue a background job; the API never waits on the upstream provider."
         ),
     )
-

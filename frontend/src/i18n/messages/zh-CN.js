@@ -212,6 +212,14 @@ export default {
     priceTrendSubtitle: '来自后端缓存的历史价格。',
     fundamentalsSummary: '基本面摘要',
     aiExplanation: 'AI 解读',
+    ai: {
+      syncRequired: '目前还没有取得 {stockCode} 的基本面数据，请先同步数据后再重新生成 AI 解读。',
+      syncQueued: '基本面数据同步已经开始，请稍后再重新生成 AI 解读。',
+      unsupported: '当前数据来源不支持这只股票的基本面数据，因此无法生成完整的 AI 解读。',
+      syncFundamentals: '同步基本面数据',
+      retryExplanation: '重新获取 AI 解读',
+      explanationUnavailable: '当前无法取得 AI 解读。'
+    },
     watchlistGrid: '观察清单',
     helperText: '同步任务会在不阻塞页面的情况下更新状态。',
     syncQueued: '同步已加入队列。',

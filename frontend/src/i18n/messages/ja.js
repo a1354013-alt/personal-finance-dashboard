@@ -212,6 +212,14 @@ export default {
     priceTrendSubtitle: 'バックエンドにキャッシュされた過去価格です。',
     fundamentalsSummary: 'ファンダメンタルズ要約',
     aiExplanation: 'AI 解説',
+    ai: {
+      syncRequired: '{stockCode} のファンダメンタルズデータはまだ取得されていません。先に同期してから、もう一度 AI 解説を生成してください。',
+      syncQueued: 'ファンダメンタルズデータの同期を開始しました。少し待ってから、もう一度 AI 解説を生成してください。',
+      unsupported: '現在のデータソースではこの銘柄のファンダメンタルズデータを提供していないため、完全な AI 解説を生成できません。',
+      syncFundamentals: 'ファンダメンタルズを同期',
+      retryExplanation: 'AI 解説を再取得',
+      explanationUnavailable: '現在 AI 解説を取得できません。'
+    },
     watchlistGrid: 'ウォッチリスト',
     helperText: '同期キューは UI を止めずに状態を更新します。',
     syncQueued: '同期をキューに追加しました。',

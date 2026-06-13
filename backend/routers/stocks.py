@@ -7,16 +7,23 @@ from app.jobs.job_runner import JOB_TYPE_SYNC_STOCK_MARKET_DATA
 from db.database import get_db
 from models.fundamentals import FundamentalsSnapshot, FundamentalsSyncOptions
 from models.job import CreateJobRequest
-from models.stock import StockDashboardResponse, StockFilterRequest, StockFilterResult, StockPriceHistoryPoint, WatchlistCreate, WatchlistItemResponse, WatchlistORM
+from models.stock import (
+    StockDashboardResponse,
+    StockFilterRequest,
+    StockFilterResult,
+    StockPriceHistoryPoint,
+    WatchlistCreate,
+    WatchlistItemResponse,
+    WatchlistORM,
+)
 from models.stocks_filter import FilterMetadataResponse, StockFundamentalsFilterResult
 from models.user import UserORM
-from providers.llm import get_llm_provider
-from services.ai_service import AIInsightsService
 from services.auth import get_current_user
 from services.fundamentals_service import get_latest_fundamentals_by_code, queue_fundamentals_sync
 from services.job_service import create_job, find_active_job_by_payload
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
+from services.stocks_ai_explanation_service import build_stock_ai_explanation
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
 from services.watchlist_service import (
     SYNC_STATUS_PENDING,
@@ -200,6 +207,7 @@ def get_stock_history(
 
 @router.get("/dashboard", response_model=StockDashboardResponse)
 def get_stock_dashboard(
+    request: Request,
     selected_code: str | None = None,
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
@@ -224,26 +232,13 @@ def get_stock_dashboard(
 
     ai_explanation = None
     if selected_filter:
-        service = AIInsightsService(get_llm_provider())
-        metrics = {}
-        if latest_fundamentals:
-            metrics = {
-                "pe_ratio": float(latest_fundamentals.pe_ratio) if latest_fundamentals.pe_ratio is not None else None,
-                "pb_ratio": float(latest_fundamentals.pb_ratio) if latest_fundamentals.pb_ratio is not None else None,
-                "dividend_yield": float(latest_fundamentals.dividend_yield)
-                if latest_fundamentals.dividend_yield is not None
-                else None,
-                "revenue_growth": float(latest_fundamentals.revenue_growth)
-                if latest_fundamentals.revenue_growth is not None
-                else None,
-                "eps": float(latest_fundamentals.eps) if latest_fundamentals.eps is not None else None,
-            }
-        ai_explanation = service.stock_explanation(
+        ai_explanation = build_stock_ai_explanation(
+            db=db,
+            user_id=current_user.id,
             stock_code=selected_stock_code,
-            passed=selected_filter.passed,
-            fail_reasons=selected_filter.fail_reasons,
-            metrics=metrics,
-        ).text
+            screening_result=selected_filter,
+            request_id=getattr(request.state, "request_id", None) if request else None,
+        )
 
     return StockDashboardResponse(
         selected_stock_code=selected_stock_code,
