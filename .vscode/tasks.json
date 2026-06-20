@@ -3,18 +3,15 @@
   "tasks": [
     {
       "label": "Bootstrap Backend",
-      "type": "shell",
-      "command": "powershell",
+      "type": "process",
+      "command": "powershell.exe",
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
-        "-Command",
-        "if (!(Test-Path '.venv\\Scripts\\python.exe')) { python -m venv .venv }; if (!(Test-Path '.env') -and (Test-Path '.env.example')) { Copy-Item '.env.example' '.env' }; & '.\\.venv\\Scripts\\python.exe' -m pip install -r 'requirements.txt'; & '.\\.venv\\Scripts\\python.exe' -m alembic upgrade head"
+        "-File",
+        "${workspaceFolder}/scripts/bootstrap-backend.ps1"
       ],
-      "options": {
-        "cwd": "${workspaceFolder}/backend"
-      },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -24,18 +21,15 @@
     },
     {
       "label": "Bootstrap Frontend",
-      "type": "shell",
-      "command": "powershell",
+      "type": "process",
+      "command": "powershell.exe",
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
-        "-Command",
-        "if (!(Test-Path '.env') -and (Test-Path '.env.example')) { Copy-Item '.env.example' '.env' }; if (!(Test-Path 'node_modules')) { if (Test-Path 'package-lock.json') { npm ci } else { npm install } }"
+        "-File",
+        "${workspaceFolder}/scripts/bootstrap-frontend.ps1"
       ],
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",

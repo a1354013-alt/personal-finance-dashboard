@@ -44,6 +44,8 @@ Open this repository in VS Code, switch to the `Run and Debug` view, then choose
 
 What the bundled VS Code configuration does:
 
+- runs `scripts/bootstrap-backend.ps1` before the FastAPI debugger starts
+- runs `scripts/bootstrap-frontend.ps1` before the Vite terminal starts
 - bootstraps `backend/.venv` if it does not exist yet
 - copies `backend/.env.example` or `frontend/.env.example` when the local `.env` file is still missing
 - installs backend requirements and runs `alembic upgrade head`
@@ -52,6 +54,13 @@ What the bundled VS Code configuration does:
 - launches the Vite frontend at `http://127.0.0.1:5173`
 
 The existing `start-dev.bat` and `scripts/start-dev.ps1` flow remains supported. `F5` is just the VS Code-native entry point for the same local development workflow.
+
+If you want to test the bootstrap layer directly without opening VS Code:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-backend.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-frontend.ps1
+```
 
 ### macOS / Linux start
 
