@@ -202,7 +202,8 @@ const actionError = ref('')
 const { t, locale } = useI18n()
 
 function formatPrice(value) {
-  return formatCurrencyValue(Number(value), locale.value)
+  const selectedItem = stockStore.watchlist.find((item) => item.stock_code === stockStore.selectedStockCode)
+  return formatCurrencyValue(Number(value), locale.value, selectedItem?.currency || null)
 }
 
 function statusBadgeClass(status) {
@@ -271,6 +272,7 @@ const fundamentalsItems = computed(() => {
     { label: 'Yield', value: fundamentals.dividend_yield != null ? `${fundamentals.dividend_yield.toFixed(2)}%` : t('common.empty') },
     { label: 'Revenue Growth', value: fundamentals.revenue_growth != null ? `${fundamentals.revenue_growth.toFixed(2)}%` : t('common.empty') },
     { label: 'EPS', value: fundamentals.eps != null ? fundamentals.eps.toFixed(2) : t('common.empty') },
+    { label: 'Source', value: fundamentals.source || t('common.empty') },
     { label: 'Status', value: fundamentals.status || t('common.empty') }
   ]
 })

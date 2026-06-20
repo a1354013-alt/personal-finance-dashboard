@@ -124,3 +124,25 @@ def test_budget_crud(client):
     # Delete
     response = client.delete(f"/api/budgets/{budget_id}", headers=headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_budget_update_does_not_change_category(client):
+    token = register_and_login(client, "budget-update-category@example.com")
+    headers = auth_headers(token)
+
+    create_response = client.post(
+        "/api/budgets",
+        json={"month": "2026-07", "category": "Travel", "amount": 20000},
+        headers=headers,
+    )
+    assert create_response.status_code == status.HTTP_201_CREATED
+    budget_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/budgets/{budget_id}",
+        json={"amount": 22000, "category": "Food"},
+        headers=headers,
+    )
+    assert update_response.status_code == status.HTTP_200_OK
+    assert update_response.json()["amount"] == 22000
+    assert update_response.json()["category"] == "Travel"

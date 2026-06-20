@@ -38,6 +38,21 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 The script checks Python, Node.js, and npm, creates `backend\.venv` if needed, installs backend and frontend dependencies, runs `alembic upgrade head`, and opens separate dev-server terminals.
 If `backend\.env` or `frontend\.env` is missing, the script also copies it from the matching `.env.example` file before startup.
 
+### VS Code F5 full-stack start
+
+Open this repository in VS Code, switch to the `Run and Debug` view, then choose `Full Stack Dev` and press `F5`.
+
+What the bundled VS Code configuration does:
+
+- bootstraps `backend/.venv` if it does not exist yet
+- copies `backend/.env.example` or `frontend/.env.example` when the local `.env` file is still missing
+- installs backend requirements and runs `alembic upgrade head`
+- installs frontend packages automatically when `frontend/node_modules` is missing
+- launches the FastAPI backend at `http://127.0.0.1:8000`
+- launches the Vite frontend at `http://127.0.0.1:5173`
+
+The existing `start-dev.bat` and `scripts/start-dev.ps1` flow remains supported. `F5` is just the VS Code-native entry point for the same local development workflow.
+
 ### macOS / Linux start
 
 ```bash

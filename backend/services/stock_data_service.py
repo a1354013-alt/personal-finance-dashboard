@@ -5,8 +5,7 @@ import os
 from datetime import date
 from typing import Any, Optional
 
-import yfinance as yf
-
+from providers.yfinance_client import get_yfinance
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +13,23 @@ class StockDataService:
     @staticmethod
     def provider_name() -> str:
         return "yfinance"
+
+    @staticmethod
+    def infer_currency(stock_code: str, info: Optional[dict[str, Any]] = None) -> str | None:
+        raw = None
+        if info:
+            raw = info.get("currency") or info.get("financialCurrency")
+        if raw:
+            currency = str(raw).strip().upper()
+            if currency:
+                return currency
+
+        normalized_code = StockDataService.normalize_stock_code(stock_code)
+        if normalized_code.endswith(".TW") or normalized_code.endswith(".TWO"):
+            return "TWD"
+        if normalized_code:
+            return "USD"
+        return None
 
     @staticmethod
     def normalize_stock_code(stock_code: str) -> str:
@@ -27,6 +43,7 @@ class StockDataService:
         formatted_code = cls.normalize_stock_code(stock_code)
         timeout = float(os.getenv("STOCK_DATA_TIMEOUT_SECONDS", "8"))
         try:
+            yf = get_yfinance()
             ticker = yf.Ticker(formatted_code)
             history = ticker.history(period="5d", auto_adjust=False, timeout=timeout)
 
@@ -58,6 +75,7 @@ class StockDataService:
     def fetch_stock_info(cls, stock_code: str) -> Optional[dict[str, Any]]:
         formatted_code = cls.normalize_stock_code(stock_code)
         try:
+            yf = get_yfinance()
             ticker = yf.Ticker(formatted_code)
             info = getattr(ticker, "info", None)
             if not info or len(info) <= 1:
@@ -73,6 +91,7 @@ class StockDataService:
         formatted_code = cls.normalize_stock_code(stock_code)
         timeout = float(os.getenv("STOCK_DATA_TIMEOUT_SECONDS", "8"))
         try:
+            yf = get_yfinance()
             ticker = yf.Ticker(formatted_code)
             history = ticker.history(period=period, auto_adjust=False, timeout=timeout)
             if history.empty:

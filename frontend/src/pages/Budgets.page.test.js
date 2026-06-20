@@ -42,6 +42,14 @@ vi.mock('@/api/budgets', () => ({
     current_spent: 200,
     percent_used: 20
   })),
+  updateBudget: vi.fn(async (id, payload) => ({
+    id,
+    month: '2026-05',
+    category: 'Food',
+    amount: payload.amount,
+    current_spent: 200,
+    percent_used: 20
+  })),
   deleteBudget: vi.fn(async () => ({}))
 }))
 
@@ -50,6 +58,7 @@ describe('Budgets page', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 15, 12, 0, 0))
     localStorage.setItem('locale', 'en')
+    window.scrollTo = vi.fn()
     setActivePinia(createPinia())
   })
 
@@ -90,6 +99,26 @@ describe('Budgets page', () => {
       })
       expect(wrapper.text()).toContain('Budget saved.')
       expect(wrapper.text()).toContain('Total Budget (All)')
+    })
+  })
+
+  it('updates an existing budget with amount-only payload when editing', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('.actions .btn.btn-secondary').exists()).toBe(true)
+    })
+
+    await wrapper.find('.actions .btn.btn-secondary').trigger('click')
+    await wrapper.find('#budget-limit').setValue('1750')
+    await wrapper.find('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(budgetsApi.updateBudget).toHaveBeenCalledWith(1, { amount: 1750 })
     })
   })
 })

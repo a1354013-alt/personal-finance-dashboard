@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeBudgetSummary, normalizeDashboardCharts, normalizeDashboardSummary } from '@/api/contracts'
+import {
+  normalizeBudgetSummary,
+  normalizeDashboardCharts,
+  normalizeDashboardSummary,
+  normalizeFundamentalsSnapshot,
+  normalizeWatchlistItem
+} from '@/api/contracts'
 
 describe('API contract normalizers', () => {
   it('normalizes mixed snake_case and camelCase budget summary payloads', () => {
@@ -98,6 +104,32 @@ describe('API contract normalizers', () => {
       currentSpent: 800,
       usagePercent: 40,
       overBudget: false
+    })
+  })
+
+  it('normalizes watchlist currency and fundamentals source metadata', () => {
+    const watchItem = normalizeWatchlistItem({
+      id: 7,
+      stock_code: 'aapl',
+      name: 'Apple',
+      currency: 'usd',
+      price: '123.45'
+    })
+    const fundamentals = normalizeFundamentalsSnapshot({
+      stock_code: 'aapl',
+      source: 'yfinance',
+      status: 'success'
+    })
+
+    expect(watchItem).toMatchObject({
+      stock_code: 'AAPL',
+      currency: 'USD',
+      price: 123.45
+    })
+    expect(fundamentals).toMatchObject({
+      stock_code: 'AAPL',
+      source: 'yfinance',
+      provider: 'yfinance'
     })
   })
 })

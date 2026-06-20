@@ -51,8 +51,7 @@ class BudgetCreate(BudgetBase):
 
 
 class BudgetUpdate(BaseModel):
-    category: str | None = Field(None, min_length=1, max_length=50)
-    amount: Decimal | None = Field(None, ge=0)
+    amount: Decimal = Field(..., ge=0)
 
 
 class BudgetItem(BaseModel):

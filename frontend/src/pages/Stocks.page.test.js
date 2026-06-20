@@ -34,6 +34,7 @@ function buildDashboard(aiExplanation) {
         id: 1,
         stock_code: 'NVDA',
         name: 'NVIDIA',
+        currency: 'USD',
         price: 100,
         date: '2026-04-10',
         volume: 123,
@@ -76,6 +77,7 @@ describe('Stocks page', () => {
       id: 2,
       stock_code: 'AAPL',
       name: 'AAPL',
+      currency: 'USD',
       price: null,
       date: null,
       volume: null,
@@ -169,5 +171,36 @@ describe('Stocks page', () => {
 
     expect(wrapper.text()).not.toContain('[Fallback AI]')
     expect(wrapper.text()).not.toContain('request_id')
+  })
+
+  it('shows the stock currency and fundamentals source from the current contracts', async () => {
+    getStockDashboardMock.mockResolvedValue(
+      {
+        ...buildDashboard({
+          status: 'ready',
+          stock_code: 'NVDA',
+          message: null,
+          explanation: 'ok',
+          can_sync: true
+        }),
+        fundamentals: {
+          stock_code: 'NVDA',
+          source: 'yfinance',
+          status: 'success',
+          pe_ratio: 20.1,
+          pb_ratio: 5.2,
+          dividend_yield: 1.1,
+          revenue_growth: 12.3,
+          eps: 4.5
+        }
+      }
+    )
+
+    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('US$ 100')
+      expect(wrapper.text()).toContain('yfinance')
+    })
   })
 })

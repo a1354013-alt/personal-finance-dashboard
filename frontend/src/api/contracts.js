@@ -58,6 +58,7 @@ export function normalizeUser(user) {
  * @property {number} id
  * @property {string} stock_code
  * @property {string} name
+ * @property {string|null} currency
  * @property {number|null} price
  * @property {string|null} date
  * @property {number|null} volume
@@ -92,6 +93,7 @@ export function normalizeWatchlistItem(row) {
     id,
     stock_code: String(row.stock_code || '').toUpperCase(),
     name: String(row.name || row.stock_code || '').trim(),
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
     price: toNumberOrNull(row.price),
     date: row.date || null,
     volume: toNumberOrNull(row.volume),
@@ -287,6 +289,7 @@ export function normalizeFundamentalsSnapshot(row) {
   return {
     stock_code: String(row.stock_code || '').toUpperCase(),
     source: row.source == null ? null : String(row.source),
+    provider: row.source == null ? null : String(row.source),
     as_of_date: row.as_of_date || null,
     fetched_at: row.fetched_at || null,
     status: row.status == null ? null : String(row.status),

@@ -89,6 +89,7 @@ class WatchlistItemResponse(BaseModel):
     id: int
     stock_code: str
     name: Optional[str] = None
+    currency: Optional[str] = None
     price: Optional[Decimal] = None
     date: Optional[DateType] = None
     volume: Optional[int] = None

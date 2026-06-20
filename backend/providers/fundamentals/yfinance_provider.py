@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import yfinance as yf
-
+from providers.yfinance_client import get_yfinance
 from .base import BaseFundamentalsProvider, FundamentalsDataUnavailableError, FundamentalsFetchResult, FundamentalsProviderError
 
 
@@ -20,8 +19,11 @@ class YFinanceFundamentalsProvider(BaseFundamentalsProvider):
 
     def fetch(self, *, stock_code: str) -> FundamentalsFetchResult:
         try:
+            yf = get_yfinance()
             ticker = yf.Ticker(stock_code)
             info = getattr(ticker, "info", None) or {}
+        except RuntimeError as exc:
+            raise FundamentalsProviderError(str(exc)) from exc
         except Exception as exc:
             raise FundamentalsProviderError(f"yfinance failed for {stock_code}: {exc}") from exc
 
