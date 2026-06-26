@@ -24,6 +24,7 @@ const getStockDashboardMock = vi.fn(async () => ({
       stock_code: 'NVDA',
       name: 'NVIDIA',
       price: 100,
+      currency: 'USD',
       date: '2026-04-10',
       volume: 123,
       price_sync_status: 'pending',
@@ -77,6 +78,49 @@ describe('Stocks page', () => {
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('NVDA')
       expect(wrapper.text()).toContain('Market data sync queued.')
+    })
+  })
+
+  it('formats each watchlist item with its own currency', async () => {
+    getStockDashboardMock.mockResolvedValueOnce({
+      selected_stock_code: 'AAPL',
+      watchlist: [
+        {
+          id: 1,
+          stock_code: '2330.TW',
+          name: 'TSMC',
+          price: 850,
+          currency: 'TWD',
+          date: '2026-04-10',
+          volume: 123,
+          price_sync_status: 'success',
+          last_sync_error: null,
+          last_sync_attempt_at: '2026-04-10T00:00:00Z'
+        },
+        {
+          id: 2,
+          stock_code: 'AAPL',
+          name: 'Apple',
+          price: 195.5,
+          currency: 'USD',
+          date: '2026-04-10',
+          volume: 456,
+          price_sync_status: 'success',
+          last_sync_error: null,
+          last_sync_attempt_at: '2026-04-10T00:00:00Z'
+        }
+      ],
+      price_history: [{ trade_date: '2026-04-10', close: 195.5 }],
+      fundamentals: null,
+      ai_explanation: ''
+    })
+    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('TWD')
+      expect(wrapper.text()).toContain('850')
+      expect(wrapper.text()).toContain('USD')
+      expect(wrapper.text()).toContain('195.50')
     })
   })
 

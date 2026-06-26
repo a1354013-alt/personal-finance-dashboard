@@ -75,5 +75,21 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     watch_item = client.get("/api/stocks/watchlist", headers=auth_headers(token)).json()[0]
     assert watch_item["date"] == "2026-04-10"
     assert isinstance(watch_item["price"], (int, float))
+    assert watch_item["currency"] == "USD"
     assert "user_id" not in watch_item
+
+
+def test_watchlist_contract_infers_currency_per_item(client):
+    token = register_and_login(client, "stock-currency@example.com")
+
+    add_tw = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "2330.TW"})
+    add_us = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
+    assert add_tw.status_code == 201
+    assert add_us.status_code == 201
+
+    dashboard = client.get("/api/stocks/dashboard", headers=auth_headers(token))
+    assert dashboard.status_code == 200
+    currency_by_code = {item["stock_code"]: item["currency"] for item in dashboard.json()["watchlist"]}
+    assert currency_by_code["2330.TW"] == "TWD"
+    assert currency_by_code["AAPL"] == "USD"
 

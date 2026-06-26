@@ -47,6 +47,14 @@ class AIInsightsService:
         )
 
     def budget_advice(self, *, budget_status: list[dict]) -> AITextResult:
+        if not budget_status:
+            return AITextResult(
+                text="No budgets have been created yet. Add at least one budget to receive advice.",
+                provider="fallback",
+                is_fallback=True,
+                error=None,
+            )
+
         over_budget = [item["category"] for item in budget_status if item.get("over_budget")]
         near_limit = [
             item["category"]

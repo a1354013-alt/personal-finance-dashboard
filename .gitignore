@@ -1,6 +1,7 @@
 backend/finance.db
 backend/test_smoke.db
 backend/*.db
+backend/.venv/
 *.db
 *.sqlite
 *.sqlite3

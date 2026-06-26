@@ -14,6 +14,13 @@ SYNC_STATUS_PENDING = "pending"
 SYNC_STATUS_FAILED = "failed"
 
 
+def infer_currency_for_stock_code(stock_code: str) -> str:
+    normalized_code = StockDataService.normalize_stock_code(stock_code)
+    if normalized_code.endswith(".TW") or normalized_code.endswith(".TWO"):
+        return "TWD"
+    return "USD"
+
+
 def latest_price_for_code(db: Session, *, stock_code: str) -> StockPriceORM | None:
     return (
         db.query(StockPriceORM)
@@ -43,6 +50,7 @@ def build_watchlist_item(db: Session, *, item: WatchlistORM) -> dict[str, Any]:
         "stock_code": item.stock_code,
         "name": item.name or item.stock_code,
         "price": latest_price.close if latest_price else None,
+        "currency": infer_currency_for_stock_code(item.stock_code),
         "date": latest_price.trade_date if latest_price else None,
         "volume": latest_price.volume if latest_price else None,
         "price_sync_status": sync_status,

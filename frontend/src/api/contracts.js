@@ -59,6 +59,7 @@ export function normalizeUser(user) {
  * @property {string} stock_code
  * @property {string} name
  * @property {number|null} price
+ * @property {string} currency
  * @property {string|null} date
  * @property {number|null} volume
  * @property {SyncStatus} price_sync_status
@@ -93,6 +94,7 @@ export function normalizeWatchlistItem(row) {
     stock_code: String(row.stock_code || '').toUpperCase(),
     name: String(row.name || row.stock_code || '').trim(),
     price: toNumberOrNull(row.price),
+    currency: toTrimmedStringOrEmpty(row.currency).toUpperCase() || 'USD',
     date: row.date || null,
     volume: toNumberOrNull(row.volume),
     price_sync_status: status,

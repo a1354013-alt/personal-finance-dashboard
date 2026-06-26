@@ -37,8 +37,8 @@ def ai_finance_summary(
             meta=AIProviderMeta(provider="fallback", is_fallback=True, error=None),
         )
 
-    total_income = sum(r.amount for r in records if r.type == "income")
-    total_expense = sum(r.amount for r in records if r.type == "expense")
+    total_income = sum((Decimal(str(r.amount)) for r in records if r.type == "income"), Decimal("0"))
+    total_expense = sum((Decimal(str(r.amount)) for r in records if r.type == "expense"), Decimal("0"))
 
     category_map: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
     for record in records:

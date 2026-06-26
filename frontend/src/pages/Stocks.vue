@@ -113,7 +113,7 @@
                 {{ item.price_sync_status }}
               </span>
             </div>
-            <div class="tile-price">{{ item.price != null ? formatPrice(item.price) : t('stocks.noDataPrice') }}</div>
+            <div class="tile-price">{{ formatPrice(item.price, item.currency) }}</div>
             <div class="tile-meta">{{ item.date || t('stocks.awaitingPriceHistory') }}</div>
             <div class="tile-actions">
               <button class="btn btn-primary" :disabled="stockStore.isSingleSyncing(item.stock_code)" @click="handleSyncSingle(item.stock_code)">
@@ -164,7 +164,6 @@ import ChartPanel from '@/components/ChartPanel.vue'
 import OnboardingCard from '@/components/OnboardingCard.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
 import { useStockStore } from '@/stores/stockStore'
-import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
 const stockStore = useStockStore()
 const newStockCode = ref('')
@@ -173,8 +172,17 @@ const actionMessage = ref('')
 const actionError = ref('')
 const { t, locale } = useI18n()
 
-function formatPrice(value) {
-  return formatCurrencyValue(Number(value), locale.value)
+function formatPrice(value, currency) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return t('stocks.noDataPrice')
+  }
+
+  return new Intl.NumberFormat(locale.value, {
+    style: 'currency',
+    currency: currency || 'USD',
+    currencyDisplay: 'code',
+    maximumFractionDigits: 2
+  }).format(Number(value))
 }
 
 function statusBadgeClass(status) {

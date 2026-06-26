@@ -1,26 +1,87 @@
 # Personal Finance Dashboard
 
-Full-stack personal finance dashboard built with FastAPI and Vue 3. The project covers budgeting, expense tracking, stock watchlists, dashboard analytics, AI summaries, and monthly report export.
+Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, and monthly report exports.
+
+The current stable version is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
 ## Features
 
-- Budget management by month and category
 - Expense and income tracking
-- Dashboard summary with trends, category spend, budget health, and recent transactions
-- Stock watchlist with cached market data and fundamentals sync jobs
-- AI-generated summary and budget guidance
-- Monthly report export in CSV and PDF
+- Monthly budget setup and budget health summaries
+- Dashboard cards, charts, recent transactions, and report export
+- Stock watchlist with cached market data, sync status, fundamentals screening, and per-item currency display
+- AI finance summary and budget advice with deterministic fallback behavior
+- CSV and PDF monthly report export
+- Demo auth with access tokens, refresh tokens, and logout refresh-token revoke flow
 
-## Architecture
+## Tech Stack
 
-- Backend: FastAPI routers, service layer, Pydantic contracts, SQLAlchemy ORM, Alembic migrations
-- Frontend: Vue 3 pages, Pinia stores, Axios API layer, contract normalizers
-- Database: SQLite by default
-- Background work: queued sync jobs for market data and fundamentals
+- Backend: FastAPI, SQLAlchemy, Alembic, Pydantic, SQLite, pytest
+- Frontend: Vue 3, Pinia, Vue Router, vue-i18n, Axios, Vite, Vitest
+- Development: VS Code launch/tasks, PowerShell scripts for Windows, optional shell script for macOS/Linux
 
-## Quick Start
+## Environment Setup
 
-### Windows one-click start
+Copy the local environment examples before running the app:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+```
+
+Useful default URLs:
+
+- Backend API: `http://127.0.0.1:8000`
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- Frontend: `http://127.0.0.1:5173`
+
+## Backend Start
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+For an existing environment, rerun the install and migration commands after dependency or migration changes.
+
+## Frontend Start
+
+```powershell
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+The frontend dev server proxies `/api` requests to `http://127.0.0.1:8000`.
+
+## VS Code F5 Start
+
+Windows is the supported F5 path for this stable demo version.
+
+1. Open the repository root in VS Code.
+2. Install the VS Code Python and JavaScript debugging extensions if prompted.
+3. Select `Full Stack Dev (F5)` in Run and Debug.
+4. Press F5.
+
+The F5 compound launch runs:
+
+- `dev: prepare`: creates `backend\.venv` if missing, installs backend requirements, runs Alembic migrations, and runs frontend `npm ci`
+- `Backend API (FastAPI)`: starts Uvicorn from `backend\.venv\Scripts\python.exe`
+- `Frontend Dev Server`: starts Vite from the `frontend` working directory
+
+macOS/Linux users can run the app manually with the commands above or use:
+
+```bash
+chmod +x scripts/start-dev.sh
+./scripts/start-dev.sh
+```
+
+The shell script is provided for convenience, but the VS Code F5 workflow is currently documented and verified for Windows.
+
+## One-Click Windows Script
 
 From the repository root:
 
@@ -28,140 +89,23 @@ From the repository root:
 .\start-dev.bat
 ```
 
-PowerShell directly:
+Or run the PowerShell script directly:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\start-dev.ps1
 ```
 
-The script checks Python, Node.js, and npm, creates `backend\.venv` if needed, installs backend and frontend dependencies, runs `alembic upgrade head`, and opens separate dev-server terminals.
+The script checks Python, Node.js, and npm, prepares dependencies, applies migrations, and opens separate backend/frontend dev-server windows.
 
-### macOS / Linux start
-
-```bash
-chmod +x scripts/start-dev.sh
-./scripts/start-dev.sh
-```
-
-### Environment files
-
-The app runs with demo-safe defaults. To customize local settings:
-
-```powershell
-Copy-Item backend\.env.example backend\.env
-Copy-Item frontend\.env.example frontend\.env
-```
-
-macOS / Linux:
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
-
-Use a real `SECRET_KEY` and external API keys only in private local files or deployment secrets.
-
-Dev URLs:
-
-- Backend API: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-- Frontend: `http://localhost:5173`
-
-## Backend Setup
-
-```powershell
-cd backend
-python -m pip install -r requirements.txt
-alembic upgrade head
-uvicorn main:app --reload
-```
-
-Backend URLs:
-
-- API: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-
-## Migration Commands
-
-```powershell
-cd backend
-alembic upgrade head
-```
-
-If you need a clean demo database:
-
-```powershell
-cd backend
-python seed_data.py --reset
-```
-
-## Reset Local Database
-
-If an older local `finance.db` has an inconsistent `alembic_version` state, remove the local SQLite file and rebuild it from migrations and seed data.
-
-macOS / Linux:
-
-```bash
-cd backend
-rm -f finance.db
-alembic upgrade head
-python seed_data.py --reset
-```
-
-Windows PowerShell:
-
-```powershell
-cd backend
-Remove-Item .\finance.db
-alembic upgrade head
-python seed_data.py --reset
-```
-
-## Demo Seed Data
-
-```powershell
-cd backend
-python seed_data.py --reset
-```
-
-This creates demo data for:
-
-- demo user
-- transactions
-- budgets
-- stock watchlist
-- cached stock prices
-
-Demo account:
-
-- Email: `demo@example.com`
-- Password: `demo1234`
-
-## Frontend Setup
-
-```powershell
-cd frontend
-npm ci
-npm run dev
-```
-
-Frontend URL:
-
-- App: `http://localhost:5173`
-
-## Rate Limiting
-
-The current rate limiter is an in-memory, demo-level guard intended for a single local API process. It does not share counters across multiple workers or multiple deployed instances. Production deployments should replace it with a Redis-backed or otherwise centralized rate limiter.
-
-## Testing Commands
+## Tests
 
 Backend:
 
 ```powershell
 cd backend
-python -m compileall .
-python -m pytest -q
+python -m compileall app tests
+pytest
 ```
 
 Frontend:
@@ -170,17 +114,30 @@ Frontend:
 cd frontend
 npm ci
 npm run lint
-npm run build
 npm run test:run
+```
+
+## Build
+
+Frontend production build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+Dependency audit:
+
+```powershell
+cd frontend
+npm audit
 ```
 
 ## Monthly Report Export
 
-Monthly report export is available from both backend API and the Dashboard page.
+The Dashboard page can export monthly reports as CSV or PDF.
 
-As a portfolio feature, this export turns the Dashboard from a screen-only demo into a deliverable reporting workflow. It combines monthly income and expense totals, category spending, budget health, and recent transactions into a downloadable monthly report that can be handed to a stakeholder directly.
-
-Backend API:
+Backend endpoints:
 
 - `GET /api/reports/monthly?month=YYYY-MM&format=csv`
 - `GET /api/reports/monthly?month=YYYY-MM&format=pdf`
@@ -188,89 +145,59 @@ Backend API:
 Rules:
 
 - Authentication is required
-- Only the current user's data is exported
+- Exported data is scoped to the current user
 - `month` must use `YYYY-MM`
-- `format` only supports `csv` and `pdf`
-- Empty months still export a valid empty report
+- `format` supports `csv` and `pdf`
+- Empty months still return a valid empty report
 
-Report contents include:
+## Demo Security Model
 
-- report month
-- exported time
-- `monthlyIncome`
-- `monthlyExpense`
-- `monthlyBalance`
-- `expenseByCategory`
-- `budgetItems`
-- `recentTransactions`
-- disclaimer
+This is a portfolio/demo project, not a finished production security baseline.
 
-CSV details:
+Implemented demo-level security behavior includes:
 
-- UTF-8 BOM for Excel compatibility
-- Filename: `finance-report-YYYY-MM.csv`
-- Sections:
-  - `Monthly Summary`
-  - `Expense By Category`
-  - `Budget Status`
-  - `Recent Transactions`
+- Password hashing
+- JWT access tokens
+- Refresh tokens
+- Refresh-token rotation
+- Logout revoke flow for refresh tokens
+- User-scoped queries for expenses, budgets, reports, dashboard data, and watchlists
+- Development guard that requires a real `SECRET_KEY` when `ENV=production`
 
-PDF details:
+For production, the project should still add or harden:
 
-- Generated by backend service
-- English-only PDF labels to avoid runtime font issues
-- Filename: `finance-report-YYYY-MM.pdf`
+- Shorter access token lifetime
+- HttpOnly Secure Cookie storage for tokens
+- CSP and other security headers
+- Production secret management
+- Centralized/rate-limited auth protection
+- HTTPS-only deployment configuration
+- Stronger observability and incident logging
 
-## Demo Flow
+Do not treat the current token/local-storage model as production-grade security.
 
-- Login demo account
-- View Dashboard
-- Check Budget Health
-- Export Monthly Report CSV
-- Export Monthly Report PDF
-- Review Stock Watchlist
+## Common Issues
 
-## API Examples
-
-```http
-GET /api/reports/monthly?month=2026-05&format=csv
-Authorization: Bearer <token>
-```
-
-```http
-GET /api/reports/monthly?month=2026-05&format=pdf
-Authorization: Bearer <token>
-```
-
-## Frontend Export Entry
-
-The Dashboard page includes:
-
-- month picker (`input type="month"`)
-- `Export CSV` button
-- `Export PDF` button
-- loading state
-- error message
-
-The frontend download flow uses a blob response and preserves the backend filename.
+- Missing Python packages: run `backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt`.
+- Missing frontend packages: run `npm ci` in `frontend`.
+- Alembic or SQLite state looks stale: from `backend`, run `.\.venv\Scripts\python.exe -m alembic upgrade head`.
+- Port already in use: stop the existing process on ports `8000` or `5173`, or change the launch/script port arguments.
+- OpenAI key missing: AI endpoints degrade to deterministic fallback text unless a real provider and key are configured.
+- `npm audit` reports issues after dependency updates: inspect the vulnerable package path first and prefer compatible patch/minor upgrades before major upgrades.
 
 ## CI
 
-GitHub Actions workflow runs:
+GitHub Actions runs:
 
 - backend import smoke
-- backend `alembic upgrade head`
-- backend `compileall`
-- backend `pytest`
+- backend Alembic migration smoke
+- backend `python -m compileall .`
+- backend `python -m pytest -q`
 - frontend `npm ci`
 - frontend lint
-- frontend build
 - frontend tests
+- frontend build
 
 Workflow file:
 
-- [ci.yml](.github/workflows/ci.yml)
-
-## Portfolio Value
-
-This project is stronger as a portfolio piece because it demonstrates not only dashboard visualization, but also real deliverable output, backend-generated files, user-scoped reporting, and maintainable cross-layer contracts.
+- [.github/workflows/ci.yml](.github/workflows/ci.yml)

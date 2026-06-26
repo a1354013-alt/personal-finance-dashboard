@@ -137,3 +137,16 @@ def test_budget_advice_marks_over_budget_items(client, monkeypatch: pytest.Monke
     assert item["over_budget"] is True
     assert item["warning"] is False
 
+
+def test_budget_advice_empty_state_is_json_serializable(client, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("LLM_PROVIDER", "fallback")
+    reset_llm_provider_cache()
+
+    token = register_and_login(client, "ai-budget-empty@example.com")
+
+    response = client.get("/api/ai/budget-advice", headers=auth_headers(token))
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["budget_status"] == []
+    assert "No budgets have been created yet" in payload["advice"]
+

@@ -89,6 +89,7 @@ class WatchlistItemResponse(BaseModel):
     stock_code: str
     name: Optional[str] = None
     price: Optional[Decimal] = None
+    currency: str = "USD"
     date: Optional[DateType] = None
     volume: Optional[int] = None
     price_sync_status: str = "pending"
