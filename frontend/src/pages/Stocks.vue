@@ -141,7 +141,7 @@
                 {{ item.price_sync_status }}
               </span>
             </div>
-            <div class="tile-price">{{ item.price != null ? formatPrice(item.price) : t('stocks.noDataPrice') }}</div>
+            <div class="tile-price">{{ item.price != null ? formatPrice(item.price, item.currency) : t('stocks.noDataPrice') }}</div>
             <div class="tile-meta">{{ item.date || t('stocks.awaitingPriceHistory') }}</div>
             <div class="tile-actions">
               <button class="btn btn-primary" :disabled="stockStore.isSingleSyncing(item.stock_code)" @click="handleSyncSingle(item.stock_code)">
@@ -201,9 +201,8 @@ const actionMessage = ref('')
 const actionError = ref('')
 const { t, locale } = useI18n()
 
-function formatPrice(value) {
-  const selectedItem = stockStore.watchlist.find((item) => item.stock_code === stockStore.selectedStockCode)
-  return formatCurrencyValue(Number(value), locale.value, selectedItem?.currency || null)
+function formatPrice(value, currency) {
+  return formatCurrencyValue(Number(value), locale.value, currency || null)
 }
 
 function statusBadgeClass(status) {

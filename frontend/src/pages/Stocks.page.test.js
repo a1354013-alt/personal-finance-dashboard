@@ -49,6 +49,16 @@ function buildDashboard(aiExplanation) {
   }
 }
 
+function mountStocksPage(locale = 'zh-TW') {
+  localStorage.setItem('locale', locale)
+  return mount(Stocks, {
+    global: {
+      plugins: [createPinia(), createI18nInstance()],
+      stubs: { ChartPanel: true }
+    }
+  })
+}
+
 describe('Stocks page', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -100,7 +110,7 @@ describe('Stocks page', () => {
       })
     )
 
-    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+    const wrapper = mountStocksPage()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('目前尚未取得 NVDA 的基本面資料')
@@ -132,7 +142,7 @@ describe('Stocks page', () => {
         })
       )
 
-    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+    const wrapper = mountStocksPage()
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('同步基本面資料')
@@ -163,7 +173,7 @@ describe('Stocks page', () => {
       })
     )
 
-    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+    const wrapper = mountStocksPage('en')
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('NVDA currently does not pass the baseline screen.')
@@ -196,11 +206,61 @@ describe('Stocks page', () => {
       }
     )
 
-    const wrapper = mount(Stocks, { global: { plugins: [createPinia(), createI18nInstance()], stubs: { ChartPanel: true } } })
+    const wrapper = mountStocksPage('en')
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('US$ 100')
       expect(wrapper.text()).toContain('yfinance')
     })
+  })
+
+  it('renders each watchlist item with its own currency when the watchlist mixes markets', async () => {
+    getStockDashboardMock.mockResolvedValue({
+      selected_stock_code: 'AAPL',
+      watchlist: [
+        {
+          id: 1,
+          stock_code: 'AAPL',
+          name: 'Apple',
+          currency: 'USD',
+          price: 100,
+          date: '2026-04-10',
+          volume: 123,
+          price_sync_status: 'success',
+          last_sync_error: null,
+          last_sync_attempt_at: '2026-04-10T00:00:00Z'
+        },
+        {
+          id: 2,
+          stock_code: '2330.TW',
+          name: 'TSMC',
+          currency: 'TWD',
+          price: 950,
+          date: '2026-04-10',
+          volume: 456,
+          price_sync_status: 'success',
+          last_sync_error: null,
+          last_sync_attempt_at: '2026-04-10T00:00:00Z'
+        }
+      ],
+      price_history: [{ trade_date: '2026-04-10', close: 100 }],
+      fundamentals: null,
+      ai_explanation: {
+        status: 'ready',
+        stock_code: 'AAPL',
+        message: null,
+        explanation: 'ok',
+        can_sync: true
+      }
+    })
+
+    const wrapper = mountStocksPage('en')
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('US$ 100')
+      expect(wrapper.text()).toContain('NT$ 950')
+    })
+
+    expect(wrapper.text()).not.toContain('US$ 950')
   })
 })
