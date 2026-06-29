@@ -4,6 +4,29 @@ Personal Finance Dashboard is a full-stack portfolio/demo project for tracking e
 
 The current stable version is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
+## Project Status
+
+This repository is a portfolio/demo project prepared for a v1.0 demo-ready milestone.
+
+Implemented demo surface:
+
+- FastAPI backend
+- Vue frontend
+- Auth with access token, refresh token, and logout revoke flow
+- Dashboard analytics
+- Budget management and budget health summaries
+- Stock watchlist
+- Monthly reports
+- AI-assisted finance summary
+- CSV and PDF export
+
+Demo readiness already in place:
+
+- Backend tests
+- Frontend tests
+- GitHub Actions CI
+- VS Code F5 full-stack startup on Windows
+
 ## Features
 
 - Expense and income tracking
@@ -68,9 +91,14 @@ Windows is the supported F5 path for this stable demo version.
 
 The F5 compound launch runs:
 
-- `dev: prepare`: creates `backend\.venv` if missing, installs backend requirements, runs Alembic migrations, and runs frontend `npm ci`
+- `dev: prepare`: runs the backend/frontend bootstrap steps, including creating `backend\.venv` if missing, installing backend requirements, running Alembic migrations, and running frontend `npm ci`
 - `Backend API (FastAPI)`: starts Uvicorn from `backend\.venv\Scripts\python.exe`
 - `Frontend Dev Server`: starts Vite from the `frontend` working directory
+
+Current local URLs:
+
+- Backend: `http://127.0.0.1:8000`
+- Frontend: `http://127.0.0.1:5173`
 
 macOS/Linux users can run the app manually with the commands above or use:
 
@@ -104,8 +132,8 @@ Backend:
 
 ```powershell
 cd backend
-python -m compileall app tests
-pytest
+python -m compileall .
+python -m pytest -q
 ```
 
 Frontend:
@@ -115,22 +143,8 @@ cd frontend
 npm ci
 npm run lint
 npm run test:run
-```
-
-## Build
-
-Frontend production build:
-
-```powershell
-cd frontend
 npm run build
-```
-
-Dependency audit:
-
-```powershell
-cd frontend
-npm audit
+npm audit --audit-level=moderate
 ```
 
 ## Monthly Report Export
@@ -166,7 +180,7 @@ Implemented demo-level security behavior includes:
 
 For production, the project should still add or harden:
 
-- Shorter access token lifetime
+- Shorter access token lifetime than the current demo default
 - HttpOnly Secure Cookie storage for tokens
 - CSP and other security headers
 - Production secret management
@@ -175,6 +189,14 @@ For production, the project should still add or harden:
 - Stronger observability and incident logging
 
 Do not treat the current token/local-storage model as production-grade security.
+
+## Known Limitations / Roadmap
+
+- Transaction editing is not implemented yet.
+- Recurring transactions are not implemented yet.
+- Bank CSV import is not implemented yet.
+- Stock functionality is a watchlist, not a full portfolio profit/loss system.
+- PDF report labels are currently mostly English to avoid Chinese font environment issues.
 
 ## Common Issues
 
