@@ -6,17 +6,18 @@ vi.mock('@/api/stocks', () => ({
   getFilterResults: vi.fn(async () => [{ stock_code: 'AAPL', passed: false, fail_reasons: [], meta: { provider: 'x', ttl_hours: 24, is_stale: true } }]),
   getFilterMetadata: vi.fn(async () => ({ fundamentals_provider: 'yfinance', ttl_hours: 24, timeout_seconds: 8, message: 'ok' })),
   syncWatchlistFundamentals: vi.fn(async () => ([])),
+  syncSingleFundamentals: vi.fn(async () => ({ stock_code: 'AAPL', status: 'pending' })),
   getStockDashboard: vi.fn(async () => ({
     selected_stock_code: 'AAPL',
     watchlist: [],
     price_history: [],
     fundamentals: null,
-    ai_explanation: ''
+    ai_explanation: { status: 'sync_required', stock_code: 'AAPL', message: 'sync', explanation: null, can_sync: true }
   }))
 }))
 
 import { useStockStore } from '@/stores/stockStore'
-import { getFilterResults, syncWatchlistFundamentals } from '@/api/stocks'
+import { getFilterResults, syncSingleFundamentals, syncWatchlistFundamentals } from '@/api/stocks'
 
 describe('stockStore', () => {
   it('fetchFilterResults sets results and metadata', async () => {
@@ -79,7 +80,17 @@ describe('stockStore', () => {
     await store.fetchDashboard('AAPL')
 
     expect(store.dashboard.selected_stock_code).toBe('AAPL')
+    expect(store.dashboard.ai_explanation.status).toBe('sync_required')
     expect(store.watchlist).toEqual([])
   })
-})
 
+  it('syncSingleFundamentals refreshes dashboard and filter results', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    await store.syncSingleFundamentals('AAPL')
+
+    expect(syncSingleFundamentals).toHaveBeenCalledWith('AAPL', { force: false })
+    expect(store.syncingFundamentalsCodes).toEqual([])
+  })
+})

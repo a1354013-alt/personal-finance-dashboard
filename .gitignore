@@ -1,3 +1,6 @@
+# =========================
+# Database files
+# =========================
 backend/finance.db
 backend/test_smoke.db
 backend/*.db
@@ -8,21 +11,80 @@ backend/.venv/
 backend/*.db-journal
 backend/*.db-wal
 backend/*.db-shm
+
+# =========================
+# Backend temporary files
+# =========================
 backend/can_write.txt
 backend/pytest-cache-files-*
+
+# =========================
+# Frontend dependencies/build/cache
+# =========================
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/coverage/
 .eslintcache
 .npm-cache/
+
+# =========================
+# Environment files
+# =========================
 .env
-.DS_Store
-Thumbs.db
+.env.local
+.env.*
+backend/.env
+backend/.env.local
+backend/.env.*
+
+# =========================
+# Python virtual environments
+# CI FIX: 避免 pytest / compileall 掃到虛擬環境裡的第三方套件測試
+# CI FIX: 這次錯誤就是因為 .venv/Lib/site-packages 被 pytest 收集到
+# =========================
+.venv/
+venv/
+env/
+backend/.venv/
+backend/venv/
+backend/env/
+
+# =========================
+# Python cache/test/type-check/lint cache
+# CI FIX: 補齊 Python 測試與工具快取，避免被誤追蹤進 Git
+# =========================
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
 **/__pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.py[cod]
+
+# =========================
+# Build and package artifacts
+# CI FIX: 避免 Python build 產物被 commit
+# =========================
+build/
+dist/
+*.egg-info/
+
+# =========================
+# Logs and temporary files
+# =========================
 *.log
 *.tmp
 *.temp
+*.swp
+*.swo
+
+# =========================
+# OS generated files
+# =========================
+.DS_Store
+Thumbs.db

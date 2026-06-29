@@ -85,10 +85,7 @@ def update_budget(
     if not budget:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Budget not found.")
 
-    if budget_update.category is not None:
-        budget.category = budget_update.category
-    if budget_update.amount is not None:
-        budget.amount = budget_update.amount
+    budget.amount = budget_update.amount
     
     db.commit()
     return next(item for item in build_budget_status(db, current_user.id, budget.month) if item["category"] == budget.category)

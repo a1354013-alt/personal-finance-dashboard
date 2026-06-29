@@ -74,13 +74,17 @@ def _render_fallback_text(*, user: str, request_id: str) -> str:
         stock_code = payload.get("stock_code", "N/A")
         passed = bool(payload.get("passed"))
         reasons = payload.get("fail_reasons", []) or []
-        headline = "passes" if passed else "does not pass"
-        body = "No failing rules." if passed else ("Fail reasons: " + "; ".join(map(str, reasons)))
+        if passed:
+            return (
+                f"{stock_code} currently passes the baseline screen.\n"
+                "Positive signals came from the cached fundamentals used by the rules-based check.\n"
+                "Use the detailed metrics panel to confirm valuation, profitability, and growth before making decisions."
+            )
+        reason_text = "; ".join(map(str, reasons)) if reasons else "One or more screening rules were not met."
         return (
-            f"[Fallback AI] Screening explanation for {stock_code}\n"
-            f"- result: {headline}\n"
-            f"- details: {body}\n"
-            f"- request_id: {request_id}"
+            f"{stock_code} currently does not pass the baseline screen.\n"
+            f"Key reason: {reason_text}\n"
+            "Refresh fundamentals if the data may be outdated, then review the metrics again."
         )
 
     return (

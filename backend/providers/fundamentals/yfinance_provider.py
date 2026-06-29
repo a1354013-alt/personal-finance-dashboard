@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import yfinance as yf
-
-from .base import BaseFundamentalsProvider, FundamentalsFetchResult, FundamentalsProviderError
+from providers.yfinance_client import get_yfinance
+from .base import BaseFundamentalsProvider, FundamentalsDataUnavailableError, FundamentalsFetchResult, FundamentalsProviderError
 
 
 class YFinanceFundamentalsProvider(BaseFundamentalsProvider):
@@ -20,10 +19,18 @@ class YFinanceFundamentalsProvider(BaseFundamentalsProvider):
 
     def fetch(self, *, stock_code: str) -> FundamentalsFetchResult:
         try:
+            yf = get_yfinance()
             ticker = yf.Ticker(stock_code)
             info = getattr(ticker, "info", None) or {}
+        except RuntimeError as exc:
+            raise FundamentalsProviderError(str(exc)) from exc
         except Exception as exc:
             raise FundamentalsProviderError(f"yfinance failed for {stock_code}: {exc}") from exc
+
+        if not info:
+            raise FundamentalsDataUnavailableError(
+                f"Fundamentals data is not available for {stock_code} from {self.name}."
+            )
 
         def as_decimal(value) -> Decimal | None:
             if value is None:
@@ -54,6 +61,11 @@ class YFinanceFundamentalsProvider(BaseFundamentalsProvider):
 
         eps = as_decimal(info.get("trailingEps"))
 
+        if all(value is None for value in (pe_ratio, pb_ratio, dividend_yield, revenue_growth, eps)):
+            raise FundamentalsDataUnavailableError(
+                f"Fundamentals data is not available for {stock_code} from {self.name}."
+            )
+
         return FundamentalsFetchResult(
             stock_code=stock_code,
             pe_ratio=pe_ratio,
@@ -63,4 +75,3 @@ class YFinanceFundamentalsProvider(BaseFundamentalsProvider):
             eps=eps,
             source=self.name,
         )
-

@@ -17,6 +17,7 @@ export const useStockStore = defineStore('stock', () => {
   const dashboard = ref(null)
   const fundamentalsSyncing = ref(false)
   const fundamentalsError = ref(null)
+  const syncingFundamentalsCodes = ref([])
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
@@ -53,6 +54,14 @@ export const useStockStore = defineStore('stock', () => {
       const result = await stockApi.getStockDashboard(selectedCode)
       dashboard.value = normalizeStockDashboard(result)
       watchlist.value = dashboard.value?.watchlist || []
+      const aiExplanation = dashboard.value?.ai_explanation
+      if (import.meta.env.DEV && aiExplanation?.request_id) {
+        console.info('[stocks.ai_explanation]', {
+          stock_code: aiExplanation.stock_code,
+          status: aiExplanation.status,
+          request_id: aiExplanation.request_id
+        })
+      }
     } catch (error) {
       dashboard.value = null
       watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
@@ -160,6 +169,33 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  function isSingleFundamentalsSyncing(stockCode) {
+    return syncingFundamentalsCodes.value.includes(String(stockCode || '').toUpperCase())
+  }
+
+  async function syncSingleFundamentals(stockCode, { force = false } = {}) {
+    const normalizedCode = String(stockCode || '').toUpperCase()
+    if (!normalizedCode || isSingleFundamentalsSyncing(normalizedCode)) {
+      return null
+    }
+
+    syncingFundamentalsCodes.value.push(normalizedCode)
+    fundamentalsError.value = null
+    try {
+      const response = await stockApi.syncSingleFundamentals(normalizedCode, { force })
+      await Promise.all([
+        fetchDashboard(normalizedCode),
+        fetchFilterResults()
+      ])
+      return response
+    } catch (error) {
+      fundamentalsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      syncingFundamentalsCodes.value = syncingFundamentalsCodes.value.filter((code) => code !== normalizedCode)
+    }
+  }
+
   async function evaluateStock(data) {
     return stockApi.filterSingleStock(data)
   }
@@ -175,6 +211,7 @@ export const useStockStore = defineStore('stock', () => {
     dashboard,
     fundamentalsSyncing,
     fundamentalsError,
+    syncingFundamentalsCodes,
     watchlistLoading,
     filterLoading,
     dashboardLoading,
@@ -190,10 +227,12 @@ export const useStockStore = defineStore('stock', () => {
     fetchDashboard,
     fetchFilterResults,
     syncFundamentals,
+    syncSingleFundamentals,
     addToWatchlist,
     deleteFromWatchlist,
     syncAllPrices,
     syncSinglePrice,
+    isSingleFundamentalsSyncing,
     isSingleSyncing,
     evaluateStock,
     getAiStockExplain

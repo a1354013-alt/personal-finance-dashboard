@@ -41,12 +41,14 @@ import {
   CategoryScale,
   Filler,
   Legend,
+  LineController,
   LineElement,
   LinearScale,
+  PieController,
   PointElement,
   Tooltip
 } from 'chart.js'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 Chart.register(
@@ -56,8 +58,10 @@ Chart.register(
   CategoryScale,
   Filler,
   Legend,
+  LineController,
   LineElement,
   LinearScale,
+  PieController,
   PointElement,
   Tooltip
 )
@@ -84,9 +88,14 @@ const emptyTitleComputed = computed(() => props.emptyTitle || t('dashboard.empty
 const emptyDescriptionComputed = computed(() => props.emptyDescription || t('dashboard.empty.chartDescription'))
 const errorTitleComputed = computed(() => props.errorTitle || t('dashboard.errors.charts'))
 
-function renderChart() {
-  if (chart) chart.destroy()
+function destroyChart() {
+  if (!chart) return
+  chart.destroy()
   chart = null
+}
+
+function renderChart() {
+  destroyChart()
   if (!canvasRef.value || props.loading || props.error || !hasData.value) return
 
   chart = new Chart(canvasRef.value, {
@@ -140,10 +149,20 @@ function renderChart() {
   })
 }
 
-watch(() => [props.loading, props.error, props.labels, props.datasets, props.type], renderChart, { deep: true })
-onMounted(renderChart)
+async function scheduleRender() {
+  await nextTick()
+  renderChart()
+}
+
+watch(
+  () => [props.loading, props.error, props.labels, props.datasets, props.type],
+  scheduleRender,
+  { deep: true, flush: 'post' }
+)
+
+onMounted(scheduleRender)
 onBeforeUnmount(() => {
-  if (chart) chart.destroy()
+  destroyChart()
 })
 </script>
 

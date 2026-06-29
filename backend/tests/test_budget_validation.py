@@ -78,6 +78,25 @@ def test_budget_summary_response_includes_item_id_and_status_flags(client):
     assert item["warning"] is False
 
 
+def test_budget_update_requires_amount(client):
+    token = register_and_login(client, "budget-update-validation@example.com")
+    headers = auth_headers(token)
+
+    create_response = client.post(
+        "/api/budgets",
+        headers=headers,
+        json={"month": "2026-05", "category": "Food", "amount": 100},
+    )
+    assert create_response.status_code in {200, 201}
+
+    response = client.put(
+        f"/api/budgets/{create_response.json()['id']}",
+        headers=headers,
+        json={},
+    )
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize("month", ["2026-00", "2026-99"])
 def test_budget_create_rejects_invalid_month_values(client, month: str):
     token = register_and_login(client, f"budget-invalid-create-{month}@example.com")

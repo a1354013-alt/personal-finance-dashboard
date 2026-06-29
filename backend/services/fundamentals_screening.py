@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from models.fundamentals import FundamentalsORM
-from services.fundamentals_service import STATUS_SUCCESS, is_stale
+from services.fundamentals_service import STATUS_SUCCESS, STATUS_UNSUPPORTED, is_stale
 
 
 @dataclass(frozen=True)
@@ -16,11 +16,27 @@ class FundamentalsScreenResult:
 
 def screen_fundamentals(row: FundamentalsORM | None) -> FundamentalsScreenResult:
     if row is None:
-        return FundamentalsScreenResult(stock_code="UNKNOWN", passed=False, fail_reasons=["No fundamentals cached yet."])
+        return FundamentalsScreenResult(
+            stock_code="UNKNOWN",
+            passed=False,
+            fail_reasons=["Fundamentals data is not available yet. Sync required."],
+        )
 
     reasons: list[str] = []
+    if row.status == STATUS_UNSUPPORTED:
+        return FundamentalsScreenResult(
+            stock_code=row.stock_code,
+            passed=False,
+            fail_reasons=["Fundamentals data is not available for this market/provider."],
+        )
+
     if row.status != STATUS_SUCCESS:
-        reasons.append(f"Fundamentals status is '{row.status}'.")
+        if row.status == "pending":
+            reasons.append("Fundamentals sync is in progress. Retry after the sync completes.")
+        elif row.status == "failed":
+            reasons.append("Fundamentals sync failed. Please retry.")
+        else:
+            reasons.append("Fundamentals data is not ready yet. Please retry after syncing.")
         if row.error_message:
             reasons.append(f"Provider error: {row.error_message}")
         return FundamentalsScreenResult(stock_code=row.stock_code, passed=False, fail_reasons=reasons)
@@ -61,4 +77,3 @@ def _to_decimal(value) -> Decimal | None:
         return Decimal(value)
     except Exception:
         return None
-

@@ -19,9 +19,12 @@ class FundamentalsProviderError(RuntimeError):
     pass
 
 
+class FundamentalsDataUnavailableError(FundamentalsProviderError):
+    pass
+
+
 class BaseFundamentalsProvider:
     name: str = "base"
 
     def fetch(self, *, stock_code: str) -> FundamentalsFetchResult:
         raise NotImplementedError
-

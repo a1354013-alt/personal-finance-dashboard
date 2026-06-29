@@ -42,6 +42,14 @@ vi.mock('@/api/budgets', () => ({
     current_spent: 200,
     percent_used: 20
   })),
+  updateBudget: vi.fn(async (id, payload) => ({
+    id,
+    month: '2026-05',
+    category: 'Food',
+    amount: payload.amount,
+    current_spent: 200,
+    percent_used: 20
+  })),
   deleteBudget: vi.fn(async () => ({}))
 }))
 
@@ -49,6 +57,8 @@ describe('Budgets page', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 15, 12, 0, 0))
+    localStorage.setItem('locale', 'en')
+    window.scrollTo = vi.fn()
     setActivePinia(createPinia())
   })
 
@@ -56,21 +66,26 @@ describe('Budgets page', () => {
     vi.useRealTimers()
   })
 
-  it('loads budgets and renders status', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
+  it('loads budgets with the correct total budget and edit copy', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('食物')
-      expect(wrapper.text()).toContain('20')
+      expect(wrapper.text()).toContain('Total Budget (All)')
+      expect(wrapper.text()).toContain('Food')
+      expect(wrapper.text()).toContain('Edit')
     })
   })
 
-  it('submits a budget', async () => {
-    const pinia = createPinia()
-    const i18n = createI18nInstance()
-    const wrapper = mount(Budgets, { global: { plugins: [pinia, i18n] } })
+  it('submits a budget and keeps the English success copy intact', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
 
     await wrapper.find('#budget-category').setValue('Food')
     await wrapper.find('#budget-limit').setValue('1500')
@@ -82,8 +97,28 @@ describe('Budgets page', () => {
         amount: 1500,
         month: '2026-05'
       })
-      expect(wrapper.text()).toContain('預算已儲存')
-      expect(wrapper.text()).toContain('食物')
+      expect(wrapper.text()).toContain('Budget saved.')
+      expect(wrapper.text()).toContain('Total Budget (All)')
+    })
+  })
+
+  it('updates an existing budget with amount-only payload when editing', async () => {
+    const wrapper = mount(Budgets, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()]
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('.actions .btn.btn-secondary').exists()).toBe(true)
+    })
+
+    await wrapper.find('.actions .btn.btn-secondary').trigger('click')
+    await wrapper.find('#budget-limit').setValue('1750')
+    await wrapper.find('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(budgetsApi.updateBudget).toHaveBeenCalledWith(1, { amount: 1750 })
     })
   })
 })

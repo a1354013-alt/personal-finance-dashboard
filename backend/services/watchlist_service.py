@@ -49,6 +49,7 @@ def build_watchlist_item(db: Session, *, item: WatchlistORM) -> dict[str, Any]:
         "id": item.id,
         "stock_code": item.stock_code,
         "name": item.name or item.stock_code,
+        "currency": StockDataService.infer_currency(item.stock_code),
         "price": latest_price.close if latest_price else None,
         "currency": infer_currency_for_stock_code(item.stock_code),
         "date": latest_price.trade_date if latest_price else None,

@@ -58,8 +58,8 @@ export function normalizeUser(user) {
  * @property {number} id
  * @property {string} stock_code
  * @property {string} name
+ * @property {string|null} currency
  * @property {number|null} price
- * @property {string} currency
  * @property {string|null} date
  * @property {number|null} volume
  * @property {SyncStatus} price_sync_status
@@ -93,8 +93,8 @@ export function normalizeWatchlistItem(row) {
     id,
     stock_code: String(row.stock_code || '').toUpperCase(),
     name: String(row.name || row.stock_code || '').trim(),
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
     price: toNumberOrNull(row.price),
-    currency: toTrimmedStringOrEmpty(row.currency).toUpperCase() || 'USD',
     date: row.date || null,
     volume: toNumberOrNull(row.volume),
     price_sync_status: status,
@@ -148,19 +148,19 @@ export function normalizeBudgetSummary(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
     month: toStringOrEmpty(payload.month),
-    totalBudget: toNumberOrZero(payload.totalBudget),
-    totalUsed: toNumberOrZero(payload.totalUsed),
-    totalRemaining: toNumberOrZero(payload.totalRemaining),
+    totalBudget: toNumberOrZero(payload.totalBudget ?? payload.total_budget),
+    totalUsed: toNumberOrZero(payload.totalUsed ?? payload.total_used),
+    totalRemaining: toNumberOrZero(payload.totalRemaining ?? payload.total_remaining),
     items: Array.isArray(payload.items)
       ? payload.items.map(item => ({
         id: toNumberOrNull(item.id),
         category: toStringOrEmpty(item.category),
         budget: toNumberOrZero(item.budget),
-        used: toNumberOrZero(item.used),
+        used: toNumberOrZero(item.used ?? item.currentSpent ?? item.current_spent),
         remaining: toNumberOrZero(item.remaining),
-        usageRate: toNumberOrZero(item.usageRate),
+        usageRate: toNumberOrZero(item.usageRate ?? item.usagePercent ?? item.percent_used),
         status: toStringOrEmpty(item.status),
-        over_budget: Boolean(item.over_budget),
+        over_budget: Boolean(item.over_budget ?? item.overBudget),
         warning: Boolean(item.warning)
       }))
       : []
@@ -175,43 +175,45 @@ export function normalizeDashboardSummary(payload) {
   if (!payload || typeof payload !== 'object') return null
 
   return {
-    monthlyIncome: toNumberOrZero(payload.monthlyIncome),
-    monthlyExpense: toNumberOrZero(payload.monthlyExpense),
-    monthlyBalance: toNumberOrZero(payload.monthlyBalance),
-    topExpenseCategory: payload.topExpenseCategory ? String(payload.topExpenseCategory) : null,
-    monthlyTrend: Array.isArray(payload.monthlyTrend)
-      ? payload.monthlyTrend.map(item => ({
+    monthlyIncome: toNumberOrZero(payload.monthlyIncome ?? payload.monthly_income),
+    monthlyExpense: toNumberOrZero(payload.monthlyExpense ?? payload.monthly_expense),
+    monthlyBalance: toNumberOrZero(payload.monthlyBalance ?? payload.monthly_balance),
+    topExpenseCategory: payload.topExpenseCategory || payload.top_expense_category
+      ? String(payload.topExpenseCategory ?? payload.top_expense_category)
+      : null,
+    monthlyTrend: Array.isArray(payload.monthlyTrend ?? payload.monthly_trend)
+      ? (payload.monthlyTrend ?? payload.monthly_trend).map(item => ({
         month: String(item.month || ''),
         income: toNumberOrZero(item.income),
         expense: toNumberOrZero(item.expense)
       }))
       : [],
-    expenseByCategory: Array.isArray(payload.expenseByCategory)
-      ? payload.expenseByCategory.map(item => ({
+    expenseByCategory: Array.isArray(payload.expenseByCategory ?? payload.expense_by_category)
+      ? (payload.expenseByCategory ?? payload.expense_by_category).map(item => ({
         category: String(item.category || ''),
         amount: toNumberOrZero(item.amount)
       }))
       : [],
-    recentTransactions: Array.isArray(payload.recentTransactions)
-      ? payload.recentTransactions.map(item => ({
+    recentTransactions: Array.isArray(payload.recentTransactions ?? payload.recent_transactions)
+      ? (payload.recentTransactions ?? payload.recent_transactions).map(item => ({
         date: String(item.date || ''),
         category: String(item.category || ''),
         type: String(item.type || ''),
         amount: toNumberOrZero(item.amount)
       }))
       : [],
-    totalBudget: toNumberOrZero(payload.totalBudget),
-    totalUsed: toNumberOrZero(payload.totalUsed),
-    totalRemaining: toNumberOrZero(payload.totalRemaining),
-    budgetOverCount: toNumberOrZero(payload.budgetOverCount),
-    budgetWarningCount: toNumberOrZero(payload.budgetWarningCount),
-    budgetItems: Array.isArray(payload.budgetItems)
-      ? payload.budgetItems.map(item => ({
+    totalBudget: toNumberOrZero(payload.totalBudget ?? payload.total_budget),
+    totalUsed: toNumberOrZero(payload.totalUsed ?? payload.total_used),
+    totalRemaining: toNumberOrZero(payload.totalRemaining ?? payload.total_remaining),
+    budgetOverCount: toNumberOrZero(payload.budgetOverCount ?? payload.budget_over_count),
+    budgetWarningCount: toNumberOrZero(payload.budgetWarningCount ?? payload.budget_warning_count),
+    budgetItems: Array.isArray(payload.budgetItems ?? payload.budget_items)
+      ? (payload.budgetItems ?? payload.budget_items).map(item => ({
         category: String(item.category || ''),
         amount: toNumberOrZero(item.amount ?? item.budget),
-        used: toNumberOrZero(item.used),
+        used: toNumberOrZero(item.used ?? item.currentSpent ?? item.current_spent),
         remaining: toNumberOrZero(item.remaining),
-        usagePercent: toNumberOrZero(item.usagePercent ?? item.usageRate),
+        usagePercent: toNumberOrZero(item.usagePercent ?? item.usageRate ?? item.usage_percent ?? item.percent_used),
         status: String(item.status || 'safe'),
         overBudget: Boolean(item.overBudget ?? item.over_budget),
         warning: Boolean(item.warning)
@@ -223,15 +225,21 @@ export function normalizeDashboardSummary(payload) {
 export function normalizeDashboardCharts(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
-    monthly_expense_trend: Array.isArray(payload.monthly_expense_trend) ? payload.monthly_expense_trend : [],
-    category_distribution: Array.isArray(payload.category_distribution) ? payload.category_distribution : [],
-    net_income_trend: Array.isArray(payload.net_income_trend) ? payload.net_income_trend : [],
-    budget_usage: Array.isArray(payload.budget_usage)
-      ? payload.budget_usage.map(item => ({
+    monthly_expense_trend: Array.isArray(payload.monthly_expense_trend ?? payload.monthlyExpenseTrend)
+      ? (payload.monthly_expense_trend ?? payload.monthlyExpenseTrend)
+      : [],
+    category_distribution: Array.isArray(payload.category_distribution ?? payload.categoryDistribution)
+      ? (payload.category_distribution ?? payload.categoryDistribution)
+      : [],
+    net_income_trend: Array.isArray(payload.net_income_trend ?? payload.netIncomeTrend)
+      ? (payload.net_income_trend ?? payload.netIncomeTrend)
+      : [],
+    budget_usage: Array.isArray(payload.budget_usage ?? payload.budgetUsage)
+      ? (payload.budget_usage ?? payload.budgetUsage).map(item => ({
         category: String(item.category || ''),
         amount: toNumberOrZero(item.amount),
         currentSpent: toNumberOrZero(item.currentSpent ?? item.current_spent),
-        usagePercent: toNumberOrZero(item.usagePercent ?? item.percent_used),
+        usagePercent: toNumberOrZero(item.usagePercent ?? item.percent_used ?? item.usage_rate),
         status: String(item.status || 'safe'),
         overBudget: Boolean(item.overBudget ?? item.over_budget),
         warning: Boolean(item.warning)
@@ -281,6 +289,7 @@ export function normalizeFundamentalsSnapshot(row) {
   return {
     stock_code: String(row.stock_code || '').toUpperCase(),
     source: row.source == null ? null : String(row.source),
+    provider: row.source == null ? null : String(row.source),
     as_of_date: row.as_of_date || null,
     fetched_at: row.fetched_at || null,
     status: row.status == null ? null : String(row.status),
@@ -337,6 +346,47 @@ export function normalizePriceHistoryPoint(row) {
   }
 }
 
+export function normalizeStockAiExplanation(payload) {
+  if (!payload) return null
+  if (typeof payload === 'string') {
+    const explanation = toTrimmedStringOrEmpty(payload)
+    return explanation
+      ? {
+          status: 'ready',
+          stock_code: '',
+          message: '',
+          explanation,
+          can_sync: false,
+          job_id: null,
+          request_id: null,
+          meta: null
+        }
+      : null
+  }
+  if (typeof payload !== 'object') return null
+
+  const status = ['ready', 'sync_required', 'sync_queued', 'unsupported'].includes(payload.status)
+    ? payload.status
+    : 'sync_required'
+
+  return {
+    status,
+    stock_code: String(payload.stock_code || '').toUpperCase(),
+    message: toTrimmedStringOrEmpty(payload.message),
+    explanation: toTrimmedStringOrEmpty(payload.explanation),
+    can_sync: Boolean(payload.can_sync),
+    job_id: toNumberOrNull(payload.job_id),
+    request_id: toTrimmedStringOrEmpty(payload.request_id),
+    meta: payload.meta && typeof payload.meta === 'object'
+      ? {
+          provider: toTrimmedStringOrEmpty(payload.meta.provider),
+          is_fallback: Boolean(payload.meta.is_fallback),
+          error: toTrimmedStringOrEmpty(payload.meta.error)
+        }
+      : null
+  }
+}
+
 export function normalizeStockDashboard(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
@@ -344,7 +394,7 @@ export function normalizeStockDashboard(payload) {
     watchlist: Array.isArray(payload.watchlist) ? payload.watchlist.map(normalizeWatchlistItem).filter(Boolean) : [],
     price_history: Array.isArray(payload.price_history) ? payload.price_history.map(normalizePriceHistoryPoint).filter(Boolean) : [],
     fundamentals: payload.fundamentals ? normalizeFundamentalsSnapshot(payload.fundamentals) : null,
-    ai_explanation: toTrimmedStringOrEmpty(payload.ai_explanation)
+    ai_explanation: normalizeStockAiExplanation(payload.ai_explanation)
   }
 }
 

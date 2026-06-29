@@ -19,7 +19,8 @@ describe('api/index (401 flow)', () => {
   it('isAuthRoute matches auth endpoints only', () => {
     expect(isAuthRoute('/auth/login')).toBe(true)
     expect(isAuthRoute('/auth/register')).toBe(true)
-    expect(isAuthRoute('/auth/me')).toBe(true)
+    expect(isAuthRoute('/auth/refresh')).toBe(true)
+    expect(isAuthRoute('/auth/me')).toBe(false)
     expect(isAuthRoute('/expenses')).toBe(false)
   })
 

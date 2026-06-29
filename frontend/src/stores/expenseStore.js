@@ -26,11 +26,12 @@ export const useExpenseStore = defineStore('expense', () => {
   )
 
   async function fetchExpenses(params = {}) {
+    const normalizedParams = { ...params }
     loading.value = true
     error.value = null
-    lastParams.value = params
+    lastParams.value = normalizedParams
     try {
-      const result = await getExpenses(params)
+      const result = await getExpenses(normalizedParams)
       expenses.value = Array.isArray(result) ? result.map(normalizeExpense).filter(Boolean) : []
     } catch (e) {
       expenses.value = []
@@ -40,12 +41,13 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  async function addExpense(data) {
+  async function addExpense(data, options = {}) {
+    const refreshParams = options.refreshParams ? { ...options.refreshParams } : { ...lastParams.value }
     submitting.value = true
     error.value = null
     try {
       await createExpense(data)
-      await fetchExpenses(lastParams.value)
+      await fetchExpenses(refreshParams)
     } catch (e) {
       error.value = toErrorMessage(e, i18n.global.t('common.unknownError'))
       throw e

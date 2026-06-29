@@ -68,3 +68,42 @@ def test_stock_sync_status_is_scoped_to_current_user_watchlist_item(client, monk
         assert item_b.price_sync_status == "pending"
         assert item_b.name is None
 
+
+def test_watchlist_response_includes_currency(client, monkeypatch):
+    from app.jobs import get_job_runner
+    from services.stock_data_service import StockDataService
+
+    monkeypatch.setattr(
+        StockDataService,
+        "fetch_price_history",
+        staticmethod(
+            lambda stock_code: [
+                {
+                    "stock_code": stock_code,
+                    "trade_date": date(2026, 5, 15),
+                    "open": 10,
+                    "high": 11,
+                    "low": 9,
+                    "close": 10.5,
+                    "volume": 1000,
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        StockDataService,
+        "fetch_stock_info",
+        staticmethod(lambda _stock_code: {"shortName": "Apple", "currency": "USD"}),
+    )
+
+    token = register_and_login(client, "watch-currency@example.com")
+    add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
+    assert add.status_code == 201
+
+    runner = get_job_runner()
+    assert runner.drain_once() is True
+
+    watchlist = client.get("/api/stocks/watchlist", headers=auth_headers(token))
+    assert watchlist.status_code == 200
+    assert watchlist.json()[0]["currency"] == "USD"
+

@@ -20,7 +20,7 @@
 
     <section v-if="store.summary" class="budget-summary-grid">
       <div class="card summary-card">
-        <span class="label">{{ t('dashboard.summary.income') }} ({{ t('common.all') }})</span>
+        <span class="label">{{ t('budgets.totalBudget') }} ({{ t('common.all') }})</span>
         <strong class="value">{{ formatCurrency(store.summary.totalBudget) }}</strong>
       </div>
       <div class="card summary-card">
@@ -88,7 +88,7 @@
 
             <div class="actions">
               <button class="btn btn-sm btn-secondary" @click="startEdit(item)">
-                {{ t('common.save') }}
+                {{ t('common.edit') }}
               </button>
               <button class="btn btn-sm btn-danger" :disabled="store.deleting" @click="handleDelete(item.id)">
                 {{ t('common.delete') }}

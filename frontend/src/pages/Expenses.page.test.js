@@ -59,4 +59,32 @@ describe('Expenses page', () => {
       expect(deleteExpenseMock).toHaveBeenCalled()
     })
   })
+
+  it('resets the filter UI and refetches unfiltered data after adding a record', async () => {
+    const pinia = createPinia()
+    const i18n = createI18nInstance()
+    setActivePinia(pinia)
+    const wrapper = mount(Expenses, { global: { plugins: [pinia, i18n] } })
+
+    await vi.waitFor(() => {
+      expect(getExpensesMock).toHaveBeenCalledWith({})
+    })
+
+    await wrapper.find('#filter-type').setValue('income')
+    await vi.waitFor(() => {
+      expect(getExpensesMock).toHaveBeenLastCalledWith({ type: 'income' })
+    })
+
+    await wrapper.find('#expense-amount').setValue('88')
+    await wrapper.find('#expense-type').setValue('expense')
+    await wrapper.find('#expense-category').setValue('Food')
+    await wrapper.find('#expense-date').setValue('2026-04-10')
+    await wrapper.find('form.form-row').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(createExpenseMock).toHaveBeenCalled()
+      expect(getExpensesMock).toHaveBeenLastCalledWith({})
+      expect(wrapper.find('#filter-type').element.value).toBe('')
+    })
+  })
 })

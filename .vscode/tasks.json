@@ -2,59 +2,39 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "backend: ensure venv",
-      "type": "shell",
-      "command": "if (-not (Test-Path .\\.venv\\Scripts\\python.exe)) { python -m venv .\\.venv }",
-      "options": {
-        "cwd": "${workspaceFolder}/backend",
-        "shell": {
-          "executable": "powershell.exe",
-          "args": [
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command"
-          ]
-        }
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "backend: install requirements",
-      "type": "shell",
-      "command": ".\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt",
-      "options": {
-        "cwd": "${workspaceFolder}/backend"
-      },
-      "dependsOn": "backend: ensure venv",
-      "problemMatcher": []
-    },
-    {
-      "label": "backend: migrate",
-      "type": "shell",
-      "command": ".\\.venv\\Scripts\\python.exe -m alembic upgrade head",
-      "options": {
-        "cwd": "${workspaceFolder}/backend"
-      },
-      "dependsOn": "backend: install requirements",
-      "problemMatcher": []
-    },
-    {
-      "label": "frontend: npm ci",
-      "type": "shell",
-      "command": "npm ci",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "dev: prepare",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "backend: migrate",
-        "frontend: npm ci"
+      "label": "Bootstrap Backend",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/bootstrap-backend.ps1"
       ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Bootstrap Frontend",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/bootstrap-frontend.ps1"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
       "problemMatcher": []
     }
   ]

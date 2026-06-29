@@ -42,15 +42,25 @@ Demo readiness already in place:
 - Backend: FastAPI, SQLAlchemy, Alembic, Pydantic, SQLite, pytest
 - Frontend: Vue 3, Pinia, Vue Router, vue-i18n, Axios, Vite, Vitest
 - Development: VS Code launch/tasks, PowerShell scripts for Windows, optional shell script for macOS/Linux
+- Background work: queued sync jobs for market data and fundamentals
 
 ## Environment Setup
 
-Copy the local environment examples before running the app:
+The app runs with demo-safe defaults. To customize local settings, copy the local environment examples before running the app:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
 Copy-Item frontend\.env.example frontend\.env
 ```
+
+macOS / Linux:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+Use a real `SECRET_KEY` and external API keys only in private local files or deployment secrets.
 
 Useful default URLs:
 
@@ -91,23 +101,21 @@ Windows is the supported F5 path for this stable demo version.
 
 The F5 compound launch runs:
 
-- `dev: prepare`: runs the backend/frontend bootstrap steps, including creating `backend\.venv` if missing, installing backend requirements, running Alembic migrations, and running frontend `npm ci`
-- `Backend API (FastAPI)`: starts Uvicorn from `backend\.venv\Scripts\python.exe`
-- `Frontend Dev Server`: starts Vite from the `frontend` working directory
+- `scripts/bootstrap-backend.ps1` before the FastAPI debugger starts
+- `scripts/bootstrap-frontend.ps1` before the Vite terminal starts
+- backend virtual environment bootstrap when `backend\.venv` does not exist yet
+- local `.env` copy from `backend\.env.example` or `frontend\.env.example` when missing
+- backend requirements installation and `alembic upgrade head`
+- frontend dependency installation when `frontend\node_modules` is missing
+- backend at `http://127.0.0.1:8000`
+- frontend at `http://127.0.0.1:5173`
 
-Current local URLs:
+If you want to test the bootstrap layer directly without opening VS Code:
 
-- Backend: `http://127.0.0.1:8000`
-- Frontend: `http://127.0.0.1:5173`
-
-macOS/Linux users can run the app manually with the commands above or use:
-
-```bash
-chmod +x scripts/start-dev.sh
-./scripts/start-dev.sh
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-backend.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-frontend.ps1
 ```
-
-The shell script is provided for convenience, but the VS Code F5 workflow is currently documented and verified for Windows.
 
 ## One-Click Windows Script
 
@@ -124,7 +132,36 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\scripts\start-dev.ps1
 ```
 
-The script checks Python, Node.js, and npm, prepares dependencies, applies migrations, and opens separate backend/frontend dev-server windows.
+The script checks Python, Node.js, and npm, prepares dependencies, applies migrations, copies missing local env files from examples, and opens separate backend/frontend dev-server windows.
+
+## macOS / Linux Start
+
+```bash
+chmod +x scripts/start-dev.sh
+./scripts/start-dev.sh
+```
+
+The shell script is provided for convenience, but the VS Code F5 workflow is currently documented and verified for Windows.
+
+## Demo Seed Data
+
+```powershell
+cd backend
+python seed_data.py --reset
+```
+
+This creates demo data for:
+
+- demo user
+- transactions
+- budgets
+- stock watchlist
+- cached stock prices
+
+Demo account:
+
+- Email: `demo@example.com`
+- Password: `demo1234`
 
 ## Tests
 
@@ -147,6 +184,32 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
+## Build
+
+Frontend production build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+Dependency audit:
+
+```powershell
+cd frontend
+npm audit --audit-level=moderate
+```
+
+## API Naming Notes
+
+The project intentionally keeps naming strategy stable at each layer instead of forcing one naming style everywhere:
+
+- Python services, SQLAlchemy models, and DB-oriented payloads may use `snake_case`
+- Vue components, Pinia stores, and display-oriented state use `camelCase`
+- Frontend contract normalizers in [frontend/src/api/contracts.js](frontend/src/api/contracts.js) are the boundary that accepts mixed API field styles and returns stable UI shapes
+
+When extending an API response, prefer updating the response model or the matching normalizer rather than renaming every field across the stack in one pass.
+
 ## Monthly Report Export
 
 The Dashboard page can export monthly reports as CSV or PDF.
@@ -163,6 +226,29 @@ Rules:
 - `month` must use `YYYY-MM`
 - `format` supports `csv` and `pdf`
 - Empty months still return a valid empty report
+
+Report contents include:
+
+- report month
+- exported time
+- monthly income
+- monthly expense
+- monthly balance
+- expense by category
+- budget items
+- recent transactions
+- disclaimer
+
+CSV details:
+
+- UTF-8 BOM for Excel compatibility
+- Filename: `finance-report-YYYY-MM.csv`
+
+PDF details:
+
+- Generated by backend service
+- English-only PDF labels to avoid runtime font issues
+- Filename: `finance-report-YYYY-MM.pdf`
 
 ## Demo Security Model
 
@@ -189,6 +275,10 @@ For production, the project should still add or harden:
 - Stronger observability and incident logging
 
 Do not treat the current token/local-storage model as production-grade security.
+
+## Rate Limiting
+
+The current rate limiter is an in-memory, demo-level guard intended for a single local API process. It does not share counters across multiple workers or multiple deployed instances. Production deployments should replace it with a Redis-backed or otherwise centralized rate limiter.
 
 ## Known Limitations / Roadmap
 

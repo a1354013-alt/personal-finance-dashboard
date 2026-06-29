@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -37,6 +37,15 @@ def test_refresh_token_flow(client):
     assert refresh.status_code == 200
     assert refresh.json()["access_token"]
     assert refresh.json()["refresh_token"] != login.json()["refresh_token"]
+
+
+def test_root_endpoint_uses_utc_z_timestamp(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["generated_at"].endswith("Z")
+    parsed = datetime.fromisoformat(payload["generated_at"].replace("Z", "+00:00"))
+    assert parsed.tzinfo is not None
 
 
 def test_expenses_budgets_and_dashboard_flow(client):

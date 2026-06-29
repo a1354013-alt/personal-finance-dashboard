@@ -8,9 +8,43 @@ FRONTEND_DIR="$REPO_ROOT/frontend"
 VENV_DIR="$BACKEND_DIR/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
+ensure_env_file() {
+  local example_path="$1"
+  local target_path="$2"
+
+  if [ ! -f "$target_path" ] && [ -f "$example_path" ]; then
+    cp "$example_path" "$target_path"
+    echo "Created $(basename "$target_path") from $(basename "$example_path")."
+  fi
+}
+
+port_in_use() {
+  local port="$1"
+
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "( sport = :$port )" | tail -n +2 | grep -q .
+    return $?
+  fi
+
+  if command -v netstat >/dev/null 2>&1; then
+    netstat -an 2>/dev/null | grep -E "[\.\:]$port[[:space:]].*LISTEN" >/dev/null
+    return $?
+  fi
+
+  return 1
+}
+
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required."; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "node is required."; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "npm is required."; exit 1; }
+
+ensure_env_file "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
+ensure_env_file "$FRONTEND_DIR/.env.example" "$FRONTEND_DIR/.env"
 
 if [ ! -x "$VENV_PYTHON" ]; then
   echo "Creating backend virtual environment..."
@@ -35,6 +69,16 @@ echo "Installing frontend dependencies..."
     npm install
   fi
 )
+
+if port_in_use 8000; then
+  echo "Port 8000 is already in use. Please close the existing backend server or change the port."
+  exit 1
+fi
+
+if port_in_use 5173; then
+  echo "Port 5173 is already in use. Please close the existing frontend server or change the port."
+  exit 1
+fi
 
 echo "Starting backend and frontend dev servers..."
 (

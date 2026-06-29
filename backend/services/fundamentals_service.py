@@ -9,11 +9,13 @@ from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS
 from models.fundamentals import FundamentalsORM
 from models.job import CreateJobRequest
 from providers.fundamentals import get_fundamentals_provider
-from services.job_service import create_job
+from services.job_service import create_job, find_active_job_by_payload
+from services.stock_data_service import StockDataService
 
 STATUS_PENDING = "pending"
 STATUS_SUCCESS = "success"
 STATUS_FAILED = "failed"
+STATUS_UNSUPPORTED = "unsupported"
 
 
 def fundamentals_ttl_hours() -> int:
@@ -55,10 +57,12 @@ def get_latest_fundamentals_by_code(db: Session, stock_codes: set[str]) -> dict[
 def queue_fundamentals_sync(
     db: Session,
     *,
+    user_id: int,
     stock_code: str,
     request_id: str | None,
     force: bool = False,
 ) -> FundamentalsORM:
+    stock_code = StockDataService.normalize_stock_code(stock_code)
     provider = get_fundamentals_provider()
     row = (
         db.query(FundamentalsORM)
@@ -87,14 +91,31 @@ def queue_fundamentals_sync(
     db.commit()
     db.refresh(row)
 
+    existing_job = find_active_job_by_payload(
+        db,
+        job_type=JOB_TYPE_SYNC_FUNDAMENTALS,
+        expected_payload={"user_id": user_id, "stock_code": stock_code},
+    )
+    if existing_job:
+        return row
+
     create_job(
         db,
         CreateJobRequest(
             job_type=JOB_TYPE_SYNC_FUNDAMENTALS,
-            payload={"stock_code": stock_code, "force": force},
+            payload={"user_id": user_id, "stock_code": stock_code, "force": force},
             request_id=request_id,
             max_attempts=3,
         ),
     )
     db.refresh(row)
     return row
+
+
+def find_active_fundamentals_job(db: Session, *, user_id: int, stock_code: str):
+    normalized_code = StockDataService.normalize_stock_code(stock_code)
+    return find_active_job_by_payload(
+        db,
+        job_type=JOB_TYPE_SYNC_FUNDAMENTALS,
+        expected_payload={"user_id": user_id, "stock_code": normalized_code},
+    )

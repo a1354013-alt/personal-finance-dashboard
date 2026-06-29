@@ -179,7 +179,8 @@ async function handleAdd() {
   }
 
   try {
-    await store.addExpense({ ...form.value })
+    filterType.value = ''
+    await store.addExpense({ ...form.value }, { refreshParams: {} })
     form.value = {
       amount: null,
       type: 'expense',
@@ -187,7 +188,6 @@ async function handleAdd() {
       date: today,
       note: ''
     }
-    filterType.value = ''
   } catch (_error) {
     // Store error is already shown above.
   }

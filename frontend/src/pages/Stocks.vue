@@ -90,8 +90,36 @@
 
         <section class="card ai-card">
           <h2>{{ t('stocks.aiExplanation') }}</h2>
-          <div v-if="stockStore.dashboard?.ai_explanation" class="ai-explanation">{{ stockStore.dashboard.ai_explanation }}</div>
-          <div v-else class="empty-state">{{ t('common.empty') }}</div>
+          <template v-if="aiExplanation">
+            <div v-if="aiExplanation.status === 'ready' && aiExplanation.explanation" class="ai-explanation">
+              {{ aiExplanation.explanation }}
+            </div>
+            <div v-else class="ai-status-panel">
+              <p class="ai-status-message">{{ aiExplanationDisplayMessage }}</p>
+              <div class="ai-status-actions">
+                <button
+                  v-if="aiExplanation.can_sync && aiExplanation.status === 'sync_required'"
+                  class="btn btn-primary"
+                  :disabled="stockStore.isSingleFundamentalsSyncing(stockStore.selectedStockCode)"
+                  @click="handleSyncSelectedFundamentals"
+                >
+                  {{
+                    stockStore.isSingleFundamentalsSyncing(stockStore.selectedStockCode)
+                      ? t('stocks.queueing')
+                      : t('stocks.ai.syncFundamentals')
+                  }}
+                </button>
+                <button
+                  v-if="aiExplanation.status === 'sync_queued'"
+                  class="btn btn-secondary"
+                  @click="handleRetryExplanation"
+                >
+                  {{ t('stocks.ai.retryExplanation') }}
+                </button>
+              </div>
+            </div>
+          </template>
+          <div v-else class="empty-state">{{ t('stocks.ai.explanationUnavailable') }}</div>
         </section>
       </div>
 
@@ -113,7 +141,7 @@
                 {{ item.price_sync_status }}
               </span>
             </div>
-            <div class="tile-price">{{ formatPrice(item.price, item.currency) }}</div>
+            <div class="tile-price">{{ item.price != null ? formatPrice(item.price, item.currency) : t('stocks.noDataPrice') }}</div>
             <div class="tile-meta">{{ item.date || t('stocks.awaitingPriceHistory') }}</div>
             <div class="tile-actions">
               <button class="btn btn-primary" :disabled="stockStore.isSingleSyncing(item.stock_code)" @click="handleSyncSingle(item.stock_code)">
@@ -148,7 +176,7 @@
           <ul v-else class="result-list">
             <li v-for="stock in stockStore.failedStocks" :key="stock.stock_code">
               <strong>{{ stock.stock_code }}</strong>
-              <span>{{ stock.fail_reasons.join(' / ') }}</span>
+              <span>{{ screeningMessage(stock) }}</span>
             </li>
           </ul>
         </section>
@@ -164,6 +192,7 @@ import ChartPanel from '@/components/ChartPanel.vue'
 import OnboardingCard from '@/components/OnboardingCard.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
 import { useStockStore } from '@/stores/stockStore'
+import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
 const stockStore = useStockStore()
 const newStockCode = ref('')
@@ -173,16 +202,7 @@ const actionError = ref('')
 const { t, locale } = useI18n()
 
 function formatPrice(value, currency) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return t('stocks.noDataPrice')
-  }
-
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: currency || 'USD',
-    currencyDisplay: 'code',
-    maximumFractionDigits: 2
-  }).format(Number(value))
+  return formatCurrencyValue(Number(value), locale.value, currency || null)
 }
 
 function statusBadgeClass(status) {
@@ -195,6 +215,20 @@ function fundamentalsMetaText(stock) {
   const meta = stock?.meta
   if (!meta) return t('common.empty')
   return `${meta.provider} | ttl ${meta.ttl_hours}h | ${meta.is_stale ? t('stocks.stale') : t('stocks.fresh')}`
+}
+
+function screeningMessage(stock) {
+  const status = stock?.meta?.status
+  if (status === 'sync_required' || (!stock?.fundamentals && !status)) {
+    return t('stocks.ai.syncRequired', { stockCode: stock.stock_code })
+  }
+  if (status === 'pending') {
+    return t('stocks.ai.syncQueued')
+  }
+  if (status === 'unsupported') {
+    return t('stocks.ai.unsupported')
+  }
+  return stock?.fail_reasons?.join(' / ') || t('stocks.ai.explanationUnavailable')
 }
 
 const priceTrend = computed(() => ({
@@ -211,6 +245,23 @@ const priceTrend = computed(() => ({
   ]
 }))
 
+const aiExplanation = computed(() => stockStore.dashboard?.ai_explanation || null)
+
+const aiExplanationDisplayMessage = computed(() => {
+  const payload = aiExplanation.value
+  if (!payload) return t('stocks.ai.explanationUnavailable')
+  if (payload.status === 'sync_required') {
+    return t('stocks.ai.syncRequired', { stockCode: payload.stock_code || stockStore.selectedStockCode || '' })
+  }
+  if (payload.status === 'sync_queued') {
+    return t('stocks.ai.syncQueued')
+  }
+  if (payload.status === 'unsupported') {
+    return t('stocks.ai.unsupported')
+  }
+  return payload.message || t('stocks.ai.explanationUnavailable')
+})
+
 const fundamentalsItems = computed(() => {
   const fundamentals = stockStore.dashboard?.fundamentals
   if (!fundamentals) return []
@@ -220,6 +271,7 @@ const fundamentalsItems = computed(() => {
     { label: 'Yield', value: fundamentals.dividend_yield != null ? `${fundamentals.dividend_yield.toFixed(2)}%` : t('common.empty') },
     { label: 'Revenue Growth', value: fundamentals.revenue_growth != null ? `${fundamentals.revenue_growth.toFixed(2)}%` : t('common.empty') },
     { label: 'EPS', value: fundamentals.eps != null ? fundamentals.eps.toFixed(2) : t('common.empty') },
+    { label: 'Source', value: fundamentals.source || t('common.empty') },
     { label: 'Status', value: fundamentals.status || t('common.empty') }
   ]
 })
@@ -289,6 +341,28 @@ async function handleSyncFundamentals() {
   try {
     await stockStore.syncFundamentals()
     actionMessage.value = t('stocks.syncQueued')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleSyncSelectedFundamentals() {
+  if (!stockStore.selectedStockCode) return
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await stockStore.syncSingleFundamentals(stockStore.selectedStockCode)
+    actionMessage.value = t('stocks.ai.syncQueued')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleRetryExplanation() {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await refreshStockWorkspace(stockStore.selectedStockCode)
   } catch (error) {
     actionError.value = error.message || t('common.unknownError')
   }
@@ -435,6 +509,27 @@ onMounted(() => {
   border-radius: 14px;
   background: #f5f8fb;
   border-left: 4px solid #cf5c36;
+}
+
+.ai-status-panel {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e1eaf2;
+}
+
+.ai-status-message {
+  margin: 0;
+  color: #445767;
+  line-height: 1.7;
+}
+
+.ai-status-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .result-list {

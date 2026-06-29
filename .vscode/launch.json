@@ -1,11 +1,22 @@
 {
   "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Full Stack Dev (F5)",
+      "configurations": [
+        "Backend API (FastAPI)",
+        "Frontend Dev Server"
+      ],
+      "stopAll": true
+    }
+  ],
   "configurations": [
     {
       "name": "Backend API (FastAPI)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
       "args": [
         "main:app",
         "--reload",
@@ -15,30 +26,18 @@
         "8000"
       ],
       "cwd": "${workspaceFolder}/backend",
-      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
       "console": "integratedTerminal",
       "justMyCode": true,
-      "env": {
-        "ENV": "development"
-      },
-      "preLaunchTask": "dev: prepare"
+      "envFile": "${workspaceFolder}/backend/.env",
+      "preLaunchTask": "Bootstrap Backend"
     },
     {
       "name": "Frontend Dev Server",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev -- --host 127.0.0.1 --port 5173",
-      "cwd": "${workspaceFolder}/frontend"
-    }
-  ],
-  "compounds": [
-    {
-      "name": "Full Stack Dev (F5)",
-      "configurations": [
-        "Backend API (FastAPI)",
-        "Frontend Dev Server"
-      ],
-      "stopAll": true
+      "cwd": "${workspaceFolder}/frontend",
+      "preLaunchTask": "Bootstrap Frontend"
     }
   ]
 }
