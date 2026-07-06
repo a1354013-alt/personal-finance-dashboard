@@ -94,6 +94,17 @@ class AIInsightsService:
             temperature=0.2,
         )
 
+    def stock_interpretation(self, *, stock_payload: dict) -> AITextResult:
+        payload = {
+            "kind": "stock_interpretation",
+            "stock": _json_sanitize(stock_payload),
+        }
+        return self._safe_generate(
+            system=_SYSTEM_PROMPT_STOCK_INTERPRETATION,
+            user=json.dumps(payload, ensure_ascii=False),
+            temperature=0.2,
+        )
+
     def _safe_generate(self, *, system: str, user: str, temperature: float) -> AITextResult:
         try:
             result: LLMProviderResult = self._provider.generate(system=system, user=user, temperature=temperature)
@@ -131,6 +142,16 @@ _SYSTEM_PROMPT_STOCK = (
     "Constraints:\n"
     "- Do not provide financial advice.\n"
     "- Focus on explaining the rules and the supplied metrics.\n"
+)
+
+_SYSTEM_PROMPT_STOCK_INTERPRETATION = (
+    "You interpret cached stock watchlist data for an educational personal finance dashboard.\n"
+    "Use only the supplied JSON payload.\n"
+    "Constraints:\n"
+    "- Frame the output as data interpretation, risk summary, and observation notes only.\n"
+    "- Do not provide buy, sell, must buy, guaranteed, target price, or similar recommendations.\n"
+    "- Include liquidity or volume observations when volume is available.\n"
+    "- Include this exact disclaimer: This is informational only and not financial advice.\n"
 )
 
 

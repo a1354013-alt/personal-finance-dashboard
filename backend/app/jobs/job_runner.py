@@ -24,7 +24,7 @@ from models.job import (
 from providers.fundamentals import get_fundamentals_provider
 from providers.fundamentals.base import FundamentalsDataUnavailableError, FundamentalsProviderError
 from services.stock_data_service import StockDataService
-from services.watchlist_service import update_watchlist_sync_status, upsert_stock_price_history
+from services.watchlist_service import sync_watchlist_item_now
 
 logger = logging.getLogger(__name__)
 
@@ -204,38 +204,8 @@ class JobRunner:
         if not watchlist_item:
             raise RuntimeError("watchlist item no longer exists")
 
-        history = StockDataService.fetch_price_history(stock_code)
-        info = StockDataService.fetch_stock_info(stock_code)
-        if not history:
-            update_watchlist_sync_status(
-                db,
-                watchlist_item_id=watchlist_item_id,
-                user_id=user_id,
-                status=JOB_STATUS_FAILED,
-                error_message="Unable to fetch latest price data from the upstream provider.",
-            )
+        if not sync_watchlist_item_now(db, watchlist_item=watchlist_item):
             raise RuntimeError(f"price sync failed for {stock_code}")
-
-        for point in history:
-            upsert_stock_price_history(
-                db,
-                price_data=point,
-                source=StockDataService.provider_name(),
-                commit=False,
-            )
-        db.commit()
-        update_watchlist_sync_status(
-            db,
-            watchlist_item_id=watchlist_item_id,
-            user_id=user_id,
-            status=JOB_STATUS_SUCCESS,
-            error_message=None,
-        )
-
-        display_name = (info or {}).get("shortName") or (info or {}).get("longName")
-        if display_name:
-            watchlist_item.name = str(display_name)[:100]
-            db.commit()
 
 
 _job_runner = JobRunner()

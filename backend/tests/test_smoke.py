@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 import pytest
 
-from routers import stocks as stocks_router
+from providers.stock_price.base import StockQuote
 from tests.conftest import auth_headers, drain_jobs, register_and_login
 
 
@@ -80,8 +80,35 @@ def test_expenses_budgets_and_dashboard_flow(client):
 def test_stocks_watchlist_syncs_in_background(client, monkeypatch: pytest.MonkeyPatch):
     token = register_and_login(client, "stocks@example.com")
 
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_price_history", classmethod(lambda cls, code: mock_history(code, close=321.0)))
+    class FakeProvider:
+        name = "fake"
+
+        def normalize_symbol(self, stock_code: str) -> str:
+            return stock_code.strip().upper()
+
+        def infer_market(self, _stock_code: str) -> tuple[str, str | None, str]:
+            return "US", None, "USD"
+
+        def fetch_quote(self, stock_code: str):
+            row = mock_history(stock_code, close=321.0)[0]
+            return StockQuote(
+                stock_code=stock_code,
+                name=stock_code,
+                market="US",
+                exchange=None,
+                currency="USD",
+                trade_date=row["trade_date"],
+                open=row["open"],
+                high=row["high"],
+                low=row["low"],
+                close=row["close"],
+                previous_close=320.0,
+                volume=row["volume"],
+                provider=self.name,
+            )
+
+    monkeypatch.setattr("services.watchlist_service.get_stock_price_provider", lambda: FakeProvider())
+    monkeypatch.setattr("services.stock_data_service.get_stock_price_provider", lambda: FakeProvider())
 
     add_response = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "NVDA"})
     assert add_response.status_code == 201

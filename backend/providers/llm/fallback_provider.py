@@ -87,6 +87,26 @@ def _render_fallback_text(*, user: str, request_id: str) -> str:
             "Refresh fundamentals if the data may be outdated, then review the metrics again."
         )
 
+    if kind == "stock_interpretation":
+        stock = payload.get("stock", {})
+        stock_code = stock.get("stock_code", "N/A")
+        price_change = stock.get("price_change")
+        change_percent = stock.get("change_percent")
+        volume = stock.get("volume")
+        movement = "flat or unavailable"
+        if price_change is not None and change_percent is not None:
+            direction = "higher" if price_change > 0 else "lower" if price_change < 0 else "flat"
+            movement = f"{direction} by {price_change:.2f} ({change_percent:.2f}%)"
+        volume_text = f"Volume was {volume:,} shares." if volume is not None else "Volume data is not available."
+        return (
+            f"{stock_code} data interpretation\n"
+            f"- Recent price movement: {movement}.\n"
+            f"- Liquidity note: {volume_text}\n"
+            "- Risk notes: Price changes may reflect market volatility, provider delays, or incomplete data.\n"
+            "- Watch points: Review freshness, volume changes, and company-specific news separately.\n"
+            "This is informational only and not financial advice."
+        )
+
     return (
         "AI insights are running in deterministic fallback mode.\n"
         f"- request_id: {request_id}\n"

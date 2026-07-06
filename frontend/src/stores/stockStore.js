@@ -5,6 +5,7 @@ import i18n from '@/i18n'
 import {
   normalizeFilterMetadata,
   normalizeFundamentalsFilterResult,
+  normalizeStockAiAnalysis,
   normalizeStockDashboard,
   normalizeWatchlistItem
 } from '@/api/contracts'
@@ -18,12 +19,16 @@ export const useStockStore = defineStore('stock', () => {
   const fundamentalsSyncing = ref(false)
   const fundamentalsError = ref(null)
   const syncingFundamentalsCodes = ref([])
+  const aiAnalysisById = ref({})
+  const aiAnalysisError = ref(null)
+  const analyzingIds = ref([])
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
   const dashboardLoading = ref(false)
   const syncAllLoading = ref(false)
   const syncingCodes = ref([])
+  const syncingItemIds = ref([])
   const deleting = ref(false)
 
   const watchlistError = ref(null)
@@ -135,6 +140,60 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  function isItemSyncing(id) {
+    return syncingItemIds.value.includes(Number(id))
+  }
+
+  async function syncWatchlistItem(id) {
+    const numericId = Number(id)
+    if (!Number.isFinite(numericId) || isItemSyncing(numericId)) {
+      return null
+    }
+    syncingItemIds.value.push(numericId)
+    watchlistError.value = null
+    try {
+      const response = await stockApi.syncWatchlistItem(numericId)
+      const normalized = normalizeWatchlistItem(response)
+      if (normalized) {
+        watchlist.value = watchlist.value.map((item) => (item.id === normalized.id ? normalized : item))
+        await fetchDashboard(normalized.stock_code)
+      }
+      return normalized || response
+    } catch (error) {
+      watchlistError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      syncingItemIds.value = syncingItemIds.value.filter((itemId) => itemId !== numericId)
+    }
+  }
+
+  function isAnalyzing(id) {
+    return analyzingIds.value.includes(Number(id))
+  }
+
+  async function analyzeWatchlistItem(id) {
+    const numericId = Number(id)
+    if (!Number.isFinite(numericId) || isAnalyzing(numericId)) {
+      return null
+    }
+    analyzingIds.value.push(numericId)
+    aiAnalysisError.value = null
+    try {
+      const response = await stockApi.analyzeWatchlistItem(numericId)
+      const normalized = normalizeStockAiAnalysis(response)
+      if (normalized) {
+        aiAnalysisById.value = { ...aiAnalysisById.value, [numericId]: normalized }
+        await fetchDashboard(normalized.stock_code)
+      }
+      return normalized || response
+    } catch (error) {
+      aiAnalysisError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      analyzingIds.value = analyzingIds.value.filter((itemId) => itemId !== numericId)
+    }
+  }
+
   async function fetchFilterResults() {
     filterLoading.value = true
     filterError.value = null
@@ -212,11 +271,15 @@ export const useStockStore = defineStore('stock', () => {
     fundamentalsSyncing,
     fundamentalsError,
     syncingFundamentalsCodes,
+    aiAnalysisById,
+    aiAnalysisError,
+    analyzingIds,
     watchlistLoading,
     filterLoading,
     dashboardLoading,
     syncAllLoading,
     syncingCodes,
+    syncingItemIds,
     deleting,
     watchlistError,
     filterError,
@@ -232,8 +295,12 @@ export const useStockStore = defineStore('stock', () => {
     deleteFromWatchlist,
     syncAllPrices,
     syncSinglePrice,
+    syncWatchlistItem,
+    analyzeWatchlistItem,
     isSingleFundamentalsSyncing,
     isSingleSyncing,
+    isItemSyncing,
+    isAnalyzing,
     evaluateStock,
     getAiStockExplain
   }

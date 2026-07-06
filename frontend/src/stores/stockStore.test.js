@@ -7,6 +7,23 @@ vi.mock('@/api/stocks', () => ({
   getFilterMetadata: vi.fn(async () => ({ fundamentals_provider: 'yfinance', ttl_hours: 24, timeout_seconds: 8, message: 'ok' })),
   syncWatchlistFundamentals: vi.fn(async () => ([])),
   syncSingleFundamentals: vi.fn(async () => ({ stock_code: 'AAPL', status: 'pending' })),
+  syncWatchlistItem: vi.fn(async () => ({
+    id: 1,
+    stock_code: '2330.TW',
+    currency: 'TWD',
+    last_price: 1000,
+    sync_status: 'ready'
+  })),
+  analyzeWatchlistItem: vi.fn(async () => ({
+    status: 'ready',
+    stock_code: '2330.TW',
+    summary: 'This is informational only and not financial advice.',
+    recent_price_movement: 'Higher',
+    volume_note: 'Volume available',
+    risk_notes: ['Volatility'],
+    watch_points: ['Freshness'],
+    disclaimer: 'This is informational only and not financial advice.'
+  })),
   getStockDashboard: vi.fn(async () => ({
     selected_stock_code: 'AAPL',
     watchlist: [],
@@ -17,7 +34,13 @@ vi.mock('@/api/stocks', () => ({
 }))
 
 import { useStockStore } from '@/stores/stockStore'
-import { getFilterResults, syncSingleFundamentals, syncWatchlistFundamentals } from '@/api/stocks'
+import {
+  analyzeWatchlistItem,
+  getFilterResults,
+  syncSingleFundamentals,
+  syncWatchlistItem,
+  syncWatchlistFundamentals
+} from '@/api/stocks'
 
 describe('stockStore', () => {
   it('fetchFilterResults sets results and metadata', async () => {
@@ -92,5 +115,31 @@ describe('stockStore', () => {
 
     expect(syncSingleFundamentals).toHaveBeenCalledWith('AAPL', { force: false })
     expect(store.syncingFundamentalsCodes).toEqual([])
+  })
+
+  it('syncWatchlistItem normalizes Taiwan stock price data', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+    store.watchlist = [{ id: 1, stock_code: '2330.TW', price_sync_status: 'pending' }]
+
+    const result = await store.syncWatchlistItem(1)
+
+    expect(syncWatchlistItem).toHaveBeenCalledWith(1)
+    expect(result.stock_code).toBe('2330.TW')
+    expect(result.last_price).toBe(1000)
+    expect(result.currency).toBe('TWD')
+    expect(store.syncingItemIds).toEqual([])
+  })
+
+  it('analyzeWatchlistItem stores structured AI interpretation', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    const result = await store.analyzeWatchlistItem(1)
+
+    expect(analyzeWatchlistItem).toHaveBeenCalledWith(1)
+    expect(result.disclaimer).toContain('not financial advice')
+    expect(store.aiAnalysisById[1].risk_notes).toEqual(['Volatility'])
+    expect(store.analyzingIds).toEqual([])
   })
 })

@@ -8,6 +8,7 @@ from db.database import get_db
 from models.fundamentals import FundamentalsSnapshot, FundamentalsSyncOptions
 from models.job import CreateJobRequest
 from models.stock import (
+    StockAIAnalysisResponse,
     StockDashboardResponse,
     StockFilterRequest,
     StockFilterResult,
@@ -23,6 +24,7 @@ from services.fundamentals_service import get_latest_fundamentals_by_code, queue
 from services.job_service import create_job, find_active_job_by_payload
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
+from services.stock_ai_analysis_service import build_stock_ai_analysis
 from services.stocks_ai_explanation_service import build_stock_ai_explanation
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
 from services.watchlist_service import (
@@ -32,6 +34,7 @@ from services.watchlist_service import (
     delete_watchlist_item,
     list_watchlist,
     update_watchlist_sync_status,
+    sync_watchlist_item_now,
 )
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
@@ -118,6 +121,37 @@ def delete_from_watchlist(
     ok = delete_watchlist_item(db, user_id=current_user.id, item_id=item_id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
+
+
+@router.post("/watchlist/{item_id}/sync", response_model=WatchlistItemResponse)
+def sync_watchlist_item_price(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    watchlist_item = (
+        db.query(WatchlistORM).filter(WatchlistORM.id == item_id, WatchlistORM.user_id == current_user.id).first()
+    )
+    if not watchlist_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
+
+    sync_watchlist_item_now(db, watchlist_item=watchlist_item)
+    db.refresh(watchlist_item)
+    return build_watchlist_item(db, item=watchlist_item)
+
+
+@router.post("/watchlist/{item_id}/ai-analysis", response_model=StockAIAnalysisResponse)
+def analyze_watchlist_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    watchlist_item = (
+        db.query(WatchlistORM).filter(WatchlistORM.id == item_id, WatchlistORM.user_id == current_user.id).first()
+    )
+    if not watchlist_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
+    return build_stock_ai_analysis(db, watchlist_item=watchlist_item)
 
 
 @router.post("/fundamentals/sync", response_model=list[FundamentalsSnapshot])

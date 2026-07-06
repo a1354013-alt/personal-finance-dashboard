@@ -32,7 +32,7 @@ Demo readiness already in place:
 - Expense and income tracking
 - Monthly budget setup and budget health summaries
 - Dashboard cards, charts, recent transactions, and report export
-- Stock watchlist with cached market data, sync status, fundamentals screening, and per-item currency display
+- Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
 - CSV and PDF monthly report export
 - Demo auth with access tokens, refresh tokens, and logout refresh-token revoke flow
@@ -158,10 +158,23 @@ This creates demo data for:
 - stock watchlist
 - cached stock prices
 
+The default `python seed_data.py --reset` command creates current-month transactions and budgets so Dashboard Budget Health is populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
+
 Demo account:
 
 - Email: `demo@example.com`
 - Password: `demo1234`
+
+Taiwan stock demo flow:
+
+1. Run `python seed_data.py --reset` from `backend`.
+2. Start the backend and frontend, then sign in with the demo account.
+3. Open Stocks.
+4. Add `2330`, `0050`, or `00878`; four-digit Taiwan symbols are normalized to `.TW`.
+5. Use Price Sync on the watchlist item.
+6. Use AI Interpretation to generate observation notes from cached price data.
+
+AI interpretation is informational only and not financial advice. It summarizes cached data, recent price movement, volume/liquidity context, risk notes, and watch points; it does not provide buy/sell recommendations.
 
 ## Tests
 
@@ -286,6 +299,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 - Recurring transactions are not implemented yet.
 - Bank CSV import is not implemented yet.
 - Stock functionality is a watchlist, not a full portfolio profit/loss system.
+- Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.
 
 ## Common Issues

@@ -4,6 +4,7 @@ from datetime import date
 
 import pytest
 
+from providers.stock_price.base import StockQuote
 from tests.conftest import drain_jobs
 
 
@@ -43,26 +44,34 @@ def test_money_and_date_serialization_contracts(client, monkeypatch: pytest.Monk
     assert "user_id" not in budget_payload
     assert "created_at" not in budget_payload
 
-    import routers.stocks as stocks_router
+    class FakeProvider:
+        name = "fake"
 
-    monkeypatch.setattr(
-        stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code})
-    )
-    monkeypatch.setattr(
-        stocks_router.StockDataService,
-        "fetch_price_history",
-        classmethod(
-            lambda cls, code: [{
-                "stock_code": code,
-                "trade_date": date(2026, 4, 10),
-                "open": 99.0,
-                "high": 101.0,
-                "low": 98.0,
-                "close": 100.0,
-                "volume": 12345,
-            }]
-        ),
-    )
+        def normalize_symbol(self, stock_code: str) -> str:
+            return stock_code.strip().upper()
+
+        def infer_market(self, _stock_code: str) -> tuple[str, str | None, str]:
+            return "US", None, "USD"
+
+        def fetch_quote(self, stock_code: str):
+            return StockQuote(
+                stock_code=stock_code,
+                name=stock_code,
+                market="US",
+                exchange=None,
+                currency="USD",
+                trade_date=date(2026, 4, 10),
+                open=99.0,
+                high=101.0,
+                low=98.0,
+                close=100.0,
+                previous_close=99.0,
+                volume=12345,
+                provider=self.name,
+            )
+
+    monkeypatch.setattr("services.watchlist_service.get_stock_price_provider", lambda: FakeProvider())
+    monkeypatch.setattr("services.stock_data_service.get_stock_price_provider", lambda: FakeProvider())
 
     add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
     assert add.status_code == 201

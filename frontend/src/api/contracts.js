@@ -41,7 +41,7 @@ export function normalizeUser(user) {
 }
 
 /**
- * @typedef {'pending'|'success'|'failed'} SyncStatus
+ * @typedef {'pending'|'success'|'failed'|'ready'|'sync_required'|'sync_queued'|'unsupported'|'error'} SyncStatus
  */
 
 /**
@@ -79,6 +79,13 @@ export function normalizeWatchlistItem(row) {
   if (id == null) return null
 
   const status = row.price_sync_status === 'success' || row.price_sync_status === 'failed' ? row.price_sync_status : 'pending'
+  const syncStatus = ['ready', 'sync_required', 'sync_queued', 'unsupported', 'error'].includes(row.sync_status)
+    ? row.sync_status
+    : status === 'success'
+      ? 'ready'
+      : status === 'failed'
+        ? 'error'
+        : 'sync_required'
   const priceSync = row.price_sync && typeof row.price_sync === 'object'
     ? {
         status: row.price_sync.status || status,
@@ -92,11 +99,26 @@ export function normalizeWatchlistItem(row) {
   return {
     id,
     stock_code: String(row.stock_code || '').toUpperCase(),
+    symbol: String(row.symbol || row.stock_code || '').toUpperCase(),
     name: String(row.name || row.stock_code || '').trim(),
     currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
-    price: toNumberOrNull(row.price),
+    market: row.market == null ? null : String(row.market).trim(),
+    exchange: row.exchange == null ? null : String(row.exchange).trim(),
+    price: toNumberOrNull(row.price ?? row.last_price),
+    last_price: toNumberOrNull(row.last_price ?? row.price),
+    previous_close: toNumberOrNull(row.previous_close),
+    price_change: toNumberOrNull(row.price_change),
+    change_percent: toNumberOrNull(row.change_percent),
     date: row.date || null,
     volume: toNumberOrNull(row.volume),
+    provider: row.provider == null ? null : String(row.provider).trim(),
+    price_updated_at: row.price_updated_at || null,
+    sync_status: syncStatus,
+    sync_required: Boolean(row.sync_required ?? syncStatus !== 'ready'),
+    sync_error: row.sync_error || row.last_sync_error || null,
+    ai_summary: toTrimmedStringOrEmpty(row.ai_summary),
+    ai_risk_notes: toTrimmedStringOrEmpty(row.ai_risk_notes),
+    ai_updated_at: row.ai_updated_at || null,
     price_sync_status: status,
     last_sync_error: row.last_sync_error || null,
     last_sync_attempt_at: row.last_sync_attempt_at || null,
@@ -377,6 +399,30 @@ export function normalizeStockAiExplanation(payload) {
     can_sync: Boolean(payload.can_sync),
     job_id: toNumberOrNull(payload.job_id),
     request_id: toTrimmedStringOrEmpty(payload.request_id),
+    meta: payload.meta && typeof payload.meta === 'object'
+      ? {
+          provider: toTrimmedStringOrEmpty(payload.meta.provider),
+          is_fallback: Boolean(payload.meta.is_fallback),
+          error: toTrimmedStringOrEmpty(payload.meta.error)
+        }
+      : null
+  }
+}
+
+export function normalizeStockAiAnalysis(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const status = ['ready', 'sync_required', 'unsupported', 'error'].includes(payload.status)
+    ? payload.status
+    : 'error'
+  return {
+    status,
+    stock_code: String(payload.stock_code || '').toUpperCase(),
+    summary: toTrimmedStringOrEmpty(payload.summary),
+    recent_price_movement: toTrimmedStringOrEmpty(payload.recent_price_movement),
+    volume_note: toTrimmedStringOrEmpty(payload.volume_note),
+    risk_notes: Array.isArray(payload.risk_notes) ? payload.risk_notes.map(toStringOrEmpty).filter(Boolean) : [],
+    watch_points: Array.isArray(payload.watch_points) ? payload.watch_points.map(toStringOrEmpty).filter(Boolean) : [],
+    disclaimer: toTrimmedStringOrEmpty(payload.disclaimer),
     meta: payload.meta && typeof payload.meta === 'object'
       ? {
           provider: toTrimmedStringOrEmpty(payload.meta.provider),

@@ -142,14 +142,33 @@
               </span>
             </div>
             <div class="tile-price">{{ item.price != null ? formatPrice(item.price, item.currency) : t('stocks.noDataPrice') }}</div>
+            <div class="tile-meta">{{ item.market || item.exchange ? [item.market, item.exchange].filter(Boolean).join(' / ') : item.provider }}</div>
             <div class="tile-meta">{{ item.date || t('stocks.awaitingPriceHistory') }}</div>
+            <div v-if="item.change_percent != null" class="tile-change" :class="{ positive: item.change_percent > 0, negative: item.change_percent < 0 }">
+              {{ formatChange(item.price_change, item.change_percent) }}
+            </div>
+            <div v-if="item.sync_status === 'sync_required'" class="tile-warning">{{ t('stocks.syncRequired') }}</div>
+            <div v-if="item.sync_status === 'unsupported'" class="tile-warning">{{ t('stocks.ai.unsupported') }}</div>
             <div class="tile-actions">
-              <button class="btn btn-primary" :disabled="stockStore.isSingleSyncing(item.stock_code)" @click="handleSyncSingle(item.stock_code)">
-                {{ stockStore.isSingleSyncing(item.stock_code) ? t('stocks.queueing') : t('stocks.queuePriceSync') }}
+              <button class="btn btn-primary" :disabled="stockStore.isItemSyncing(item.id)" @click="handleSyncWatchlistItem(item)">
+                {{ stockStore.isItemSyncing(item.id) ? t('stocks.queueing') : t('stocks.queuePriceSync') }}
+              </button>
+              <button class="btn btn-secondary" :disabled="stockStore.isAnalyzing(item.id)" @click="handleAnalyzeWatchlistItem(item)">
+                {{ stockStore.isAnalyzing(item.id) ? t('stocks.ai.analyzing') : t('stocks.ai.runInterpretation') }}
               </button>
               <button class="btn btn-danger" :disabled="stockStore.deleting" @click="handleDeleteWatchlist(item.id)">{{ t('common.delete') }}</button>
             </div>
-            <div v-if="item.last_sync_error" class="tile-error">{{ item.last_sync_error }}</div>
+            <div v-if="item.sync_error || item.last_sync_error" class="tile-error">{{ item.sync_error || item.last_sync_error }}</div>
+            <div v-if="stockStore.aiAnalysisById[item.id]" class="stock-ai-analysis">
+              <strong>{{ t('stocks.ai.interpretation') }}</strong>
+              <p>{{ stockStore.aiAnalysisById[item.id].summary }}</p>
+              <p v-if="stockStore.aiAnalysisById[item.id].recent_price_movement">{{ stockStore.aiAnalysisById[item.id].recent_price_movement }}</p>
+              <p v-if="stockStore.aiAnalysisById[item.id].volume_note">{{ stockStore.aiAnalysisById[item.id].volume_note }}</p>
+              <ul v-if="stockStore.aiAnalysisById[item.id].risk_notes.length">
+                <li v-for="note in stockStore.aiAnalysisById[item.id].risk_notes" :key="note">{{ note }}</li>
+              </ul>
+              <small>{{ stockStore.aiAnalysisById[item.id].disclaimer }}</small>
+            </div>
           </article>
         </div>
       </section>
@@ -203,6 +222,13 @@ const { t, locale } = useI18n()
 
 function formatPrice(value, currency) {
   return formatCurrencyValue(Number(value), locale.value, currency || null)
+}
+
+function formatChange(priceChange, changePercent) {
+  const change = Number(priceChange || 0)
+  const percent = Number(changePercent || 0)
+  const sign = change > 0 ? '+' : ''
+  return `${sign}${change.toFixed(2)} (${sign}${percent.toFixed(2)}%)`
 }
 
 function statusBadgeClass(status) {
@@ -313,12 +339,29 @@ async function handleDeleteWatchlist(id) {
   }
 }
 
-async function handleSyncSingle(stockCode) {
+async function handleSyncWatchlistItem(item) {
   actionMessage.value = ''
   actionError.value = ''
   try {
-    const response = await stockStore.syncSinglePrice(stockCode)
-    actionMessage.value = response?.message || `${stockCode} ${t('stocks.syncQueued')}`
+    const response = await stockStore.syncWatchlistItem(item.id)
+    actionMessage.value = response?.sync_status === 'ready'
+      ? `${response.stock_code} ${t('stocks.syncComplete')}`
+      : response?.sync_error || `${item.stock_code} ${t('stocks.syncQueued')}`
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleAnalyzeWatchlistItem(item) {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    const response = await stockStore.analyzeWatchlistItem(item.id)
+    if (response?.status === 'sync_required') {
+      actionError.value = response.summary || t('stocks.syncRequired')
+      return
+    }
+    actionMessage.value = t('stocks.ai.interpretationReady')
   } catch (error) {
     actionError.value = error.message || t('common.unknownError')
   }
@@ -481,6 +524,46 @@ onMounted(() => {
   margin-top: 10px;
   color: #9a2c2c;
   font-size: 12px;
+}
+
+.tile-warning {
+  margin-top: 8px;
+  color: #7c5200;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tile-change {
+  margin-top: 8px;
+  font-weight: 700;
+  color: #445767;
+}
+
+.tile-change.positive {
+  color: #12733d;
+}
+
+.tile-change.negative {
+  color: #a33a2b;
+}
+
+.stock-ai-analysis {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f5f8fb;
+  border: 1px solid #e1eaf2;
+}
+
+.stock-ai-analysis p,
+.stock-ai-analysis ul {
+  margin: 0;
+}
+
+.stock-ai-analysis ul {
+  padding-left: 18px;
 }
 
 .fundamentals-card,

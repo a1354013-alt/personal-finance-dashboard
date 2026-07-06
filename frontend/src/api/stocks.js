@@ -20,6 +20,14 @@ export function syncSinglePrice(stockCode) {
   return api.post(`/stocks/${stockCode.toUpperCase()}/sync`)
 }
 
+export function syncWatchlistItem(id) {
+  return api.post(`/stocks/watchlist/${id}/sync`)
+}
+
+export function analyzeWatchlistItem(id) {
+  return api.post(`/stocks/watchlist/${id}/ai-analysis`)
+}
+
 export function getFilterResults() {
   return api.get('/stocks/filter')
 }

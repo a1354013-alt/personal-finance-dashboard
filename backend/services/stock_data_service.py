@@ -6,13 +6,14 @@ from datetime import date
 from typing import Any, Optional
 
 from providers.yfinance_client import get_yfinance
+from providers.stock_price import get_stock_price_provider
 logger = logging.getLogger(__name__)
 
 
 class StockDataService:
     @staticmethod
     def provider_name() -> str:
-        return "yfinance"
+        return get_stock_price_provider().name
 
     @staticmethod
     def infer_currency(stock_code: str, info: Optional[dict[str, Any]] = None) -> str | None:
@@ -33,10 +34,7 @@ class StockDataService:
 
     @staticmethod
     def normalize_stock_code(stock_code: str) -> str:
-        code = stock_code.strip().upper()
-        if code.isdigit() and len(code) == 4:
-            return f"{code}.TW"
-        return code
+        return get_stock_price_provider().normalize_symbol(stock_code)
 
     @classmethod
     def fetch_real_price(cls, stock_code: str) -> Optional[dict[str, Any]]:

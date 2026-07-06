@@ -66,6 +66,11 @@ def _shift_date_by_months(value: date, months_delta: int) -> date:
     return date(target_year, target_month, min(value.day, max_day))
 
 
+def _not_future(value: date) -> date:
+    today = date.today()
+    return today if value > today else value
+
+
 def build_demo_dates(relative_dates: bool) -> tuple[list[dict], list[dict]]:
     if not relative_dates:
         return FIXED_MOCK_EXPENSES, FIXED_MOCK_PRICES
@@ -77,7 +82,10 @@ def build_demo_dates(relative_dates: bool) -> tuple[list[dict], list[dict]]:
     relative_expenses: list[dict] = []
     for item in FIXED_MOCK_EXPENSES:
         shifted_item = dict(item)
-        shifted_item["date"] = _shift_date_by_months(item["date"], anchor_delta)
+        if item["date"].year == date.today().year and item["date"].month == date.today().month:
+            shifted_item["date"] = item["date"]
+        else:
+            shifted_item["date"] = _not_future(_shift_date_by_months(item["date"], anchor_delta))
         relative_expenses.append(shifted_item)
 
     relative_prices: list[dict] = []
@@ -85,7 +93,7 @@ def build_demo_dates(relative_dates: bool) -> tuple[list[dict], list[dict]]:
         original_trade_date = item["trade_date"]
         shifted_trade_date = _shift_date_by_months(original_trade_date, anchor_delta)
         shifted_item = dict(item)
-        shifted_item["trade_date"] = shifted_trade_date
+        shifted_item["trade_date"] = _not_future(shifted_trade_date)
         relative_prices.append(shifted_item)
 
     return relative_expenses, relative_prices
@@ -98,7 +106,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         init_db()
 
     mock_expenses, mock_prices = build_demo_dates(relative_dates)
-    budget_month = date.today().strftime("%Y-%m") if relative_dates else "2026-05"
+    budget_month = date.today().strftime("%Y-%m")
 
     db = SessionLocal()
     try:

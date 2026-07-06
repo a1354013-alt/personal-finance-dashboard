@@ -218,11 +218,17 @@ export default {
       unsupported: 'The current data source does not provide fundamentals for this stock, so a complete AI explanation is unavailable.',
       syncFundamentals: 'Sync Fundamentals',
       retryExplanation: 'Retry Explanation',
-      explanationUnavailable: 'AI explanation is currently unavailable.'
+      explanationUnavailable: 'AI explanation is currently unavailable.',
+      runInterpretation: 'AI Interpretation',
+      analyzing: 'Analyzing...',
+      interpretation: 'AI Interpretation',
+      interpretationReady: 'AI interpretation is ready.'
     },
     watchlistGrid: 'Watchlist Grid',
     helperText: 'Queued syncs update status without blocking this UI.',
     syncQueued: 'Sync queued.',
+    syncComplete: 'Sync complete.',
+    syncRequired: 'Price sync required.',
     awaitingPriceHistory: 'Awaiting price history',
     passedScreen: 'Passed Screen',
     needsAttention: 'Needs Attention',
