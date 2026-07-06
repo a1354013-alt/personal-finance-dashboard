@@ -7,7 +7,7 @@ from calendar import monthrange
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
-from models.stock import StockPriceORM, WatchlistORM
+from models.stock import StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
 
@@ -52,10 +52,61 @@ MOCK_WATCHLIST = [
 ]
 
 FIXED_MOCK_PRICES = [
-    {"stock_code": "2330.TW", "trade_date": date(2026, 4, 9), "close": 850.0, "open": 845.0, "high": 855.0, "low": 840.0, "volume": 25000},
-    {"stock_code": "2317.TW", "trade_date": date(2026, 4, 9), "close": 168.5, "open": 165.0, "high": 170.0, "low": 164.0, "volume": 45000},
-    {"stock_code": "AAPL", "trade_date": date(2026, 4, 9), "close": 172.3, "open": 170.0, "high": 175.0, "low": 169.0, "volume": 55000000},
+    {
+        "stock_code": "2330.TW",
+        "trade_date": date(2026, 4, 9),
+        "close": 850.0,
+        "previous_close": 842.0,
+        "open": 845.0,
+        "high": 855.0,
+        "low": 840.0,
+        "volume": 25000,
+    },
+    {
+        "stock_code": "2317.TW",
+        "trade_date": date(2026, 4, 9),
+        "close": 168.5,
+        "previous_close": 166.0,
+        "open": 165.0,
+        "high": 170.0,
+        "low": 164.0,
+        "volume": 45000,
+    },
+    {
+        "stock_code": "AAPL",
+        "trade_date": date(2026, 4, 9),
+        "close": 172.3,
+        "previous_close": 171.8,
+        "open": 170.0,
+        "high": 175.0,
+        "low": 169.0,
+        "volume": 55000000,
+    },
 ]
+
+
+def _stock_market_fields(stock_code: str) -> dict:
+    if stock_code.endswith(".TW"):
+        return {"market": "Taiwan", "exchange": "TWSE", "currency": "TWD"}
+    if stock_code.endswith(".TWO"):
+        return {"market": "Taiwan", "exchange": "TPEx", "currency": "TWD"}
+    return {"market": "US", "exchange": None, "currency": "USD"}
+
+
+def _price_change_fields(price: dict) -> dict:
+    previous_close = price.get("previous_close")
+    close = price["close"]
+    price_change = None
+    change_percent = None
+    if previous_close not in (None, 0):
+        price_change = close - previous_close
+        change_percent = (price_change / previous_close) * 100
+    return {
+        "last_price": close,
+        "previous_close": previous_close,
+        "price_change": price_change,
+        "change_percent": change_percent,
+    }
 
 
 def _shift_date_by_months(value: date, months_delta: int) -> date:
@@ -123,6 +174,9 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         db.query(StockPriceORM).filter(StockPriceORM.stock_code.in_([item["stock_code"] for item in mock_prices])).delete(
             synchronize_session=False
         )
+        db.query(StockPriceHistoryORM).filter(
+            StockPriceHistoryORM.stock_code.in_([item["stock_code"] for item in mock_prices])
+        ).delete(synchronize_session=False)
         db.commit()
 
         for item in mock_expenses:
@@ -131,18 +185,37 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         for item in MOCK_BUDGETS:
             db.add(BudgetORM(user_id=demo_user.id, month=budget_month, **item))
 
+        price_by_code = {item["stock_code"]: item for item in mock_prices}
+        seeded_at = datetime.now(timezone.utc)
         for item in MOCK_WATCHLIST:
+            stock_code = item["stock_code"]
+            price = price_by_code.get(stock_code)
+            market_fields = _stock_market_fields(stock_code)
+            price_fields = _price_change_fields(price) if price else {}
             db.add(
                 WatchlistORM(
                     user_id=demo_user.id,
+                    market=market_fields["market"],
+                    exchange=market_fields["exchange"],
+                    currency=market_fields["currency"],
+                    volume=price["volume"] if price else None,
+                    provider="seed",
+                    price_updated_at=seeded_at if price else None,
+                    sync_status="ready" if price else "sync_required",
+                    sync_required=0 if price else 1,
+                    sync_error=None,
                     price_sync_status="success",
-                    last_sync_attempt_at=datetime.now(timezone.utc),
+                    last_sync_error=None,
+                    last_sync_attempt_at=seeded_at,
+                    **price_fields,
                     **item,
                 )
             )
 
         for item in mock_prices:
-            db.add(StockPriceORM(**item))
+            price_row = {key: value for key, value in item.items() if key != "previous_close"}
+            db.add(StockPriceORM(**price_row))
+            db.add(StockPriceHistoryORM(source="seed", **price_row))
 
         db.commit()
 

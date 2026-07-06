@@ -3,11 +3,13 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS
+from app.jobs.job_runner import JOB_TYPE_SYNC_FUNDAMENTALS, JOB_TYPE_SYNC_STOCK_MARKET_DATA
 from db.database import SessionLocal
 from models.job import JOB_STATUS_FAILED, JOB_STATUS_SUCCESS, SyncJobORM
+from models.stock import WatchlistORM
 from providers.fundamentals.base import BaseFundamentalsProvider, FundamentalsFetchResult, FundamentalsProviderError
 from providers.fundamentals.factory import reset_fundamentals_provider_cache
+from providers.stock_price.base import StockQuote
 from tests.conftest import auth_headers, drain_jobs, register_and_login
 
 
@@ -49,22 +51,6 @@ def test_background_job_creation_retry_and_failure_recovery(client, monkeypatch)
 
     monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
     monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
-    monkeypatch.setattr(
-        stocks_router.StockDataService,
-        "fetch_price_history",
-        classmethod(
-            lambda cls, code: [{
-                "stock_code": code,
-                "trade_date": date(2026, 4, 10),
-                "open": 99.0,
-                "high": 101.0,
-                "low": 98.0,
-                "close": 100.0,
-                "volume": 12345,
-            }]
-        ),
-    )
 
     token = register_and_login(client, "jobs@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -91,22 +77,6 @@ def test_background_job_marks_failed_after_max_retries(client, monkeypatch):
 
     monkeypatch.setattr(fundamentals_service, "get_fundamentals_provider", lambda: provider)
     monkeypatch.setattr(job_runner, "get_fundamentals_provider", lambda: provider)
-    monkeypatch.setattr(stocks_router.StockDataService, "fetch_stock_info", classmethod(lambda cls, code: {"shortName": code}))
-    monkeypatch.setattr(
-        stocks_router.StockDataService,
-        "fetch_price_history",
-        classmethod(
-            lambda cls, code: [{
-                "stock_code": code,
-                "trade_date": date(2026, 4, 10),
-                "open": 99.0,
-                "high": 101.0,
-                "low": 98.0,
-                "close": 100.0,
-                "volume": 12345,
-            }]
-        ),
-    )
 
     token = register_and_login(client, "jobs-fail@example.com")
     client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "AAPL"})
@@ -119,3 +89,55 @@ def test_background_job_marks_failed_after_max_retries(client, monkeypatch):
       assert job.status == JOB_STATUS_FAILED
       assert job.attempts == 3
       assert job.error_message
+
+
+def test_stock_price_background_job_succeeds_with_fake_provider(client, fake_stock_price_provider):
+    fake_stock_price_provider.set_quote(
+        StockQuote(
+            stock_code="2330.TW",
+            name="TSMC",
+            market="Taiwan",
+            exchange="TWSE",
+            currency="TWD",
+            trade_date=date(2026, 7, 6),
+            open=990,
+            high=1005,
+            low=980,
+            close=1000,
+            previous_close=950,
+            volume=12345678,
+            provider=fake_stock_price_provider.name,
+        )
+    )
+    token = register_and_login(client, "stock-job-success@example.com")
+    add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "2330"})
+    assert add.status_code == 201
+
+    drain_jobs(max_cycles=5)
+
+    with SessionLocal() as db:
+        job = db.query(SyncJobORM).filter(SyncJobORM.job_type == JOB_TYPE_SYNC_STOCK_MARKET_DATA).one()
+        item = db.query(WatchlistORM).filter(WatchlistORM.id == add.json()["id"]).one()
+        assert job.status == JOB_STATUS_SUCCESS
+        assert item.price_sync_status == "success"
+        assert item.sync_status == "ready"
+        assert item.currency == "TWD"
+        assert item.last_price == 1000
+
+
+def test_stock_price_background_job_fails_with_fake_provider(client, fake_stock_price_provider):
+    fake_stock_price_provider.set_quote(None)
+    token = register_and_login(client, "stock-job-failure@example.com")
+    add = client.post("/api/stocks/watchlist", headers=auth_headers(token), json={"stock_code": "2330"})
+    assert add.status_code == 201
+
+    drain_jobs(max_cycles=5)
+
+    with SessionLocal() as db:
+        job = db.query(SyncJobORM).filter(SyncJobORM.job_type == JOB_TYPE_SYNC_STOCK_MARKET_DATA).one()
+        item = db.query(WatchlistORM).filter(WatchlistORM.id == add.json()["id"]).one()
+        assert job.status == JOB_STATUS_FAILED
+        assert item.price_sync_status == "failed"
+        assert item.sync_status == "error"
+        assert item.sync_required == 1
+        assert item.sync_error
