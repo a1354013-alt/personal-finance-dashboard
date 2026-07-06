@@ -97,7 +97,7 @@ def fake_stock_price_provider(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def clean_db():
+def clean_db(fake_stock_price_provider):
     runner = get_job_runner()
     while runner.drain_once():
         pass
