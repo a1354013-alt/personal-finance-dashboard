@@ -2,11 +2,11 @@
 
 Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, and monthly report exports.
 
-The current stable version is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
+The current release candidate is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for a v1.0 demo-ready milestone.
+This repository is a portfolio/demo project prepared for the v1.1.0-rc1 release candidate.
 
 Implemented demo surface:
 
@@ -90,9 +90,11 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 The frontend dev server proxies `/api` requests to `http://127.0.0.1:8000`.
 
+Frontend npm commands can be run either from `frontend/` directly or from the repository root through the convenience scripts in the root `package.json`.
+
 ## VS Code F5 Start
 
-Windows is the supported F5 path for this stable demo version.
+Windows is the supported F5 path for this v1.1.0-rc1 release candidate.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -196,6 +198,36 @@ npm run test:run
 npm run build
 npm audit --audit-level=moderate
 ```
+
+Repository root convenience:
+
+```powershell
+npm run frontend:lint
+npm run frontend:test
+npm run frontend:build
+npm run frontend:audit
+```
+
+## Release Verification
+
+From the repository root, run either of these commands:
+
+```powershell
+.\scripts\verify-release.ps1
+npm run verify
+```
+
+The PowerShell verifier runs the full release validation sequence from the repository root:
+
+- backend `python -m compileall .`
+- backend `python -m alembic upgrade head`
+- backend `python -m pytest -q`
+- backend `python seed_data.py --reset`
+- frontend `npm ci`
+- frontend `npm run lint`
+- frontend `npm run test:run`
+- frontend `npm run build`
+- frontend `npm audit --audit-level=moderate`
 
 ## Build
 
@@ -319,10 +351,12 @@ GitHub Actions runs:
 - backend Alembic migration smoke
 - backend `python -m compileall .`
 - backend `python -m pytest -q`
+- backend `python seed_data.py --reset`
 - frontend `npm ci`
 - frontend lint
 - frontend tests
 - frontend build
+- frontend `npm audit --audit-level=moderate`
 
 Workflow file:
 

@@ -36,6 +36,11 @@ jobs:
           ENV: development
           SECRET_KEY: ci-secret-key
         run: python -m pytest -q
+      - name: Seed demo data reset smoke
+        env:
+          ENV: development
+          SECRET_KEY: ci-secret-key
+        run: python seed_data.py --reset
 
   frontend:
     runs-on: ubuntu-latest
@@ -57,4 +62,6 @@ jobs:
         run: npm run test:run
       - name: Build
         run: npm run build
+      - name: Audit
+        run: npm audit --audit-level=moderate
 
