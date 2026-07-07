@@ -144,6 +144,75 @@ export function normalizeExpense(row) {
   }
 }
 
+export function normalizeTransactionImportBatch(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    id: toStringOrEmpty(row.id),
+    file_name: toStringOrEmpty(row.file_name ?? row.fileName),
+    file_type: toStringOrEmpty(row.file_type ?? row.fileType),
+    total_rows: toNumberOrZero(row.total_rows ?? row.totalRows),
+    valid_rows: toNumberOrZero(row.valid_rows ?? row.validRows),
+    invalid_rows: toNumberOrZero(row.invalid_rows ?? row.invalidRows),
+    duplicate_rows: toNumberOrZero(row.duplicate_rows ?? row.duplicateRows),
+    created_rows: toNumberOrZero(row.created_rows ?? row.createdRows),
+    status: toStringOrEmpty(row.status),
+    created_at: row.created_at ?? row.createdAt ?? null,
+    imported_at: row.imported_at ?? row.importedAt ?? null,
+    summary: {
+      total_rows: toNumberOrZero(row.summary?.total_rows ?? row.summary?.totalRows ?? row.total_rows ?? row.totalRows),
+      valid_rows: toNumberOrZero(row.summary?.valid_rows ?? row.summary?.validRows ?? row.valid_rows ?? row.validRows),
+      invalid_rows: toNumberOrZero(row.summary?.invalid_rows ?? row.summary?.invalidRows ?? row.invalid_rows ?? row.invalidRows),
+      duplicate_rows: toNumberOrZero(row.summary?.duplicate_rows ?? row.summary?.duplicateRows ?? row.duplicate_rows ?? row.duplicateRows),
+      warning_rows: toNumberOrZero(row.summary?.warning_rows ?? row.summary?.warningRows),
+      rows_to_import: toNumberOrZero(row.summary?.rows_to_import ?? row.summary?.rowsToImport),
+      created_rows: toNumberOrZero(row.summary?.created_rows ?? row.summary?.createdRows ?? row.created_rows ?? row.createdRows)
+    }
+  }
+}
+
+export function normalizeTransactionImportPreview(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    batch: normalizeTransactionImportBatch(payload.batch),
+    rows: Array.isArray(payload.rows)
+      ? payload.rows.map(row => ({
+        id: toNumberOrNull(row.id),
+        source_row_number: toNumberOrZero(row.source_row_number ?? row.sourceRowNumber),
+        raw_data: row.raw_data && typeof row.raw_data === 'object' ? row.raw_data : {},
+        normalized: {
+          transaction_date: row.normalized?.transaction_date ?? row.normalized?.transactionDate ?? null,
+          amount: toNumberOrNull(row.normalized?.amount),
+          type: toStringOrEmpty(row.normalized?.type),
+          category: toStringOrEmpty(row.normalized?.category),
+          description: toStringOrEmpty(row.normalized?.description),
+          payment_method: row.normalized?.payment_method ?? row.normalized?.paymentMethod ?? null,
+          source_file_name: row.normalized?.source_file_name ?? row.normalized?.sourceFileName ?? '',
+          import_batch_id: row.normalized?.import_batch_id ?? row.normalized?.importBatchId ?? ''
+        },
+        status: toStringOrEmpty(row.status),
+        validation_errors: Array.isArray(row.validation_errors ?? row.validationErrors) ? (row.validation_errors ?? row.validationErrors) : [],
+        warnings: Array.isArray(row.warnings) ? row.warnings : [],
+        duplicate_reasons: Array.isArray(row.duplicate_reasons ?? row.duplicateReasons) ? (row.duplicate_reasons ?? row.duplicateReasons) : [],
+        created_expense_id: toNumberOrNull(row.created_expense_id ?? row.createdExpenseId)
+      }))
+      : []
+  }
+}
+
+export function normalizeTransactionImportConfirmResult(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    batch_id: toStringOrEmpty(payload.batch_id ?? payload.batchId),
+    created_count: toNumberOrZero(payload.created_count ?? payload.createdCount),
+    skipped_count: toNumberOrZero(payload.skipped_count ?? payload.skippedCount),
+    duplicate_count: toNumberOrZero(payload.duplicate_count ?? payload.duplicateCount),
+    error_count: toNumberOrZero(payload.error_count ?? payload.errorCount),
+    created_transaction_ids: Array.isArray(payload.created_transaction_ids ?? payload.createdTransactionIds)
+      ? (payload.created_transaction_ids ?? payload.createdTransactionIds).map(toNumberOrZero)
+      : []
+  }
+}
+
 /**
  * @param {any} row
  * @returns {any|null}

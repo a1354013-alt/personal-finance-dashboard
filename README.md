@@ -1,12 +1,12 @@
 # Personal Finance Dashboard
 
-Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, and monthly report exports.
+Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, monthly report exports, and transaction imports.
 
 The current release candidate is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.1.0-rc1 release candidate.
+This repository is a portfolio/demo project prepared for the v1.2.0-rc1 release candidate.
 
 Implemented demo surface:
 
@@ -18,6 +18,7 @@ Implemented demo surface:
 - Stock watchlist
 - Monthly reports
 - AI-assisted finance summary
+- Transaction import preview/confirm flow
 - CSV and PDF export
 
 Demo readiness already in place:
@@ -34,6 +35,7 @@ Demo readiness already in place:
 - Dashboard cards, charts, recent transactions, and report export
 - Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
+- Transaction import for CSV/XLSX files with preview, row validation, duplicate detection, and batch history
 - CSV and PDF monthly report export
 - Demo auth with access tokens, refresh tokens, and logout refresh-token revoke flow
 
@@ -94,7 +96,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Start
 
-Windows is the supported F5 path for this v1.1.0-rc1 release candidate.
+Windows is the supported F5 path for this v1.2.0-rc1 release candidate.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -176,6 +178,16 @@ Taiwan stock demo flow:
 5. Use Price Sync on the watchlist item.
 6. Use AI Interpretation to generate observation notes from cached price data.
 
+Transaction import demo flow:
+
+1. Run the release verification sequence from the repository root.
+2. Start the backend and frontend, then sign in with the demo account.
+3. Open Import from the top navigation.
+4. Upload [docs/demo/sample-transactions.csv](/C:/Users/whois/OneDrive/文件/GitHub/personal-finance-dashboard/docs/demo/sample-transactions.csv).
+5. Review the preview table, validation messages, and duplicate markers.
+6. Confirm the valid rows you want to import.
+7. Open Dashboard or Expenses to verify the imported records appear.
+
 AI interpretation is informational only and not financial advice. It summarizes cached data, recent price movement, volume/liquidity context, risk notes, and watch points; it does not provide buy/sell recommendations.
 
 ## Tests
@@ -207,6 +219,27 @@ npm run frontend:test
 npm run frontend:build
 npm run frontend:audit
 ```
+
+## Transaction Import
+
+The v1.2 MVP transaction import flow is intentionally small and safe:
+
+- Supported file types: `.csv` and `.xlsx`
+- Maximum upload size: 2 MB
+- Flow: upload -> backend preview -> validation and duplicate review -> confirm import
+- Duplicate checks cover both repeated rows in the uploaded file and matching rows already in the current user's database
+- Import batches are scoped to the authenticated user and can be reviewed again after preview/import
+
+Recognized columns include these common names:
+
+- Date: `date`, `transaction_date`, `日期`, `交易日期`, `入帳日期`
+- Amount: `amount`, `金額`, `交易金額`
+- Type: `type`, `類型`, `收支類型`, `交易類型`
+- Category: `category`, `分類`, `類別`
+- Description: `description`, `note`, `memo`, `摘要`, `說明`, `備註`
+- Payment method: `payment_method`, `payment method`, `支付方式`, `付款方式`
+
+If required columns are missing, the preview endpoint returns a clear validation error instead of guessing a mapping.
 
 ## Release Verification
 
@@ -329,7 +362,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 - Transaction editing is not implemented yet.
 - Recurring transactions are not implemented yet.
-- Bank CSV import is not implemented yet.
+- Manual column mapping is not implemented yet; the MVP relies on recognized headers and returns a clear missing-column error otherwise.
 - Stock functionality is a watchlist, not a full portfolio profit/loss system.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

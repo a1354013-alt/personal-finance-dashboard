@@ -1,0 +1,5 @@
+date,amount,type,category,note,payment_method
+2026-07-01,120.50,expense,Food,Lunch,Credit Card
+2026-07-02,2500,income,Salary,Freelance payment,Bank Transfer
+2026/07/03,"(88)",expense,Transport,Taxi,Cash
+20260704,640,expense,Utilities,Electric bill,Autopay

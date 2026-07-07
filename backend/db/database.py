@@ -18,6 +18,8 @@ EXPECTED_TABLES = {
     "users",
     "expenses",
     "budgets",
+    "transaction_import_batches",
+    "transaction_import_rows",
     "watchlist",
     "stock_prices",
     "stock_price_history",

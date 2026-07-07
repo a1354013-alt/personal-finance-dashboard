@@ -14,7 +14,7 @@ from app.jobs import get_job_runner
 from config import APP_VERSION, DEFAULT_RATE_LIMIT_PER_MINUTE, get_cors_origins
 from db.database import init_db
 from logging_config import bind_request_id, configure_logging, get_request_id_from_request
-from routers import ai, auth, budgets, dashboard, expenses, reports, stocks
+from routers import ai, auth, budgets, dashboard, expenses, imports, reports, stocks
 from services.auth import validate_secret_key_configuration
 
 configure_logging()
@@ -117,6 +117,7 @@ async def observability_and_rate_limit_middleware(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(expenses.router)
+app.include_router(imports.router)
 app.include_router(stocks.router)
 app.include_router(dashboard.router)
 app.include_router(ai.router)

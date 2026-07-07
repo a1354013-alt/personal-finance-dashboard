@@ -28,6 +28,7 @@ export default {
   nav: {
     dashboard: '仪表板',
     expenses: '收支记录',
+    imports: '导入',
     budgets: '预算',
     stocks: '股票',
     logout: '退出登录'
@@ -163,6 +164,47 @@ export default {
     dateError: '请选择日期。',
     deleteLoading: '删除中...',
     deleteAction: '删除'
+  },
+  imports: {
+    title: '交易导入',
+    subtitle: '先上传 CSV 或 Excel，先看预览和校验结果，再确认要导入的记录。',
+    uploadTitle: '上传文件',
+    uploadHint: '系统只会把文件当成数据解析，预览确认前不会创建任何交易。',
+    fileLabel: '交易文件',
+    supportedFormats: '支持 `.csv` 和 `.xlsx`，大小上限 2 MB。',
+    sampleFile: '示例 CSV',
+    previewAction: '预览导入',
+    uploading: '正在生成预览...',
+    previewTitle: '预览',
+    confirmAction: '确认导入',
+    importing: '导入中...',
+    historyTitle: '最近导入',
+    historySubtitle: '查看当前账号最近的交易导入批次。',
+    emptyHistory: '还没有导入记录。',
+    readyRows: '行可导入',
+    selectAllValid: '全选有效行',
+    importResult: '已创建 {created} 行，跳过 {skipped} 行。',
+    summary: {
+      totalRows: '总行数',
+      validRows: '有效行',
+      invalidRows: '无效行',
+      duplicateRows: '重复行',
+      rowsToImport: '待导入'
+    },
+    columns: {
+      include: '导入',
+      status: '状态',
+      details: '详情'
+    },
+    status: {
+      valid: '有效',
+      invalid: '无效',
+      duplicate: '重复'
+    },
+    errors: {
+      preview: '当前无法预览这个导入文件。',
+      confirm: '当前无法确认这次导入。'
+    }
   },
   budgets: {
     title: '预算',

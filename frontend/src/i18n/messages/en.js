@@ -28,6 +28,7 @@ export default {
   nav: {
     dashboard: 'Dashboard',
     expenses: 'Expenses',
+    imports: 'Import',
     budgets: 'Budgets',
     stocks: 'Stocks',
     logout: 'Sign Out'
@@ -163,6 +164,47 @@ export default {
     dateError: 'Please select a date.',
     deleteLoading: 'Deleting...',
     deleteAction: 'Delete'
+  },
+  imports: {
+    title: 'Transaction Import',
+    subtitle: 'Upload a CSV or Excel file, review the preview safely, then confirm only the rows you want to import.',
+    uploadTitle: 'Upload File',
+    uploadHint: 'Supported formats are CSV and XLSX. Files are parsed as data only with validation and duplicate checks before anything is created.',
+    fileLabel: 'Transaction File',
+    supportedFormats: 'Use `.csv` or `.xlsx` files up to 2 MB.',
+    sampleFile: 'Sample CSV',
+    previewAction: 'Preview Import',
+    uploading: 'Preparing preview...',
+    previewTitle: 'Preview',
+    confirmAction: 'Confirm Import',
+    importing: 'Importing...',
+    historyTitle: 'Recent Imports',
+    historySubtitle: 'Recent transaction import batches for your account.',
+    emptyHistory: 'No import batches yet.',
+    readyRows: 'rows ready',
+    selectAllValid: 'Select all valid rows',
+    importResult: 'Created {created} rows and skipped {skipped} rows.',
+    summary: {
+      totalRows: 'Total Rows',
+      validRows: 'Valid Rows',
+      invalidRows: 'Invalid Rows',
+      duplicateRows: 'Duplicates',
+      rowsToImport: 'To Import'
+    },
+    columns: {
+      include: 'Include',
+      status: 'Status',
+      details: 'Details'
+    },
+    status: {
+      valid: 'Valid',
+      invalid: 'Invalid',
+      duplicate: 'Duplicate'
+    },
+    errors: {
+      preview: 'Unable to preview this import file right now.',
+      confirm: 'Unable to confirm this import right now.'
+    }
   },
   budgets: {
     title: 'Budgets',

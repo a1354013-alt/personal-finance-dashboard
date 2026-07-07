@@ -28,6 +28,7 @@ export default {
   nav: {
     dashboard: 'ダッシュボード',
     expenses: '収支記録',
+    imports: 'インポート',
     budgets: '予算',
     stocks: '株式',
     logout: 'サインアウト'
@@ -163,6 +164,47 @@ export default {
     dateError: '日付を選択してください。',
     deleteLoading: '削除中...',
     deleteAction: '削除'
+  },
+  imports: {
+    title: '取引インポート',
+    subtitle: 'CSV または Excel をアップロードし、プレビューと検証結果を確認してから取り込みを確定します。',
+    uploadTitle: 'ファイルアップロード',
+    uploadHint: 'ファイルはデータとしてのみ解析され、プレビュー確認前に取引は作成されません。',
+    fileLabel: '取引ファイル',
+    supportedFormats: '`.csv` と `.xlsx` に対応し、上限は 2 MB です。',
+    sampleFile: 'サンプル CSV',
+    previewAction: 'プレビュー',
+    uploading: 'プレビューを準備中...',
+    previewTitle: 'プレビュー',
+    confirmAction: 'インポート確定',
+    importing: 'インポート中...',
+    historyTitle: '最近のインポート',
+    historySubtitle: 'このアカウントの最近の取引インポート履歴です。',
+    emptyHistory: 'インポート履歴はまだありません。',
+    readyRows: '行を取り込み可能',
+    selectAllValid: '有効な行をすべて選択',
+    importResult: '{created} 行を作成し、{skipped} 行をスキップしました。',
+    summary: {
+      totalRows: '総行数',
+      validRows: '有効行',
+      invalidRows: '無効行',
+      duplicateRows: '重複行',
+      rowsToImport: '取込対象'
+    },
+    columns: {
+      include: '取込',
+      status: '状態',
+      details: '詳細'
+    },
+    status: {
+      valid: '有効',
+      invalid: '無効',
+      duplicate: '重複'
+    },
+    errors: {
+      preview: 'このファイルを今はプレビューできません。',
+      confirm: 'このインポートを今は確定できません。'
+    }
   },
   budgets: {
     title: '予算',

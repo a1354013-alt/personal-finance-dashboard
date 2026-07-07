@@ -22,4 +22,8 @@ class UserORM(Base):
     watchlist = relationship("WatchlistORM", back_populates="user", cascade="all, delete-orphan")
     budgets = relationship("BudgetORM", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshTokenORM", back_populates="user", cascade="all, delete-orphan")
-
+    transaction_import_batches = relationship(
+        "TransactionImportBatchORM",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

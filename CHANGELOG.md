@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.0-rc1
+
+- Added CSV and XLSX transaction import with a preview-first workflow before any transactions are created.
+- Added row-level validation, duplicate detection against uploaded rows and existing user data, and user-scoped import batch history/detail endpoints.
+- Added a frontend Transaction Import page with preview summaries, row status badges, selectable valid rows, and final import results.
+- Added backend and frontend import tests plus a sample CSV demo file for local walkthroughs.
+- Updated application version metadata to `1.2.0-rc1`.
+
 ## v1.1.0-rc1
 
 - Added the Taiwan stock and ETF watchlist MVP flow for the demo account, including seeded watchlist records and cached stock price examples.

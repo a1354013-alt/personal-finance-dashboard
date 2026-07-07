@@ -28,6 +28,7 @@ export default {
   nav: {
     dashboard: '總覽',
     expenses: '支出',
+    imports: '匯入',
     budgets: '預算',
     stocks: '股票',
     logout: '登出'
@@ -163,6 +164,47 @@ export default {
     dateError: '請先選擇日期。',
     deleteLoading: '刪除中...',
     deleteAction: '刪除'
+  },
+  imports: {
+    title: '交易匯入',
+    subtitle: '先上傳 CSV 或 Excel，確認預覽、驗證與重複檢查後，再決定要匯入哪些資料列。',
+    uploadTitle: '上傳檔案',
+    uploadHint: '系統只會把檔案當成資料來解析，預覽確認前不會建立任何交易。',
+    fileLabel: '交易檔案',
+    supportedFormats: '支援 `.csv` 與 `.xlsx`，大小上限 2 MB。',
+    sampleFile: '範例 CSV',
+    previewAction: '預覽匯入',
+    uploading: '正在產生預覽...',
+    previewTitle: '預覽',
+    confirmAction: '確認匯入',
+    importing: '匯入中...',
+    historyTitle: '最近匯入',
+    historySubtitle: '查看這個帳號最近的交易匯入批次。',
+    emptyHistory: '目前還沒有匯入紀錄。',
+    readyRows: '列可匯入',
+    selectAllValid: '全選有效資料列',
+    importResult: '已建立 {created} 筆，略過 {skipped} 筆。',
+    summary: {
+      totalRows: '總列數',
+      validRows: '有效列',
+      invalidRows: '無效列',
+      duplicateRows: '重複列',
+      rowsToImport: '待匯入'
+    },
+    columns: {
+      include: '匯入',
+      status: '狀態',
+      details: '細節'
+    },
+    status: {
+      valid: '有效',
+      invalid: '無效',
+      duplicate: '重複'
+    },
+    errors: {
+      preview: '目前無法預覽這個匯入檔案。',
+      confirm: '目前無法確認這次匯入。'
+    }
   },
   budgets: {
     title: '預算',

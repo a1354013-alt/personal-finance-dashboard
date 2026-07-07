@@ -62,6 +62,7 @@ const { t, locale } = useI18n()
 const navItems = computed(() => [
   { to: '/', label: t('nav.dashboard') },
   { to: '/expenses', label: t('nav.expenses') },
+  { to: '/imports/transactions', label: t('nav.imports') },
   { to: '/budgets', label: t('nav.budgets') },
   { to: '/stocks', label: t('nav.stocks') }
 ])
