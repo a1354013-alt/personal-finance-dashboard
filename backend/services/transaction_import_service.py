@@ -27,9 +27,9 @@ FILE_SIZE_LIMIT_BYTES = 2 * 1024 * 1024
 SUPPORTED_FILE_TYPES = {".csv": "csv", ".xlsx": "xlsx"}
 
 HEADER_ALIASES = {
-    "date": {"date", "transaction_date", "transaction date", "日期", "交易日期", "入帳日期"},
+    "date": {"date", "transaction_date", "transaction date", "日期", "交易日期", "入帳日期", "消費日期", "付款日期", "交易日"},
     "amount": {"amount", "金額", "交易金額"},
-    "type": {"type", "類型", "收支類型", "交易類型"},
+    "type": {"type", "類型", "收支類型", "交易類型", "收支", "收入支出"},
     "category": {"category", "分類", "類別"},
     "note": {"description", "note", "memo", "摘要", "說明", "備註"},
     "payment_method": {"payment_method", "payment method", "支付方式", "付款方式"},
@@ -232,9 +232,13 @@ def confirm_transaction_import(
     if batch.status == "imported":
         raise HTTPException(status_code=409, detail="This import batch has already been confirmed.")
 
-    selected_set = set(selected_row_numbers or [])
     rows = batch.rows
-    if selected_set:
+    if selected_row_numbers == []:
+        raise HTTPException(status_code=400, detail="Select at least one valid row to import.")
+    if selected_row_numbers is None:
+        rows = [row for row in rows if row.status == "valid"]
+    else:
+        selected_set = set(selected_row_numbers)
         rows = [row for row in rows if row.source_row_number in selected_set]
 
     created_ids: list[int] = []

@@ -183,7 +183,7 @@ Transaction import demo flow:
 1. Run the release verification sequence from the repository root.
 2. Start the backend and frontend, then sign in with the demo account.
 3. Open Import from the top navigation.
-4. Upload [docs/demo/sample-transactions.csv](/C:/Users/whois/OneDrive/文件/GitHub/personal-finance-dashboard/docs/demo/sample-transactions.csv).
+4. Upload [docs/demo/sample-transactions.csv](docs/demo/sample-transactions.csv).
 5. Review the preview table, validation messages, and duplicate markers.
 6. Confirm the valid rows you want to import.
 7. Open Dashboard or Expenses to verify the imported records appear.

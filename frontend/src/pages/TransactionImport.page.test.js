@@ -81,6 +81,37 @@ const previewPayload = {
   ]
 }
 
+const previewPayloadWithTwoValidRows = {
+  ...previewPayload,
+  batch: {
+    ...previewPayload.batch,
+    summary: {
+      ...previewPayload.batch.summary,
+      total_rows: 4,
+      valid_rows: 2,
+      rows_to_import: 2
+    }
+  },
+  rows: [
+    ...previewPayload.rows,
+    {
+      id: 4,
+      source_row_number: 5,
+      status: 'valid',
+      validation_errors: [],
+      warnings: [],
+      duplicate_reasons: [],
+      normalized: {
+        transaction_date: '2026-07-04',
+        amount: 2500,
+        type: 'income',
+        category: 'Salary',
+        description: 'Freelance'
+      }
+    }
+  ]
+}
+
 describe('Transaction import page', () => {
   beforeEach(() => {
     const pinia = createPinia()
@@ -159,6 +190,49 @@ describe('Transaction import page', () => {
       expect(confirmTransactionImportMock).toHaveBeenCalledWith('batch-1', [2])
       expect(wrapper.text()).toContain('Created 1 rows')
     })
+  })
+
+  it('selects all valid rows and only sends valid row numbers', async () => {
+    previewTransactionImportMock.mockResolvedValueOnce(previewPayloadWithTwoValidRows)
+    getTransactionImportMock.mockResolvedValueOnce(previewPayloadWithTwoValidRows)
+    const wrapper = mountPage()
+    const file = new File(['csv'], 'transactions.csv', { type: 'text/csv' })
+    await attachFile(wrapper, file)
+    await wrapper.find('button.btn.btn-primary').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Freelance')
+    })
+
+    const selectAll = wrapper.find('.selection-toggle input[type="checkbox"]')
+    expect(selectAll.element.checked).toBe(true)
+
+    await selectAll.setValue(false)
+    expect(wrapper.find('button.btn.btn-success').element.disabled).toBe(true)
+
+    await selectAll.setValue(true)
+    await wrapper.find('button.btn.btn-success').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(confirmTransactionImportMock).toHaveBeenCalledWith('batch-1', [2, 5])
+    })
+  })
+
+  it('disables row checkboxes for invalid and duplicate rows', async () => {
+    const wrapper = mountPage()
+    const file = new File(['csv'], 'transactions.csv', { type: 'text/csv' })
+    await attachFile(wrapper, file)
+    await wrapper.find('button.btn.btn-primary').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('duplicate_in_database')
+    })
+
+    const rowCheckboxes = wrapper.findAll('tbody input[type="checkbox"]')
+    expect(rowCheckboxes).toHaveLength(3)
+    expect(rowCheckboxes[0].element.disabled).toBe(false)
+    expect(rowCheckboxes[1].element.disabled).toBe(true)
+    expect(rowCheckboxes[2].element.disabled).toBe(true)
   })
 
   it('renders error state when preview fails', async () => {

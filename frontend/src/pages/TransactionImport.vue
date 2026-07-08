@@ -32,7 +32,7 @@
 
       <p class="helper-text">
         {{ t('imports.supportedFormats') }}
-        <a href="/docs/demo/sample-transactions.csv" target="_blank" rel="noreferrer">{{ t('imports.sampleFile') }}</a>
+        <a href="/demo/sample-transactions.csv" target="_blank" rel="noreferrer">{{ t('imports.sampleFile') }}</a>
       </p>
     </section>
 

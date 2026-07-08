@@ -49,6 +49,46 @@ def test_preview_valid_csv(client):
     assert payload["rows"][1]["normalized"]["type"] == "income"
 
 
+def test_preview_csv_accepts_additional_chinese_column_aliases(client):
+    token = register_and_login(client, "import-zh-aliases@example.com")
+    content = make_csv_bytes(
+        "消費日期,金額,收支,分類,備註\n"
+        "2026-07-01,125.50,支出,餐飲,午餐\n"
+        "2026-07-02,2500,收入,薪資,兼職\n"
+    )
+
+    response = preview_import(client, token, file_name="transactions.csv", content=content)
+
+    assert response.status_code == 201
+    rows = response.json()["rows"]
+    assert rows[0]["normalized"]["transaction_date"] == "2026-07-01"
+    assert rows[0]["normalized"]["type"] == "expense"
+    assert rows[1]["normalized"]["transaction_date"] == "2026-07-02"
+    assert rows[1]["normalized"]["type"] == "income"
+
+
+def test_preview_csv_accepts_payment_date_transaction_day_and_income_expense_aliases(client):
+    token = register_and_login(client, "import-zh-date-type-aliases@example.com")
+    payment_date_content = make_csv_bytes(
+        "付款日期,金額,收入支出,分類\n"
+        "2026-07-03,88,支出,交通\n"
+    )
+    transaction_day_content = make_csv_bytes(
+        "交易日,金額,收入支出,分類\n"
+        "2026-07-04,3000,收入,獎金\n"
+    )
+
+    payment_date_response = preview_import(client, token, file_name="payment-date.csv", content=payment_date_content)
+    transaction_day_response = preview_import(client, token, file_name="transaction-day.csv", content=transaction_day_content)
+
+    assert payment_date_response.status_code == 201
+    assert payment_date_response.json()["rows"][0]["normalized"]["transaction_date"] == "2026-07-03"
+    assert payment_date_response.json()["rows"][0]["normalized"]["type"] == "expense"
+    assert transaction_day_response.status_code == 201
+    assert transaction_day_response.json()["rows"][0]["normalized"]["transaction_date"] == "2026-07-04"
+    assert transaction_day_response.json()["rows"][0]["normalized"]["type"] == "income"
+
+
 def test_preview_valid_xlsx(client):
     token = register_and_login(client, "import-xlsx@example.com")
     content = make_xlsx_bytes(
@@ -155,11 +195,12 @@ def test_confirm_import_creates_valid_rows_and_skips_invalid_or_duplicates(clien
 
     preview = preview_import(client, token, file_name="transactions.csv", content=content)
     batch_id = preview.json()["batch"]["id"]
+    selected_row_numbers = [row["source_row_number"] for row in preview.json()["rows"]]
 
     confirm = client.post(
         f"/api/imports/transactions/{batch_id}/confirm",
         headers=auth_headers(token),
-        json={},
+        json={"selected_row_numbers": selected_row_numbers},
     )
 
     assert confirm.status_code == 200
@@ -171,6 +212,56 @@ def test_confirm_import_creates_valid_rows_and_skips_invalid_or_duplicates(clien
     expenses = client.get("/api/expenses", headers=auth_headers(token))
     assert expenses.status_code == 200
     assert len(expenses.json()) == 2
+
+
+def test_confirm_import_with_null_selected_rows_imports_all_valid_rows_only(client):
+    token = register_and_login(client, "import-null-selected@example.com")
+    client.post(
+        "/api/expenses",
+        headers=auth_headers(token),
+        json={"amount": 120, "category": "Food", "type": "expense", "date": "2026-07-01", "note": "Coffee"},
+    )
+    content = make_csv_bytes(
+        "date,amount,type,category,note\n"
+        "2026-07-02,88,expense,Food,Tea\n"
+        "2026-07-01,120,expense,Food,Coffee\n"
+        "bad-date,50,expense,Food,Oops\n"
+    )
+    preview = preview_import(client, token, file_name="transactions.csv", content=content)
+    batch_id = preview.json()["batch"]["id"]
+
+    confirm = client.post(
+        f"/api/imports/transactions/{batch_id}/confirm",
+        headers=auth_headers(token),
+        json={"selected_row_numbers": None},
+    )
+
+    assert confirm.status_code == 200
+    payload = confirm.json()
+    assert payload["created_count"] == 1
+    assert payload["skipped_count"] == 0
+    assert payload["duplicate_count"] == 0
+    assert payload["error_count"] == 0
+
+
+def test_confirm_import_with_empty_selected_rows_returns_clear_400(client):
+    token = register_and_login(client, "import-empty-selected@example.com")
+    preview = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=make_csv_bytes("date,amount,type,category,note\n2026-07-02,88,expense,Food,Tea\n"),
+    )
+    batch_id = preview.json()["batch"]["id"]
+
+    confirm = client.post(
+        f"/api/imports/transactions/{batch_id}/confirm",
+        headers=auth_headers(token),
+        json={"selected_row_numbers": []},
+    )
+
+    assert confirm.status_code == 400
+    assert confirm.json()["detail"] == "Select at least one valid row to import."
 
 
 def test_confirm_import_with_selected_rows(client):

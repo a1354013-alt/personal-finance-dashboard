@@ -10,7 +10,7 @@ export function previewTransactionImport(file) {
 
 export function confirmTransactionImport(batchId, selectedRows) {
   return api.post(`/imports/transactions/${batchId}/confirm`, {
-    selected_row_numbers: Array.isArray(selectedRows) && selectedRows.length ? selectedRows : null
+    selected_row_numbers: Array.isArray(selectedRows) ? selectedRows : null
   })
 }
 
