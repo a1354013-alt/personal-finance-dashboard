@@ -80,6 +80,34 @@ function taiwanItem(overrides = {}) {
   }
 }
 
+function usItem(overrides = {}) {
+  return {
+    id: 2,
+    stock_code: 'AAPL',
+    symbol: 'AAPL',
+    name: 'Apple',
+    market: 'US',
+    exchange: null,
+    currency: 'USD',
+    price: 150,
+    last_price: 150,
+    previous_close: 148,
+    price_change: 2,
+    change_percent: 1.3513,
+    date: '2026-07-06',
+    volume: 55000000,
+    provider: 'fake-us',
+    price_updated_at: '2026-07-06T01:00:00Z',
+    sync_status: 'ready',
+    sync_required: false,
+    sync_error: null,
+    price_sync_status: 'success',
+    last_sync_error: null,
+    last_sync_attempt_at: '2026-07-06T01:00:00Z',
+    ...overrides
+  }
+}
+
 function mountStocksPage() {
   localStorage.setItem('locale', 'en')
   return mount(Stocks, {
@@ -288,6 +316,49 @@ describe('Stocks page', () => {
 
     await vi.waitFor(() => {
       expect(deleteStockAlertMock).toHaveBeenCalledWith(10)
+    })
+  })
+
+  it('formats each alert with its own watchlist currency', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [usItem(), taiwanItem()] }))
+    listStockAlertsMock.mockResolvedValue([
+      {
+        id: 20,
+        user_id: 1,
+        watchlist_item_id: 2,
+        symbol: 'AAPL',
+        condition_type: 'above',
+        target_price: 155,
+        is_active: true,
+        triggered_at: null,
+        last_checked_at: null,
+        last_price_at_trigger: null,
+        created_at: '2026-07-06T01:00:00Z',
+        updated_at: '2026-07-06T01:00:00Z'
+      },
+      {
+        id: 21,
+        user_id: 1,
+        watchlist_item_id: 1,
+        symbol: '2330.TW',
+        condition_type: 'below',
+        target_price: 900,
+        is_active: false,
+        triggered_at: '2026-07-06T02:00:00Z',
+        last_checked_at: '2026-07-06T02:00:00Z',
+        last_price_at_trigger: 880,
+        created_at: '2026-07-06T01:00:00Z',
+        updated_at: '2026-07-06T02:00:00Z'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('AAPL')
+      expect(wrapper.text()).toContain('Above US$ 155')
+      expect(wrapper.text()).toContain('Below NT$ 900')
+      expect(wrapper.text()).toContain('Triggered at NT$ 880')
     })
   })
 

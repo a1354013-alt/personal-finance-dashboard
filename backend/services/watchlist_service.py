@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from db.database import SessionLocal
-from models.stock import StockPriceHistoryORM, StockPriceORM, WatchlistORM
+from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from providers.stock_price import get_stock_price_provider
 from providers.stock_price.base import StockQuote
 from services.stock_data_service import StockDataService
@@ -134,6 +134,10 @@ def delete_watchlist_item(db: Session, *, user_id: int, item_id: int) -> bool:
     item = db.query(WatchlistORM).filter(WatchlistORM.id == item_id, WatchlistORM.user_id == user_id).first()
     if not item:
         return False
+    db.query(StockPriceAlertORM).filter(
+        StockPriceAlertORM.user_id == user_id,
+        StockPriceAlertORM.watchlist_item_id == item_id,
+    ).delete(synchronize_session=False)
     db.delete(item)
     db.commit()
     return True

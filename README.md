@@ -227,8 +227,11 @@ The v1.3 stock workspace adds technical context and simple in-app alert tracking
 
 - MA5, MA20, and RSI14 are calculated from stored stock price history only.
 - Indicator responses include a clear status when price history is insufficient or unavailable.
-- Price alerts are user-scoped, in-app only, and support above/below target checks against the latest stored watchlist price.
-- Stock insights and indicator displays are informational only and not financial advice. The app does not provide buy/sell recommendations, target prices, broker integration, email notifications, or LINE notifications.
+- Price alerts are user-scoped, in-app only, and support manual above/below target checks against the latest stored watchlist price.
+- Alerts are not a real-time background monitoring system yet. Users trigger evaluation with the Stocks page Check Alerts flow.
+- There is currently no email notification, push notification, LINE notification, or broker integration.
+- Future roadmap may include a background scheduler, email notification, or push notification.
+- Stock insights and indicator displays are informational only and not financial advice. The app does not provide buy/sell recommendations or target prices.
 
 Demo flow:
 
@@ -237,7 +240,7 @@ Demo flow:
 3. Open the Stocks page.
 4. View MA5, MA20, and RSI14 for seeded watchlist symbols.
 5. Create a price alert for a watchlist item.
-6. Run Check Alerts from the Stocks page.
+6. Run Check Alerts from the Stocks page to manually evaluate alert conditions.
 7. Review active or triggered in-app alert state.
 
 ## Transaction Import

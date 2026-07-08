@@ -245,7 +245,7 @@
               <button class="btn btn-danger" @click="handleDeleteAlert(alert.id)">{{ t('common.delete') }}</button>
             </div>
             <small v-if="alert.triggered_at">
-              {{ t('stocks.alerts.triggeredAt', { price: formatPrice(alert.last_price_at_trigger, selectedCurrency) }) }}
+              {{ t('stocks.alerts.triggeredAt', { price: formatPrice(alert.last_price_at_trigger, alertCurrency(alert)) }) }}
             </small>
           </li>
         </ul>
@@ -575,7 +575,16 @@ async function handleCheckAlerts() {
 
 function alertConditionText(alert) {
   const condition = alert.condition_type === 'below' ? t('stocks.alerts.below') : t('stocks.alerts.above')
-  return `${condition} ${formatPrice(alert.target_price, selectedCurrency.value)}`
+  return `${condition} ${formatPrice(alert.target_price, alertCurrency(alert))}`
+}
+
+function alertCurrency(alert) {
+  const item = stockStore.watchlist.find((candidate) => (
+    candidate.id === alert.watchlist_item_id ||
+    candidate.stock_code === alert.symbol ||
+    candidate.symbol === alert.symbol
+  ))
+  return item?.currency || selectedCurrency.value
 }
 
 onMounted(() => {

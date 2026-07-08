@@ -204,3 +204,33 @@ def test_delete_alert(client):
 
     assert deleted.status_code == 204
     assert client.get("/api/stocks/alerts", headers=headers).json() == []
+
+
+def test_deleting_watchlist_item_removes_only_same_user_related_alerts(client):
+    token_a = register_and_login(client, "alerts-delete-watchlist-a@example.com")
+    token_b = register_and_login(client, "alerts-delete-watchlist-b@example.com")
+    headers_a = auth_headers(token_a)
+    headers_b = auth_headers(token_b)
+    item_a = _create_watchlist_item(client, headers_a, "2330")
+    item_b = _create_watchlist_item(client, headers_b, "2330")
+
+    alert_a = client.post(
+        f"/api/stocks/watchlist/{item_a['id']}/alerts",
+        headers=headers_a,
+        json={"condition_type": "above", "target_price": 1000},
+    )
+    alert_b = client.post(
+        f"/api/stocks/watchlist/{item_b['id']}/alerts",
+        headers=headers_b,
+        json={"condition_type": "below", "target_price": 900},
+    )
+    assert alert_a.status_code == 201
+    assert alert_b.status_code == 201
+
+    deleted = client.delete(f"/api/stocks/watchlist/{item_a['id']}", headers=headers_a)
+
+    assert deleted.status_code == 204
+    assert client.get("/api/stocks/alerts", headers=headers_a).json() == []
+    user_b_alerts = client.get("/api/stocks/alerts", headers=headers_b).json()
+    assert len(user_b_alerts) == 1
+    assert user_b_alerts[0]["id"] == alert_b.json()["id"]
