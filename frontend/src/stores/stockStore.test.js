@@ -24,6 +24,43 @@ vi.mock('@/api/stocks', () => ({
     watch_points: ['Freshness'],
     disclaimer: 'This is informational only and not financial advice.'
   })),
+  fetchStockIndicators: vi.fn(async () => ({
+    watchlist_item_id: 1,
+    symbol: '2330.TW',
+    latest_close: 1000,
+    ma5: 980,
+    ma20: 950,
+    rsi14: 66,
+    status: 'ready',
+    disclaimer: 'This is informational only and not financial advice.'
+  })),
+  listStockAlerts: vi.fn(async () => ([])),
+  createStockAlert: vi.fn(async () => ({
+    id: 1,
+    user_id: 1,
+    watchlist_item_id: 1,
+    symbol: '2330.TW',
+    condition_type: 'above',
+    target_price: 1050,
+    is_active: true,
+    triggered_at: null,
+    created_at: '2026-07-06T01:00:00Z',
+    updated_at: '2026-07-06T01:00:00Z'
+  })),
+  updateStockAlert: vi.fn(async () => ({
+    id: 1,
+    user_id: 1,
+    watchlist_item_id: 1,
+    symbol: '2330.TW',
+    condition_type: 'above',
+    target_price: 1050,
+    is_active: false,
+    triggered_at: null,
+    created_at: '2026-07-06T01:00:00Z',
+    updated_at: '2026-07-06T01:05:00Z'
+  })),
+  deleteStockAlert: vi.fn(async () => ({})),
+  checkStockAlerts: vi.fn(async () => ({ checked_count: 1, triggered_count: 0, alerts: [] })),
   getStockDashboard: vi.fn(async () => ({
     selected_stock_code: 'AAPL',
     watchlist: [],
@@ -36,10 +73,16 @@ vi.mock('@/api/stocks', () => ({
 import { useStockStore } from '@/stores/stockStore'
 import {
   analyzeWatchlistItem,
+  checkStockAlerts,
+  createStockAlert,
+  deleteStockAlert,
+  fetchStockIndicators,
   getFilterResults,
+  listStockAlerts,
   syncSingleFundamentals,
   syncWatchlistItem,
-  syncWatchlistFundamentals
+  syncWatchlistFundamentals,
+  updateStockAlert
 } from '@/api/stocks'
 
 describe('stockStore', () => {
@@ -141,5 +184,35 @@ describe('stockStore', () => {
     expect(result.disclaimer).toContain('not financial advice')
     expect(store.aiAnalysisById[1].risk_notes).toEqual(['Volatility'])
     expect(store.analyzingIds).toEqual([])
+  })
+
+  it('fetchStockIndicators stores indicator state by watchlist item id', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    const result = await store.fetchStockIndicators(1)
+
+    expect(fetchStockIndicators).toHaveBeenCalledWith(1)
+    expect(result.ma20).toBe(950)
+    expect(store.indicatorsByItemId[1].rsi14).toBe(66)
+  })
+
+  it('manages stock alerts', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    await store.listStockAlerts()
+    const created = await store.createStockAlert(1, { condition_type: 'above', target_price: 1050 })
+    const updated = await store.updateStockAlert(created.id, { is_active: false })
+    await store.checkStockAlerts()
+    await store.deleteStockAlert(created.id)
+
+    expect(listStockAlerts).toHaveBeenCalled()
+    expect(createStockAlert).toHaveBeenCalledWith(1, { condition_type: 'above', target_price: 1050 })
+    expect(updateStockAlert).toHaveBeenCalledWith(1, { is_active: false })
+    expect(checkStockAlerts).toHaveBeenCalled()
+    expect(deleteStockAlert).toHaveBeenCalledWith(1)
+    expect(updated.is_active).toBe(false)
+    expect(store.alerts).toEqual([])
   })
 })

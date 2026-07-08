@@ -68,6 +68,13 @@ def test_seed_reset_creates_current_month_demo_data(client):
     assert taiwan_by_code["2330.TW"]["market"] == "Taiwan"
     assert taiwan_by_code["2330.TW"]["last_price"] is not None
     assert stock_payload["price_history"]
+    indicators = client.get(f"/api/stocks/watchlist/{taiwan_by_code['2330.TW']['id']}/indicators", headers=headers)
+    assert indicators.status_code == 200
+    indicator_payload = indicators.json()
+    assert indicator_payload["status"] == "ready"
+    assert indicator_payload["ma5"] is not None
+    assert indicator_payload["ma20"] is not None
+    assert indicator_payload["rsi14"] is not None
 
 
 def test_relative_seed_dates_are_not_double_shifted_or_future_dated():

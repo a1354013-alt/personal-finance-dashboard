@@ -6,7 +6,7 @@ The current release candidate is intended for local demo use: it should start fr
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.2.0-rc1 release candidate.
+This repository is a portfolio/demo project prepared for the v1.3.0-rc1 release candidate.
 
 Implemented demo surface:
 
@@ -16,6 +16,7 @@ Implemented demo surface:
 - Dashboard analytics
 - Budget management and budget health summaries
 - Stock watchlist
+- Taiwan stock technical indicators and in-app price alerts
 - Monthly reports
 - AI-assisted finance summary
 - Transaction import preview/confirm flow
@@ -33,7 +34,7 @@ Demo readiness already in place:
 - Expense and income tracking
 - Monthly budget setup and budget health summaries
 - Dashboard cards, charts, recent transactions, and report export
-- Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
+- Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, MA5/MA20/RSI14 technical indicators, in-app price alerts, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
 - Transaction import for CSV/XLSX files with preview, row validation, duplicate detection, and batch history
 - CSV and PDF monthly report export
@@ -96,7 +97,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Start
 
-Windows is the supported F5 path for this v1.2.0-rc1 release candidate.
+Windows is the supported F5 path for this v1.3.0-rc1 release candidate.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -220,6 +221,25 @@ npm run frontend:build
 npm run frontend:audit
 ```
 
+## v1.3 Stock Indicators and Price Alerts
+
+The v1.3 stock workspace adds technical context and simple in-app alert tracking for Taiwan stock and ETF watchlist items:
+
+- MA5, MA20, and RSI14 are calculated from stored stock price history only.
+- Indicator responses include a clear status when price history is insufficient or unavailable.
+- Price alerts are user-scoped, in-app only, and support above/below target checks against the latest stored watchlist price.
+- Stock insights and indicator displays are informational only and not financial advice. The app does not provide buy/sell recommendations, target prices, broker integration, email notifications, or LINE notifications.
+
+Demo flow:
+
+1. Run `python seed_data.py --reset` from `backend/`.
+2. Log in with the seeded demo account.
+3. Open the Stocks page.
+4. View MA5, MA20, and RSI14 for seeded watchlist symbols.
+5. Create a price alert for a watchlist item.
+6. Run Check Alerts from the Stocks page.
+7. Review active or triggered in-app alert state.
+
 ## Transaction Import
 
 The v1.2 MVP transaction import flow is intentionally small and safe:
@@ -232,9 +252,9 @@ The v1.2 MVP transaction import flow is intentionally small and safe:
 
 Recognized columns include these common names:
 
-- Date: `date`, `transaction_date`, `日期`, `交易日期`, `入帳日期`
+- Date: `date`, `transaction_date`, `日期`, `交易日期`, `入帳日期`, `瘨祥?交?`, `隞狡?交?`, `鈭斗???`
 - Amount: `amount`, `金額`, `交易金額`
-- Type: `type`, `類型`, `收支類型`, `交易類型`
+- Type: `type`, `類型`, `收支類型`, `交易類型`, `?嗆`, `?嗅?臬`
 - Category: `category`, `分類`, `類別`
 - Description: `description`, `note`, `memo`, `摘要`, `說明`, `備註`
 - Payment method: `payment_method`, `payment method`, `支付方式`, `付款方式`

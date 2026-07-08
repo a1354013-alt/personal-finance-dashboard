@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
-from sqlalchemy import BigInteger, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -77,6 +77,31 @@ class StockPriceHistoryORM(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("stock_code", "trade_date", name="_stock_history_date_uc"),)
+
+
+class StockPriceAlertORM(Base):
+    __tablename__ = "stock_price_alerts"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    watchlist_item_id = Column(Integer, ForeignKey("watchlist.id"), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False, index=True)
+    condition_type = Column(String(10), nullable=False)
+    target_price = Column(Numeric(18, 4), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    triggered_at = Column(DateTime, nullable=True)
+    last_checked_at = Column(DateTime, nullable=True)
+    last_price_at_trigger = Column(Numeric(18, 4), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("UserORM")
+    watchlist_item = relationship("WatchlistORM")
 
 
 class WatchlistCreate(BaseModel):
@@ -179,6 +204,78 @@ class StockPriceHistoryPoint(BaseModel):
         if value is None:
             return None
         return float(value)
+
+
+class StockIndicatorsResponse(BaseModel):
+    watchlist_item_id: int
+    symbol: str
+    as_of_date: Optional[DateType] = None
+    latest_close: Optional[Decimal] = None
+    ma5: Optional[Decimal] = None
+    ma20: Optional[Decimal] = None
+    rsi14: Optional[Decimal] = None
+    status: Literal["ready", "insufficient_history", "no_price_history"]
+    disclaimer: str
+
+    @field_serializer("latest_close", "ma5", "ma20", "rsi14")
+    def serialize_indicator_price(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class StockPriceAlertCreate(BaseModel):
+    condition_type: Literal["above", "below"]
+    target_price: Decimal
+
+    @field_validator("target_price")
+    @classmethod
+    def validate_target_price(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Target price must be greater than 0.")
+        return value
+
+
+class StockPriceAlertUpdate(BaseModel):
+    condition_type: Optional[Literal["above", "below"]] = None
+    target_price: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+
+    @field_validator("target_price")
+    @classmethod
+    def validate_optional_target_price(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("Target price must be greater than 0.")
+        return value
+
+
+class StockPriceAlertResponse(BaseModel):
+    id: int
+    user_id: int
+    watchlist_item_id: int
+    symbol: str
+    condition_type: Literal["above", "below"]
+    target_price: Decimal
+    is_active: bool
+    triggered_at: Optional[datetime] = None
+    last_checked_at: Optional[datetime] = None
+    last_price_at_trigger: Optional[Decimal] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("target_price", "last_price_at_trigger")
+    def serialize_alert_price(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class StockPriceAlertCheckResponse(BaseModel):
+    checked_count: int
+    triggered_count: int
+    alerts: list[StockPriceAlertResponse]
 
 
 class StockAIExplanationResponse(BaseModel):

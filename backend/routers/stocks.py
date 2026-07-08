@@ -12,6 +12,11 @@ from models.stock import (
     StockDashboardResponse,
     StockFilterRequest,
     StockFilterResult,
+    StockIndicatorsResponse,
+    StockPriceAlertCheckResponse,
+    StockPriceAlertCreate,
+    StockPriceAlertResponse,
+    StockPriceAlertUpdate,
     StockPriceHistoryPoint,
     WatchlistCreate,
     WatchlistItemResponse,
@@ -24,7 +29,15 @@ from services.fundamentals_service import get_latest_fundamentals_by_code, queue
 from services.job_service import create_job, find_active_job_by_payload
 from services.stock_data_service import StockDataService
 from services.stock_filter import evaluate_stock
+from services.stock_alert_service import (
+    check_stock_alerts,
+    create_stock_alert,
+    delete_stock_alert,
+    list_stock_alerts,
+    update_stock_alert,
+)
 from services.stock_ai_analysis_service import build_stock_ai_analysis
+from services.stock_indicator_service import build_stock_indicators
 from services.stocks_ai_explanation_service import build_stock_ai_explanation
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
 from services.watchlist_service import (
@@ -138,6 +151,82 @@ def sync_watchlist_item_price(
     sync_watchlist_item_now(db, watchlist_item=watchlist_item)
     db.refresh(watchlist_item)
     return build_watchlist_item(db, item=watchlist_item)
+
+
+@router.get("/watchlist/{item_id}/indicators", response_model=StockIndicatorsResponse)
+def get_watchlist_item_indicators(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    watchlist_item = (
+        db.query(WatchlistORM).filter(WatchlistORM.id == item_id, WatchlistORM.user_id == current_user.id).first()
+    )
+    if not watchlist_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
+    return build_stock_indicators(db, watchlist_item=watchlist_item)
+
+
+@router.get("/alerts", response_model=list[StockPriceAlertResponse])
+def get_stock_alerts(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    return list_stock_alerts(db, user_id=current_user.id)
+
+
+@router.post("/watchlist/{item_id}/alerts", response_model=StockPriceAlertResponse, status_code=status.HTTP_201_CREATED)
+def create_watchlist_item_alert(
+    item_id: int,
+    payload: StockPriceAlertCreate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    watchlist_item = (
+        db.query(WatchlistORM).filter(WatchlistORM.id == item_id, WatchlistORM.user_id == current_user.id).first()
+    )
+    if not watchlist_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found.")
+    return create_stock_alert(
+        db,
+        user_id=current_user.id,
+        watchlist_item=watchlist_item,
+        condition_type=payload.condition_type,
+        target_price=payload.target_price,
+    )
+
+
+@router.put("/alerts/{alert_id}", response_model=StockPriceAlertResponse)
+def update_existing_stock_alert(
+    alert_id: int,
+    payload: StockPriceAlertUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    alert = update_stock_alert(db, user_id=current_user.id, alert_id=alert_id, payload=payload)
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock alert not found.")
+    return alert
+
+
+@router.delete("/alerts/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_existing_stock_alert(
+    alert_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    ok = delete_stock_alert(db, user_id=current_user.id, alert_id=alert_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock alert not found.")
+
+
+@router.post("/alerts/check", response_model=StockPriceAlertCheckResponse)
+def check_existing_stock_alerts(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    checked_count, triggered = check_stock_alerts(db, user_id=current_user.id)
+    return {"checked_count": checked_count, "triggered_count": len(triggered), "alerts": triggered}
 
 
 @router.post("/watchlist/{item_id}/ai-analysis", response_model=StockAIAnalysisResponse)

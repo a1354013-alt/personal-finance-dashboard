@@ -63,3 +63,27 @@ export function getStockHistory(stockCode) {
 export function getStockDashboard(selectedCode) {
   return api.get('/stocks/dashboard', { params: selectedCode ? { selected_code: selectedCode } : {} })
 }
+
+export function fetchStockIndicators(watchlistItemId) {
+  return api.get(`/stocks/watchlist/${watchlistItemId}/indicators`)
+}
+
+export function listStockAlerts() {
+  return api.get('/stocks/alerts')
+}
+
+export function createStockAlert(watchlistItemId, payload) {
+  return api.post(`/stocks/watchlist/${watchlistItemId}/alerts`, payload)
+}
+
+export function updateStockAlert(alertId, payload) {
+  return api.put(`/stocks/alerts/${alertId}`, payload)
+}
+
+export function deleteStockAlert(alertId) {
+  return api.delete(`/stocks/alerts/${alertId}`)
+}
+
+export function checkStockAlerts() {
+  return api.post('/stocks/alerts/check')
+}

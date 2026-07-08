@@ -23,6 +23,7 @@ EXPECTED_TABLES = {
     "watchlist",
     "stock_prices",
     "stock_price_history",
+    "stock_price_alerts",
     "fundamentals",
     "sync_jobs",
     "refresh_tokens",

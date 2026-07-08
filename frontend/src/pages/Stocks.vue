@@ -88,6 +88,32 @@
           </div>
         </section>
 
+        <section class="card indicators-card">
+          <div class="section-header">
+            <h2>{{ t('stocks.indicators.title') }}</h2>
+            <span v-if="stockStore.selectedIndicators" class="badge" :class="indicatorBadgeClass(stockStore.selectedIndicators.status)">
+              {{ indicatorStatusText(stockStore.selectedIndicators.status) }}
+            </span>
+          </div>
+          <div v-if="stockStore.indicatorsError" class="error-msg">{{ stockStore.indicatorsError }}</div>
+          <div v-else-if="stockStore.selectedWatchlistItem && stockStore.isIndicatorLoading(stockStore.selectedWatchlistItem.id)" class="loading-text">
+            {{ t('stocks.indicators.loading') }}
+          </div>
+          <div v-else-if="!stockStore.selectedIndicators" class="empty-state">{{ t('stocks.indicators.empty') }}</div>
+          <template v-else>
+            <div v-if="stockStore.selectedIndicators.status !== 'ready'" class="tile-warning">
+              {{ indicatorStatusText(stockStore.selectedIndicators.status) }}
+            </div>
+            <div class="indicator-grid">
+              <article v-for="item in indicatorItems" :key="item.label" class="indicator-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </article>
+            </div>
+            <small class="disclaimer-text">{{ stockStore.selectedIndicators.disclaimer }}</small>
+          </template>
+        </section>
+
         <section class="card ai-card">
           <h2>{{ t('stocks.aiExplanation') }}</h2>
           <template v-if="aiExplanation">
@@ -173,6 +199,58 @@
         </div>
       </section>
 
+      <section class="card alerts-card">
+        <div class="section-header">
+          <h2>{{ t('stocks.alerts.title') }}</h2>
+          <button class="btn btn-secondary" :disabled="stockStore.alertsChecking" @click="handleCheckAlerts">
+            {{ stockStore.alertsChecking ? t('stocks.alerts.checking') : t('stocks.alerts.check') }}
+          </button>
+        </div>
+        <form v-if="stockStore.selectedWatchlistItem" class="form-row alert-form" @submit.prevent="handleCreateAlert">
+          <div class="form-group">
+            <label for="alert-condition">{{ t('stocks.alerts.condition') }}</label>
+            <select id="alert-condition" v-model="newAlert.condition_type">
+              <option value="above">{{ t('stocks.alerts.above') }}</option>
+              <option value="below">{{ t('stocks.alerts.below') }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="alert-price">{{ t('stocks.alerts.targetPrice') }}</label>
+            <input id="alert-price" v-model.number="newAlert.target_price" type="number" min="0.01" step="0.01" required />
+          </div>
+          <button type="submit" class="btn btn-primary" :disabled="isCreatingAlert">
+            {{ isCreatingAlert ? t('stocks.alerts.creating') : t('stocks.alerts.create') }}
+          </button>
+        </form>
+        <div v-if="stockStore.alertsError" class="error-msg">{{ stockStore.alertsError }}</div>
+        <div v-else-if="stockStore.alertsLoading" class="loading-text">{{ t('stocks.alerts.loading') }}</div>
+        <div v-else-if="stockStore.alerts.length === 0" class="empty-state">{{ t('stocks.alerts.empty') }}</div>
+        <ul v-else class="alert-list">
+          <li v-for="alert in stockStore.alerts" :key="alert.id" class="alert-row">
+            <div>
+              <strong>{{ alert.symbol }}</strong>
+              <span>{{ alertConditionText(alert) }}</span>
+            </div>
+            <span class="badge" :class="alert.triggered_at ? 'badge-danger' : alert.is_active ? 'badge-success' : 'badge-warning'">
+              {{ alert.triggered_at ? t('stocks.alerts.triggered') : alert.is_active ? t('stocks.alerts.active') : t('stocks.alerts.inactive') }}
+            </span>
+            <div class="alert-actions">
+              <button
+                class="btn btn-secondary"
+                :disabled="Boolean(alert.triggered_at)"
+                @click="handleToggleAlert(alert)"
+              >
+                {{ alert.is_active ? t('stocks.alerts.deactivate') : t('stocks.alerts.activate') }}
+              </button>
+              <button class="btn btn-danger" @click="handleDeleteAlert(alert.id)">{{ t('common.delete') }}</button>
+            </div>
+            <small v-if="alert.triggered_at">
+              {{ t('stocks.alerts.triggeredAt', { price: formatPrice(alert.last_price_at_trigger, selectedCurrency) }) }}
+            </small>
+          </li>
+        </ul>
+      </section>
+
       <div class="stocks-grid">
         <section class="card">
           <h2>{{ t('stocks.passedScreen') }}</h2>
@@ -216,6 +294,8 @@ import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 const stockStore = useStockStore()
 const newStockCode = ref('')
 const isAdding = ref(false)
+const isCreatingAlert = ref(false)
+const newAlert = ref({ condition_type: 'above', target_price: null })
 const actionMessage = ref('')
 const actionError = ref('')
 const { t, locale } = useI18n()
@@ -235,6 +315,18 @@ function statusBadgeClass(status) {
   if (status === 'success') return 'badge-success'
   if (status === 'failed') return 'badge-danger'
   return 'badge-warning'
+}
+
+function indicatorBadgeClass(status) {
+  if (status === 'ready') return 'badge-success'
+  if (status === 'insufficient_history') return 'badge-warning'
+  return 'badge-danger'
+}
+
+function indicatorStatusText(status) {
+  if (status === 'ready') return t('stocks.indicators.ready')
+  if (status === 'insufficient_history') return t('stocks.indicators.insufficient')
+  return t('stocks.indicators.noHistory')
 }
 
 function fundamentalsMetaText(stock) {
@@ -273,6 +365,19 @@ const priceTrend = computed(() => ({
 
 const aiExplanation = computed(() => stockStore.dashboard?.ai_explanation || null)
 
+const selectedCurrency = computed(() => stockStore.selectedWatchlistItem?.currency || null)
+
+const indicatorItems = computed(() => {
+  const indicators = stockStore.selectedIndicators
+  if (!indicators) return []
+  return [
+    { label: 'MA5', value: indicators.ma5 == null ? t('common.empty') : formatPrice(indicators.ma5, selectedCurrency.value) },
+    { label: 'MA20', value: indicators.ma20 == null ? t('common.empty') : formatPrice(indicators.ma20, selectedCurrency.value) },
+    { label: 'RSI14', value: indicators.rsi14 == null ? t('common.empty') : indicators.rsi14.toFixed(2) },
+    { label: t('stocks.indicators.latestClose'), value: indicators.latest_close == null ? t('common.empty') : formatPrice(indicators.latest_close, selectedCurrency.value) }
+  ]
+})
+
 const aiExplanationDisplayMessage = computed(() => {
   const payload = aiExplanation.value
   if (!payload) return t('stocks.ai.explanationUnavailable')
@@ -303,9 +408,10 @@ const fundamentalsItems = computed(() => {
 })
 
 async function refreshStockWorkspace(selectedCode = null) {
-  await Promise.all([
+  await Promise.allSettled([
     stockStore.fetchDashboard(selectedCode),
-    stockStore.fetchFilterResults()
+    stockStore.fetchFilterResults(),
+    stockStore.listStockAlerts()
   ])
 }
 
@@ -413,6 +519,63 @@ async function handleRetryExplanation() {
 
 async function handleSelectStock(stockCode) {
   await stockStore.fetchDashboard(stockCode)
+}
+
+async function handleCreateAlert() {
+  if (!stockStore.selectedWatchlistItem) return
+  actionMessage.value = ''
+  actionError.value = ''
+  isCreatingAlert.value = true
+  try {
+    await stockStore.createStockAlert(stockStore.selectedWatchlistItem.id, {
+      condition_type: newAlert.value.condition_type,
+      target_price: Number(newAlert.value.target_price)
+    })
+    newAlert.value = { condition_type: 'above', target_price: null }
+    actionMessage.value = t('stocks.alerts.created')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  } finally {
+    isCreatingAlert.value = false
+  }
+}
+
+async function handleToggleAlert(alert) {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await stockStore.updateStockAlert(alert.id, { is_active: !alert.is_active })
+    actionMessage.value = alert.is_active ? t('stocks.alerts.deactivated') : t('stocks.alerts.activated')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleDeleteAlert(alertId) {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await stockStore.deleteStockAlert(alertId)
+    actionMessage.value = t('common.delete')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleCheckAlerts() {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    const result = await stockStore.checkStockAlerts()
+    actionMessage.value = t('stocks.alerts.checked', { count: result?.triggered_count || 0 })
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+function alertConditionText(alert) {
+  const condition = alert.condition_type === 'below' ? t('stocks.alerts.below') : t('stocks.alerts.above')
+  return `${condition} ${formatPrice(alert.target_price, selectedCurrency.value)}`
 }
 
 onMounted(() => {
@@ -567,6 +730,7 @@ onMounted(() => {
 }
 
 .fundamentals-card,
+.indicators-card,
 .ai-card {
   min-height: 340px;
 }
@@ -583,6 +747,64 @@ onMounted(() => {
   background: #f5f8fb;
   display: grid;
   gap: 8px;
+}
+
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.indicator-item {
+  min-height: 82px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5f8fb;
+  display: grid;
+  gap: 8px;
+}
+
+.indicator-item span,
+.disclaimer-text,
+.alert-row small {
+  color: #66788a;
+}
+
+.alert-form {
+  align-items: end;
+  margin: 14px 0;
+}
+
+.alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.alert-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e1eaf2;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+
+.alert-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.alert-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .ai-explanation {
@@ -629,5 +851,16 @@ onMounted(() => {
   padding: 14px;
   border-radius: 14px;
   background: #f7fafc;
+}
+
+@media (max-width: 760px) {
+  .alert-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .alert-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

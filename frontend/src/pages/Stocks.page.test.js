@@ -12,6 +12,12 @@ const addToWatchlistMock = vi.fn()
 const syncWatchlistItemMock = vi.fn()
 const analyzeWatchlistItemMock = vi.fn()
 const syncSingleFundamentalsMock = vi.fn()
+const fetchStockIndicatorsMock = vi.fn()
+const listStockAlertsMock = vi.fn()
+const createStockAlertMock = vi.fn()
+const updateStockAlertMock = vi.fn()
+const deleteStockAlertMock = vi.fn()
+const checkStockAlertsMock = vi.fn()
 
 vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
@@ -27,7 +33,13 @@ vi.mock('@/api/stocks', () => ({
   filterSingleStock: vi.fn(async () => ({ stock_code: 'AAPL', passed: true, fail_reasons: [] })),
   getAiStockExplain: vi.fn(async () => ({ text: 'ok' })),
   syncWatchlistFundamentals: vi.fn(async () => ([])),
-  syncSingleFundamentals: (...args) => syncSingleFundamentalsMock(...args)
+  syncSingleFundamentals: (...args) => syncSingleFundamentalsMock(...args),
+  fetchStockIndicators: (...args) => fetchStockIndicatorsMock(...args),
+  listStockAlerts: (...args) => listStockAlertsMock(...args),
+  createStockAlert: (...args) => createStockAlertMock(...args),
+  updateStockAlert: (...args) => updateStockAlertMock(...args),
+  deleteStockAlert: (...args) => deleteStockAlertMock(...args),
+  checkStockAlerts: (...args) => checkStockAlertsMock(...args)
 }))
 
 function buildDashboard({ watchlist = [], aiExplanation = null, fundamentals = null } = {}) {
@@ -88,6 +100,12 @@ describe('Stocks page', () => {
     syncWatchlistItemMock.mockReset()
     analyzeWatchlistItemMock.mockReset()
     syncSingleFundamentalsMock.mockReset()
+    fetchStockIndicatorsMock.mockReset()
+    listStockAlertsMock.mockReset()
+    createStockAlertMock.mockReset()
+    updateStockAlertMock.mockReset()
+    deleteStockAlertMock.mockReset()
+    checkStockAlertsMock.mockReset()
     localStorage.clear()
 
     getFilterResultsMock.mockResolvedValue([])
@@ -100,6 +118,48 @@ describe('Stocks page', () => {
     getStockDashboardMock.mockResolvedValue(buildDashboard())
     addToWatchlistMock.mockResolvedValue(taiwanItem({ id: 2, stock_code: '0050.TW', symbol: '0050.TW' }))
     syncWatchlistItemMock.mockResolvedValue(taiwanItem())
+    fetchStockIndicatorsMock.mockResolvedValue({
+      watchlist_item_id: 1,
+      symbol: '2330.TW',
+      as_of_date: '2026-07-06',
+      latest_close: 1000,
+      ma5: 980,
+      ma20: 950,
+      rsi14: 66.5,
+      status: 'ready',
+      disclaimer: 'This is informational only and not financial advice.'
+    })
+    listStockAlertsMock.mockResolvedValue([])
+    createStockAlertMock.mockResolvedValue({
+      id: 10,
+      user_id: 1,
+      watchlist_item_id: 1,
+      symbol: '2330.TW',
+      condition_type: 'above',
+      target_price: 1050,
+      is_active: true,
+      triggered_at: null,
+      last_checked_at: null,
+      last_price_at_trigger: null,
+      created_at: '2026-07-06T01:00:00Z',
+      updated_at: '2026-07-06T01:00:00Z'
+    })
+    updateStockAlertMock.mockResolvedValue({
+      id: 10,
+      user_id: 1,
+      watchlist_item_id: 1,
+      symbol: '2330.TW',
+      condition_type: 'above',
+      target_price: 1050,
+      is_active: false,
+      triggered_at: null,
+      last_checked_at: null,
+      last_price_at_trigger: null,
+      created_at: '2026-07-06T01:00:00Z',
+      updated_at: '2026-07-06T01:05:00Z'
+    })
+    deleteStockAlertMock.mockResolvedValue({})
+    checkStockAlertsMock.mockResolvedValue({ checked_count: 1, triggered_count: 1, alerts: [] })
     analyzeWatchlistItemMock.mockResolvedValue({
       status: 'ready',
       stock_code: '2330.TW',
@@ -142,6 +202,103 @@ describe('Stocks page', () => {
       expect(wrapper.text()).toContain('NT$ 1,000')
       expect(wrapper.text()).toContain('+50.00 (+5.26%)')
       expect(wrapper.text()).toContain('Taiwan / TWSE')
+    })
+  })
+
+  it('renders indicator values', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [taiwanItem()] }))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(fetchStockIndicatorsMock).toHaveBeenCalledWith(1)
+      expect(wrapper.text()).toContain('Technical Indicators')
+      expect(wrapper.text()).toContain('MA5')
+      expect(wrapper.text()).toContain('NT$ 980')
+      expect(wrapper.text()).toContain('66.50')
+      expect(wrapper.text()).toContain('not financial advice')
+    })
+  })
+
+  it('renders insufficient indicator history state', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [taiwanItem()] }))
+    fetchStockIndicatorsMock.mockResolvedValue({
+      watchlist_item_id: 1,
+      symbol: '2330.TW',
+      as_of_date: '2026-07-06',
+      latest_close: 1000,
+      ma5: 980,
+      ma20: null,
+      rsi14: null,
+      status: 'insufficient_history',
+      disclaimer: 'This is informational only and not financial advice.'
+    })
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Insufficient price history')
+    })
+  })
+
+  it('creates an alert for the selected stock', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [taiwanItem()] }))
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('#alert-price').exists()).toBe(true)
+    })
+
+    await wrapper.find('#alert-price').setValue(1050)
+    await wrapper.find('form.alert-form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(createStockAlertMock).toHaveBeenCalledWith(1, { condition_type: 'above', target_price: 1050 })
+      expect(wrapper.text()).toContain('Alert created.')
+    })
+  })
+
+  it('renders triggered alerts and deletes an alert', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [taiwanItem()] }))
+    listStockAlertsMock.mockResolvedValue([
+      {
+        id: 10,
+        user_id: 1,
+        watchlist_item_id: 1,
+        symbol: '2330.TW',
+        condition_type: 'above',
+        target_price: 1000,
+        is_active: false,
+        triggered_at: '2026-07-06T02:00:00Z',
+        last_checked_at: '2026-07-06T02:00:00Z',
+        last_price_at_trigger: 1050,
+        created_at: '2026-07-06T01:00:00Z',
+        updated_at: '2026-07-06T02:00:00Z'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Triggered')
+      expect(wrapper.text()).toContain('Triggered at NT$ 1,050')
+    })
+
+    await wrapper.find('.alert-row .btn-danger').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(deleteStockAlertMock).toHaveBeenCalledWith(10)
+    })
+  })
+
+  it('renders alert API errors', async () => {
+    getStockDashboardMock.mockResolvedValue(buildDashboard({ watchlist: [taiwanItem()] }))
+    listStockAlertsMock.mockRejectedValue(new Error('Alert API failed'))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Alert API failed')
     })
   })
 

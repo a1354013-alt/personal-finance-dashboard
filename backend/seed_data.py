@@ -7,7 +7,7 @@ from calendar import monthrange
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
-from models.stock import StockPriceHistoryORM, StockPriceORM, WatchlistORM
+from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
 
@@ -83,6 +83,28 @@ FIXED_MOCK_PRICES = [
         "volume": 55000000,
     },
 ]
+
+
+def _build_history_series(latest_price: dict) -> list[dict]:
+    latest_trade_date = latest_price["trade_date"]
+    latest_close = float(latest_price["close"])
+    rows: list[dict] = []
+    for offset in range(24, -1, -1):
+        trade_date = date.fromordinal(latest_trade_date.toordinal() - offset)
+        close = latest_close - (offset * 2.0)
+        rows.append(
+            {
+                "stock_code": latest_price["stock_code"],
+                "trade_date": trade_date,
+                "close": close,
+                "open": close - 1.0,
+                "high": close + 3.0,
+                "low": close - 3.0,
+                "volume": int(latest_price["volume"] or 0) + ((24 - offset) * 100),
+            }
+        )
+    rows[-1] = {key: value for key, value in latest_price.items() if key != "previous_close"}
+    return rows
 
 
 def _stock_market_fields(stock_code: str) -> dict:
@@ -170,6 +192,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
 
         db.query(ExpenseORM).filter(ExpenseORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
+        db.query(StockPriceAlertORM).filter(StockPriceAlertORM.user_id == demo_user.id).delete()
         db.query(WatchlistORM).filter(WatchlistORM.user_id == demo_user.id).delete()
         db.query(StockPriceORM).filter(StockPriceORM.stock_code.in_([item["stock_code"] for item in mock_prices])).delete(
             synchronize_session=False
@@ -213,9 +236,10 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             )
 
         for item in mock_prices:
+            for history_row in _build_history_series(item):
+                db.add(StockPriceHistoryORM(source="seed", **history_row))
             price_row = {key: value for key, value in item.items() if key != "previous_close"}
             db.add(StockPriceORM(**price_row))
-            db.add(StockPriceHistoryORM(source="seed", **price_row))
 
         db.commit()
 

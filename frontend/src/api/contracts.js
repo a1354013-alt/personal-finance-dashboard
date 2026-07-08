@@ -502,6 +502,46 @@ export function normalizeStockAiAnalysis(payload) {
   }
 }
 
+export function normalizeStockIndicators(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const id = toNumberOrNull(payload.watchlist_item_id ?? payload.watchlistItemId)
+  if (id == null) return null
+  const status = ['ready', 'insufficient_history', 'no_price_history'].includes(payload.status)
+    ? payload.status
+    : 'no_price_history'
+  return {
+    watchlist_item_id: id,
+    symbol: String(payload.symbol || '').toUpperCase(),
+    as_of_date: payload.as_of_date ?? payload.asOfDate ?? null,
+    latest_close: toNumberOrNull(payload.latest_close ?? payload.latestClose),
+    ma5: toNumberOrNull(payload.ma5),
+    ma20: toNumberOrNull(payload.ma20),
+    rsi14: toNumberOrNull(payload.rsi14),
+    status,
+    disclaimer: toTrimmedStringOrEmpty(payload.disclaimer)
+  }
+}
+
+export function normalizeStockAlert(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const id = toNumberOrNull(payload.id)
+  if (id == null) return null
+  return {
+    id,
+    user_id: toNumberOrNull(payload.user_id ?? payload.userId),
+    watchlist_item_id: toNumberOrNull(payload.watchlist_item_id ?? payload.watchlistItemId),
+    symbol: String(payload.symbol || '').toUpperCase(),
+    condition_type: payload.condition_type === 'below' ? 'below' : 'above',
+    target_price: toNumberOrNull(payload.target_price ?? payload.targetPrice),
+    is_active: Boolean(payload.is_active ?? payload.isActive),
+    triggered_at: payload.triggered_at ?? payload.triggeredAt ?? null,
+    last_checked_at: payload.last_checked_at ?? payload.lastCheckedAt ?? null,
+    last_price_at_trigger: toNumberOrNull(payload.last_price_at_trigger ?? payload.lastPriceAtTrigger),
+    created_at: payload.created_at ?? payload.createdAt ?? null,
+    updated_at: payload.updated_at ?? payload.updatedAt ?? null
+  }
+}
+
 export function normalizeStockDashboard(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {

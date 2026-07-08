@@ -5,6 +5,8 @@ import {
   normalizeDashboardCharts,
   normalizeDashboardSummary,
   normalizeFundamentalsSnapshot,
+  normalizeStockAlert,
+  normalizeStockIndicators,
   normalizeWatchlistItem
 } from '@/api/contracts'
 
@@ -130,6 +132,47 @@ describe('API contract normalizers', () => {
       stock_code: 'AAPL',
       source: 'yfinance',
       provider: 'yfinance'
+    })
+  })
+
+  it('normalizes stock indicators and alerts', () => {
+    const indicators = normalizeStockIndicators({
+      watchlist_item_id: '1',
+      symbol: '2330.tw',
+      latest_close: '1000',
+      ma5: '980',
+      ma20: '950',
+      rsi14: '66.5',
+      status: 'ready',
+      disclaimer: 'This is informational only and not financial advice.'
+    })
+    const alert = normalizeStockAlert({
+      id: '7',
+      user_id: '1',
+      watchlist_item_id: '1',
+      symbol: '2330.tw',
+      condition_type: 'below',
+      target_price: '900',
+      is_active: 0,
+      triggered_at: '2026-07-06T02:00:00Z',
+      last_price_at_trigger: '899.5'
+    })
+
+    expect(indicators).toMatchObject({
+      watchlist_item_id: 1,
+      symbol: '2330.TW',
+      latest_close: 1000,
+      ma20: 950,
+      rsi14: 66.5,
+      status: 'ready'
+    })
+    expect(alert).toMatchObject({
+      id: 7,
+      symbol: '2330.TW',
+      condition_type: 'below',
+      target_price: 900,
+      is_active: false,
+      last_price_at_trigger: 899.5
     })
   })
 })
