@@ -2,10 +2,11 @@
   "version": "0.2.0",
   "compounds": [
     {
-      "name": "Full Stack Dev (F5)",
+      "name": "F5: Start Personal Finance Dashboard",
       "configurations": [
         "Backend API (FastAPI)",
-        "Frontend Dev Server"
+        "Frontend Dev Server",
+        "Open Frontend in Browser"
       ],
       "stopAll": true
     }
@@ -29,6 +30,9 @@
       "console": "integratedTerminal",
       "justMyCode": true,
       "envFile": "${workspaceFolder}/backend/.env",
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
       "preLaunchTask": "Bootstrap Backend"
     },
     {
@@ -38,6 +42,14 @@
       "command": "npm run dev -- --host 127.0.0.1 --port 5173",
       "cwd": "${workspaceFolder}/frontend",
       "preLaunchTask": "Bootstrap Frontend"
+    },
+    {
+      "name": "Open Frontend in Browser",
+      "type": "pwa-msedge",
+      "request": "launch",
+      "url": "http://127.0.0.1:5173",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "preLaunchTask": "Wait for Frontend"
     }
   ]
 }

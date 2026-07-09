@@ -5,6 +5,9 @@
       "label": "Bootstrap Backend",
       "type": "process",
       "command": "powershell.exe",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -23,6 +26,9 @@
       "label": "Bootstrap Frontend",
       "type": "process",
       "command": "powershell.exe",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -35,6 +41,113 @@
         "panel": "dedicated",
         "clear": false
       },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Backend Dev Server",
+      "type": "process",
+      "command": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--reload",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "dependsOn": [
+        "Bootstrap Backend"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": {
+        "owner": "python",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Uvicorn running on",
+          "endsPattern": "Application startup complete"
+        }
+      }
+    },
+    {
+      "label": "Start Frontend Dev Server",
+      "type": "process",
+      "command": "npm.cmd",
+      "args": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5173"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "dependsOn": [
+        "Bootstrap Frontend"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": {
+        "owner": "javascript",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "Wait for Frontend",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$ErrorActionPreference = 'Stop'; for ($i = 0; $i -lt 60; $i++) { try { $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5173' -TimeoutSec 1; if ($response.StatusCode -lt 500) { exit 0 } } catch { Start-Sleep -Seconds 1 } }; throw 'Timed out waiting for the frontend dev server at http://127.0.0.1:5173.'"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Full Stack",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Start Backend Dev Server",
+        "Start Frontend Dev Server"
+      ],
       "problemMatcher": []
     }
   ]

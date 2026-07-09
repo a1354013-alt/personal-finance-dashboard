@@ -95,13 +95,13 @@ The frontend dev server proxies `/api` requests to `http://127.0.0.1:8000`.
 
 Frontend npm commands can be run either from `frontend/` directly or from the repository root through the convenience scripts in the root `package.json`.
 
-## VS Code F5 Start
+## VS Code F5 Startup
 
 Windows is the supported F5 path for this v1.3.0-rc1 release candidate.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
-3. Select `Full Stack Dev (F5)` in Run and Debug.
+3. Select `F5: Start Personal Finance Dashboard` in Run and Debug.
 4. Press F5.
 
 The F5 compound launch runs:
@@ -110,10 +110,19 @@ The F5 compound launch runs:
 - `scripts/bootstrap-frontend.ps1` before the Vite terminal starts
 - backend virtual environment bootstrap when `backend\.venv` does not exist yet
 - local `.env` copy from `backend\.env.example` or `frontend\.env.example` when missing
-- backend requirements installation and `alembic upgrade head`
-- frontend dependency installation when `frontend\node_modules` is missing
+- backend requirements installation only when `backend\requirements.txt` changed, then `alembic upgrade head`
+- frontend dependency installation only when `frontend\package.json` or `frontend\package-lock.json` changed
+- browser launch after the frontend responds
 - backend at `http://127.0.0.1:8000`
 - frontend at `http://127.0.0.1:5173`
+- Swagger UI at `http://127.0.0.1:8000/docs`
+
+The backend runs under the VS Code Python debugger. The frontend runs in a VS Code terminal through Vite, and the browser opens to `http://127.0.0.1:5173`. The frontend dev server proxies `/api` calls to `http://127.0.0.1:8000`.
+
+Demo account after seeding:
+
+- Email: `demo@example.com`
+- Password: `demo1234`
 
 If you want to test the bootstrap layer directly without opening VS Code:
 
@@ -134,10 +143,26 @@ Or run the PowerShell script directly:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\scripts\start-dev.ps1
+.\scripts\dev-start.ps1
 ```
 
-The script checks Python, Node.js, and npm, prepares dependencies, applies migrations, copies missing local env files from examples, and opens separate backend/frontend dev-server windows.
+The script checks Python, Node.js, and npm, prepares dependencies, applies migrations, copies missing local env files from examples, opens separate backend/frontend dev-server windows, and opens the frontend URL. `.\scripts\start-dev.ps1` remains as a compatibility wrapper for the same flow.
+
+Manual fallback commands:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+```powershell
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
+```
 
 ## macOS / Linux Start
 
