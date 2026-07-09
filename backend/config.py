@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 APP_VERSION = "1.3.0-rc1"
-DEFAULT_CORS_ORIGINS = "http://localhost:5173"
+DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 DEVELOPMENT_SECRET_KEY = "dev-only-change-me-in-production"
 DEFAULT_RATE_LIMIT_PER_MINUTE = 100
 DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 14

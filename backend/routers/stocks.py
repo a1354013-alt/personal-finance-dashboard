@@ -340,6 +340,10 @@ def get_stock_dashboard(
         return StockDashboardResponse(watchlist=[], price_history=[], fundamentals=None, ai_explanation=None)
 
     selected_stock_code = StockDataService.normalize_stock_code(selected_code or watchlist[0]["stock_code"])
+    watchlist_codes = {item["stock_code"] for item in watchlist}
+    if selected_stock_code not in watchlist_codes:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Selected stock is not in your watchlist.")
+
     latest_fundamentals = get_latest_fundamentals_by_code(db, {selected_stock_code}).get(selected_stock_code)
     filter_results = {item.stock_code: item for item in build_filter_results(db=db, user_id=current_user.id)}
     selected_filter = filter_results.get(selected_stock_code)

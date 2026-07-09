@@ -47,6 +47,27 @@ function Start-DevWindow {
   Start-Process powershell.exe -ArgumentList @('-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $script)
 }
 
+function Wait-HttpReady {
+  param(
+    [Parameter(Mandatory = $true)][string]$Url,
+    [int]$TimeoutSeconds = 180
+  )
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    try {
+      $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
+      if ($response.StatusCode -lt 500) {
+        return
+      }
+    } catch {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  throw "Timed out after $TimeoutSeconds seconds waiting for $Url. Check the frontend server window for startup errors."
+}
+
 Write-Host 'Checking prerequisites...'
 Assert-Command python
 Assert-Command node
@@ -75,6 +96,9 @@ if (Test-PortInUse -Port 5173) {
 Write-Host 'Starting backend and frontend dev servers...'
 Start-DevWindow -Title 'Personal Finance API' -WorkingDirectory $backendDir -Command '.\.venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000'
 Start-DevWindow -Title 'Personal Finance Frontend' -WorkingDirectory $frontendDir -Command 'npm run dev -- --host 127.0.0.1 --port 5173'
+
+Write-Host 'Waiting for frontend dev server at http://127.0.0.1:5173...'
+Wait-HttpReady -Url 'http://127.0.0.1:5173' -TimeoutSeconds 180
 Start-Process 'http://127.0.0.1:5173'
 
 Write-Host ''

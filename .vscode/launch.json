@@ -8,6 +8,7 @@
         "Frontend Dev Server",
         "Open Frontend in Browser"
       ],
+      "preLaunchTask": "Bootstrap Full Stack",
       "stopAll": true
     }
   ],
@@ -32,16 +33,14 @@
       "envFile": "${workspaceFolder}/backend/.env",
       "env": {
         "PYTHONUNBUFFERED": "1"
-      },
-      "preLaunchTask": "Bootstrap Backend"
+      }
     },
     {
       "name": "Frontend Dev Server",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev -- --host 127.0.0.1 --port 5173",
-      "cwd": "${workspaceFolder}/frontend",
-      "preLaunchTask": "Bootstrap Frontend"
+      "cwd": "${workspaceFolder}/frontend"
     },
     {
       "name": "Open Frontend in Browser",

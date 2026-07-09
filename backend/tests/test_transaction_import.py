@@ -264,6 +264,31 @@ def test_confirm_import_with_empty_selected_rows_returns_clear_400(client):
     assert confirm.json()["detail"] == "Select at least one valid row to import."
 
 
+def test_confirm_import_with_no_importable_selected_rows_keeps_batch_previewed(client):
+    token = register_and_login(client, "import-no-importable@example.com")
+    headers = auth_headers(token)
+    preview = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=make_csv_bytes("date,amount,type,category,note\nbad-date,88,expense,Food,Oops\n"),
+    )
+    batch_id = preview.json()["batch"]["id"]
+    invalid_row_number = preview.json()["rows"][0]["source_row_number"]
+
+    confirm = client.post(
+        f"/api/imports/transactions/{batch_id}/confirm",
+        headers=headers,
+        json={"selected_row_numbers": [invalid_row_number]},
+    )
+    detail = client.get(f"/api/imports/transactions/{batch_id}", headers=headers)
+
+    assert confirm.status_code == 400
+    assert confirm.json()["detail"] == "Select at least one valid row to import."
+    assert detail.status_code == 200
+    assert detail.json()["batch"]["status"] == "previewed"
+
+
 def test_confirm_import_with_selected_rows(client):
     token = register_and_login(client, "import-selected@example.com")
     content = make_csv_bytes(
@@ -287,6 +312,23 @@ def test_confirm_import_with_selected_rows(client):
     expenses = client.get("/api/expenses", headers=auth_headers(token)).json()
     assert len(expenses) == 1
     assert expenses[0]["note"] == "Metro"
+
+
+def test_duplicate_fingerprint_includes_type_and_payment_method(client):
+    token = register_and_login(client, "import-fingerprint-fields@example.com")
+    content = make_csv_bytes(
+        "date,amount,type,category,note,payment_method\n"
+        "2026-07-02,88,expense,Food,Tea,Cash\n"
+        "2026-07-02,88,income,Food,Tea,Cash\n"
+        "2026-07-02,88,expense,Food,Tea,Card\n"
+    )
+
+    response = preview_import(client, token, file_name="transactions.csv", content=content)
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["batch"]["summary"]["duplicate_rows"] == 0
+    assert all(row["status"] == "valid" for row in payload["rows"])
 
 
 def test_user_cannot_access_another_users_import_batch(client):

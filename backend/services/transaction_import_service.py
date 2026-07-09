@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import uuid
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -241,6 +241,9 @@ def confirm_transaction_import(
         selected_set = set(selected_row_numbers)
         rows = [row for row in rows if row.source_row_number in selected_set]
 
+    if not any(row.status == "valid" for row in rows):
+        raise HTTPException(status_code=400, detail="Select at least one valid row to import.")
+
     created_ids: list[int] = []
     skipped_count = 0
     duplicate_count = 0
@@ -281,7 +284,7 @@ def confirm_transaction_import(
 
     batch.created_rows = len(created_ids)
     batch.status = "imported"
-    batch.imported_at = datetime.now()
+    batch.imported_at = datetime.now(timezone.utc)
     db.commit()
 
     return {
@@ -391,8 +394,10 @@ def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: st
     fingerprint = _build_fingerprint(
         transaction_date=normalized_date,
         amount=amount_abs,
+        transaction_type=normalized_type,
         category=normalized_category,
         note=note,
+        payment_method=payment_method,
     )
     if normalized_type == "income" and parsed_amount is not None and parsed_amount < 0:
         warnings.append("Negative income amount was converted to a positive stored value.")
@@ -465,12 +470,21 @@ def _parse_type_value(value: Any) -> str | None:
     return TYPE_ALIASES.get(text)
 
 
-def _build_fingerprint(*, transaction_date: date | None, amount: Decimal | None, category: str, note: str | None) -> str | None:
-    if transaction_date is None or amount is None or not category.strip():
+def _build_fingerprint(
+    *,
+    transaction_date: date | None,
+    amount: Decimal | None,
+    transaction_type: str | None,
+    category: str,
+    note: str | None,
+    payment_method: str | None,
+) -> str | None:
+    if transaction_date is None or amount is None or not transaction_type or not category.strip():
         return None
     normalized_note = re.sub(r"\s+", " ", (note or "").strip().lower())
     normalized_category = re.sub(r"\s+", " ", category.strip().lower())
-    return f"{transaction_date.isoformat()}|{amount:.2f}|{normalized_category}|{normalized_note}"
+    normalized_payment_method = re.sub(r"\s+", " ", (payment_method or "").strip().lower())
+    return f"{transaction_date.isoformat()}|{amount:.2f}|{transaction_type}|{normalized_category}|{normalized_note}|{normalized_payment_method}"
 
 
 def _find_database_duplicates(db: Session, *, user_id: int, fingerprints: set[str]) -> set[str]:
@@ -482,8 +496,10 @@ def _find_database_duplicates(db: Session, *, user_id: int, fingerprints: set[st
         fingerprint = _build_fingerprint(
             transaction_date=expense.date,
             amount=Decimal(str(expense.amount)),
+            transaction_type=expense.type,
             category=expense.category,
             note=expense.note,
+            payment_method=None,
         )
         if fingerprint in fingerprints:
             matches.add(fingerprint)

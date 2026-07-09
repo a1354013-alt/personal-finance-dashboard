@@ -109,6 +109,21 @@ def test_watchlist_item_access_is_user_scoped(client, fake_provider):
     assert response.status_code == 404
 
 
+def test_stock_dashboard_rejects_selected_code_outside_user_watchlist(client, fake_provider):
+    token_a = register_and_login(client, "tw-dashboard-user-a@example.com")
+    token_b = register_and_login(client, "tw-dashboard-user-b@example.com")
+    headers_a = auth_headers(token_a)
+    headers_b = auth_headers(token_b)
+
+    client.post("/api/stocks/watchlist", headers=headers_a, json={"stock_code": "2330"})
+    client.post("/api/stocks/watchlist", headers=headers_b, json={"stock_code": "0050"})
+
+    response = client.get("/api/stocks/dashboard", headers=headers_b, params={"selected_code": "2330"})
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Selected stock is not in your watchlist."
+
+
 def test_ai_analysis_requires_synced_price_data(client, fake_provider):
     token = register_and_login(client, "tw-ai-required@example.com")
     headers = auth_headers(token)

@@ -44,6 +44,15 @@
       "problemMatcher": []
     },
     {
+      "label": "Bootstrap Full Stack",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Bootstrap Backend",
+        "Bootstrap Frontend"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Start Backend Dev Server",
       "type": "process",
       "command": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
@@ -60,9 +69,6 @@
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
-      "dependsOn": [
-        "Bootstrap Backend"
-      ],
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -98,9 +104,6 @@
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
-      "dependsOn": [
-        "Bootstrap Frontend"
-      ],
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -129,7 +132,7 @@
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "$ErrorActionPreference = 'Stop'; for ($i = 0; $i -lt 60; $i++) { try { $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5173' -TimeoutSec 1; if ($response.StatusCode -lt 500) { exit 0 } } catch { Start-Sleep -Seconds 1 } }; throw 'Timed out waiting for the frontend dev server at http://127.0.0.1:5173.'"
+        "$ErrorActionPreference = 'Stop'; for ($i = 0; $i -lt 180; $i++) { try { $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5173' -TimeoutSec 1; if ($response.StatusCode -lt 500) { exit 0 } } catch { Start-Sleep -Seconds 1 } }; throw 'Timed out after 180 seconds waiting for the frontend dev server at http://127.0.0.1:5173.'"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -143,8 +146,9 @@
     },
     {
       "label": "Start Full Stack",
-      "dependsOrder": "parallel",
+      "dependsOrder": "sequence",
       "dependsOn": [
+        "Bootstrap Full Stack",
         "Start Backend Dev Server",
         "Start Frontend Dev Server"
       ],

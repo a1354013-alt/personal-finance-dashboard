@@ -280,9 +280,9 @@ The v1.2 MVP transaction import flow is intentionally small and safe:
 
 Recognized columns include these common names:
 
-- Date: `date`, `transaction_date`, `日期`, `交易日期`, `入帳日期`, `瘨祥?交?`, `隞狡?交?`, `鈭斗???`
+- Date: `date`, `transaction_date`, `日期`, `交易日期`, `入帳日期`, `消費日期`, `付款日期`, `交易日`
 - Amount: `amount`, `金額`, `交易金額`
-- Type: `type`, `類型`, `收支類型`, `交易類型`, `?嗆`, `?嗅?臬`
+- Type: `type`, `類型`, `收支類型`, `交易類型`, `收支`, `收入支出`
 - Category: `category`, `分類`, `類別`
 - Description: `description`, `note`, `memo`, `摘要`, `說明`, `備註`
 - Payment method: `payment_method`, `payment method`, `支付方式`, `付款方式`
