@@ -1,13 +1,14 @@
 # Changelog
 
-## v1.3.0-rc1
+## v1.3.0
 
 - Added stored-history MA5, MA20, and RSI14 stock indicators.
 - Added in-app stock price alerts with user-scoped alert APIs.
 - Added frontend indicator and alert UI on the existing Stocks page.
 - Fixed README transaction import recognized column aliases.
+- Fixed transaction import database duplicate detection for re-uploaded expenses when CSV/XLSX rows include `payment_method`.
 - Reduced Vite chunk-size pressure with route-level lazy loading.
-- Updated application version metadata to `1.3.0-rc1`.
+- Updated application version metadata to `1.3.0`.
 
 ## v1.2.0-rc1
 

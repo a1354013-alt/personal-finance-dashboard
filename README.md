@@ -2,11 +2,11 @@
 
 Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, monthly report exports, and transaction imports.
 
-The current release candidate is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
+The current release is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.3.0-rc1 release candidate.
+This repository is a portfolio/demo project prepared for the v1.3.0 release.
 
 Implemented demo surface:
 
@@ -97,7 +97,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.3.0-rc1 release candidate.
+Windows is the supported F5 path for this v1.3.0 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
