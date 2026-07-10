@@ -17,6 +17,18 @@ const getRecurringTransactionsMock = vi.fn(async () => [
     end_date: null,
     next_run_date: '2026-07-15',
     is_active: true
+  },
+  {
+    id: 2,
+    amount: 400,
+    category: 'Utilities',
+    type: 'expense',
+    note: 'Paused bill',
+    frequency: 'monthly',
+    start_date: '2026-07-02',
+    end_date: null,
+    next_run_date: null,
+    is_active: false
   }
 ])
 const createRecurringTransactionMock = vi.fn(async () => ({ id: 2 }))
@@ -95,6 +107,32 @@ describe('Recurring transactions page', () => {
 
     await vi.waitFor(() => {
       expect(updateRecurringTransactionMock).toHaveBeenCalledWith(1, expect.objectContaining({ amount: 1500 }))
+    })
+  })
+
+  it('preserves inactive status when editing an inactive recurring transaction', async () => {
+    const wrapper = mount(RecurringTransactions, {
+      global: { plugins: [createPinia(), createI18nInstance()] }
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody button').length).toBeGreaterThanOrEqual(5)
+    })
+    await wrapper.findAll('tbody button')[3].trigger('click')
+    await vi.waitFor(() => {
+      expect(wrapper.find('#recurring-amount').element.value).toBe('400')
+    })
+    await wrapper.find('#recurring-note').setValue('Paused bill updated')
+    await wrapper.find('form.form-row').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(updateRecurringTransactionMock).toHaveBeenCalledWith(
+        2,
+        expect.objectContaining({
+          note: 'Paused bill updated',
+          is_active: false
+        })
+      )
     })
   })
 })

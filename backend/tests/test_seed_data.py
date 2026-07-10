@@ -5,6 +5,7 @@ from datetime import date
 from db.database import SessionLocal
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
+from models.recurring_transaction import RecurringTransactionORM
 from models.stock import StockPriceHistoryORM, WatchlistORM
 from models.user import UserORM
 from seed_data import DEMO_EMAIL, build_demo_dates, seed
@@ -53,6 +54,13 @@ def test_seed_reset_creates_current_month_demo_data(client):
         assert taiwan_item.sync_error is None
         assert taiwan_item.price_sync_status == "success"
         assert db.query(StockPriceHistoryORM).filter(StockPriceHistoryORM.stock_code == "2330.TW").count() > 0
+        active_recurring = (
+            db.query(RecurringTransactionORM)
+            .filter(RecurringTransactionORM.user_id == demo_user.id, RecurringTransactionORM.is_active.is_(True))
+            .all()
+        )
+        assert active_recurring
+        assert all(item.next_run_date is not None for item in active_recurring)
 
     login = client.post("/api/auth/login", json={"email": DEMO_EMAIL, "password": "demo1234"})
     assert login.status_code == 200

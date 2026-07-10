@@ -11,6 +11,7 @@ from models.recurring_transaction import RecurringTransactionORM
 from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
+from services.recurring_transaction_service import derive_next_run_date
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "demo1234"
@@ -231,7 +232,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
                     frequency=item["frequency"],
                     start_date=start_date,
                     end_date=None,
-                    next_run_date=start_date if start_date >= today else None,
+                    next_run_date=derive_next_run_date(start_date, item["frequency"], None, today=today),
                     is_active=True,
                 )
             )

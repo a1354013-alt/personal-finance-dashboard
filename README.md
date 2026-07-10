@@ -422,9 +422,8 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Transaction editing is not implemented yet.
-- Recurring transactions are not implemented yet.
 - Manual column mapping is not implemented yet; the MVP relies on recognized headers and returns a clear missing-column error otherwise.
+- Recurring transactions currently support planning and forecasting, but they do not automatically generate real transaction records yet.
 - Stock functionality is a watchlist, not a full portfolio profit/loss system.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

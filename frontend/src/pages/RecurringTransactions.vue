@@ -154,8 +154,7 @@ async function handleSubmit() {
 
   const payload = {
     ...form.value,
-    end_date: form.value.end_date || null,
-    is_active: true
+    end_date: form.value.end_date || null
   }
 
   try {

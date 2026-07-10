@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date, timedelta
 
+from db.database import SessionLocal
+from models.recurring_transaction import RecurringTransactionORM
 from tests.conftest import auth_headers, register_and_login
 
 
 def _current_month_dates() -> tuple[str, str]:
     today = date.today()
     first = today.replace(day=1).isoformat()
-    future = (today + timedelta(days=1)).isoformat()
-    return first, future
+    current_month_date = date(today.year, today.month, min(today.day, monthrange(today.year, today.month)[1])).isoformat()
+    return first, current_month_date
 
 
 def test_monthly_forecast_without_recurring_transactions(client):
@@ -88,6 +91,70 @@ def test_monthly_forecast_user_scoping(client):
     response = client.get("/api/dashboard/summary", headers=auth_headers(token))
 
     assert response.json()["monthlyForecast"]["recurringIncomePending"] == 0
+
+
+def test_monthly_forecast_derives_missing_next_run_date_for_active_recurring(client):
+    token = register_and_login(client, "forecast-derived-next-run@example.com")
+    user_response = client.post(
+        "/api/auth/login",
+        json={"email": "forecast-derived-next-run@example.com", "password": "password123"},
+    )
+    user_id = user_response.json()["user"]["id"]
+    today = date.today()
+
+    with SessionLocal() as db:
+        db.add(
+            RecurringTransactionORM(
+                user_id=user_id,
+                amount=1500,
+                category="Salary",
+                type="income",
+                note="Derived schedule",
+                frequency="monthly",
+                start_date=today,
+                end_date=None,
+                next_run_date=None,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+
+    assert response.json()["monthlyForecast"]["recurringIncomePending"] == 1500
+
+
+def test_monthly_forecast_excludes_ended_recurring_without_future_run_date(client):
+    token = register_and_login(client, "forecast-ended-derived@example.com")
+    user_response = client.post(
+        "/api/auth/login",
+        json={"email": "forecast-ended-derived@example.com", "password": "password123"},
+    )
+    user_id = user_response.json()["user"]["id"]
+    today = date.today()
+    ended_day = max(1, today.day - 1)
+    ended_date = today.replace(day=ended_day)
+
+    with SessionLocal() as db:
+        db.add(
+            RecurringTransactionORM(
+                user_id=user_id,
+                amount=700,
+                category="Utilities",
+                type="expense",
+                note="Expired schedule",
+                frequency="monthly",
+                start_date=today.replace(day=1),
+                end_date=ended_date,
+                next_run_date=None,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+
+    assert response.json()["monthlyForecast"]["recurringExpensePending"] == 0
 
 
 def test_unbudgeted_spending_excludes_categories_with_budgets(client):

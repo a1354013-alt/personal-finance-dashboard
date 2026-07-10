@@ -38,12 +38,14 @@ def derive_next_run_date(start_date: date, frequency: str, end_date: date | None
 
 
 def pending_occurrences_until(recurring: RecurringTransactionORM, end_date: date, *, today: date | None = None) -> list[date]:
-    if not recurring.is_active or not recurring.next_run_date:
+    if not recurring.is_active:
         return []
     today = today or date.today()
     current = recurring.next_run_date
-    if current < today:
+    if current is None or current < today:
         current = derive_next_run_date(recurring.start_date, recurring.frequency, recurring.end_date, today=today)
+    if current is None:
+        return []
     dates: list[date] = []
     while current and current <= end_date:
         if recurring.end_date and current > recurring.end_date:
