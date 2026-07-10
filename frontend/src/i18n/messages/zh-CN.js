@@ -29,6 +29,7 @@ export default {
     dashboard: '仪表板',
     expenses: '收支记录',
     imports: '导入',
+    recurring: 'Recurring',
     budgets: '预算',
     stocks: '股票',
     logout: '退出登录'
@@ -108,6 +109,26 @@ export default {
       warning: '接近上限',
       danger: '已超支'
     },
+    forecast: {
+      title: 'Monthly Forecast',
+      subtitle: 'Projected cash flow after pending recurring transactions.',
+      projectedIncome: 'Projected income',
+      projectedExpense: 'Projected expense',
+      projectedBalance: 'Projected balance',
+      pendingRecurring: 'Pending recurring',
+      noWarnings: 'No forecast warnings for this month.',
+      warnings: {
+        projected_balance_negative: 'Projected balance is below zero.',
+        projected_expense_over_budget: 'Projected expenses may exceed this month’s budget.',
+        projected_expense_near_income: 'Projected expenses are close to projected income.'
+      }
+    },
+    unbudgeted: {
+      title: 'Unbudgeted Spending',
+      subtitle: 'Current-month spending categories without an active budget.',
+      empty: 'All current-month spending categories are budgeted.',
+      transactionCount: '{count} transaction(s)'
+    },
     ai: {
       summaryTitle: '智能摘要',
       adviceTitle: '预算建议',
@@ -146,12 +167,14 @@ export default {
     title: '收支记录',
     subtitle: '用稳定一致的流程记录收入和支出，掌握每日现金流。',
     addRecord: '新增记录',
+    editRecord: 'Edit Record',
     amountPlaceholder: '1500',
     typeExpense: '支出',
     typeIncome: '收入',
     selectCategory: '请选择分类',
     notePlaceholder: '可选备注',
     addAction: '新增记录',
+    updateAction: 'Update Record',
     addLoading: '保存中...',
     filters: '筛选条件',
     records: '记录',
@@ -164,6 +187,36 @@ export default {
     dateError: '请选择日期。',
     deleteLoading: '删除中...',
     deleteAction: '删除'
+  },
+  recurring: {
+    title: 'Recurring Transactions',
+    subtitle: 'Plan fixed income and expenses before they hit the month-end forecast.',
+    formTitle: 'Create Recurring Transaction',
+    editTitle: 'Edit Recurring Transaction',
+    listTitle: 'Recurring Schedule',
+    frequency: 'Frequency',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    nextRunDate: 'Next Run',
+    status: 'Status',
+    active: 'Active',
+    inactive: 'Inactive',
+    deactivate: 'Deactivate',
+    createAction: 'Create Recurring',
+    updateAction: 'Update Recurring',
+    saving: 'Saving...',
+    loading: 'Loading recurring transactions...',
+    empty: 'No recurring transactions yet.',
+    startDateError: 'Please choose a start date.',
+    endDateError: 'End date must be on or after start date.',
+    frequencies: {
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+      yearly: 'Yearly'
+    },
+    errors: {
+      load: 'Unable to load recurring transactions right now.'
+    }
   },
   imports: {
     title: '交易导入',

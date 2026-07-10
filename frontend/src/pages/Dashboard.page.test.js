@@ -35,6 +35,19 @@ vi.mock('@/api/dashboard', () => ({
     budgetWarningCount: 1,
     budgetItems: [
       { category: 'Housing', amount: 6000, used: 3000, remaining: 3000, usagePercent: 50, status: 'safe' }
+    ],
+    monthlyForecast: {
+      projectedIncome: 12000,
+      projectedExpense: 7000,
+      projectedBalance: 5000,
+      actualIncomeToDate: 10000,
+      actualExpenseToDate: 5000,
+      recurringIncomePending: 2000,
+      recurringExpensePending: 2000,
+      forecastWarnings: []
+    },
+    unbudgetedSpending: [
+      { category: 'Travel', amount: 450, transactionCount: 2 }
     ]
   })),
   getDashboardCharts: vi.fn(async () => ({
@@ -123,6 +136,22 @@ describe('Dashboard page', () => {
       expect(wrapper.text()).toContain('2026-05-01')
       expect(wrapper.text()).toContain('- NT$ 3,000')
       expect(wrapper.find('input[type="month"]').exists()).toBe(true)
+    })
+  })
+
+  it('renders forecast and unbudgeted spending sections', async () => {
+    const wrapper = mount(Dashboard, {
+      global: {
+        plugins: [createPinia(), createI18nInstance()],
+        stubs: { RouterLink: true }
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Monthly Forecast')
+      expect(wrapper.text()).toContain('Unbudgeted Spending')
+      expect(wrapper.text()).toContain('NT$ 12,000')
+      expect(wrapper.text()).toContain('NT$ 450')
     })
   })
 

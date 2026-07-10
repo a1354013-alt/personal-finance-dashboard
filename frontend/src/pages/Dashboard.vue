@@ -85,6 +85,64 @@
       <p v-if="reportError" class="error-msg">{{ reportError }}</p>
     </section>
 
+    <section class="planning-grid">
+      <article class="card planning-card">
+        <div class="section-heading">
+          <div>
+            <h2>{{ t('dashboard.forecast.title') }}</h2>
+            <p>{{ t('dashboard.forecast.subtitle') }}</p>
+          </div>
+        </div>
+        <div v-if="store.loading && !store.summary" class="loading-text">{{ t('common.loading') }}</div>
+        <div v-else class="forecast-metrics">
+          <div>
+            <span>{{ t('dashboard.forecast.projectedIncome') }}</span>
+            <strong class="amount-income">{{ formatCurrency(store.summary?.monthlyForecast?.projectedIncome || 0) }}</strong>
+          </div>
+          <div>
+            <span>{{ t('dashboard.forecast.projectedExpense') }}</span>
+            <strong class="amount-expense">{{ formatCurrency(store.summary?.monthlyForecast?.projectedExpense || 0) }}</strong>
+          </div>
+          <div>
+            <span>{{ t('dashboard.forecast.projectedBalance') }}</span>
+            <strong :class="(store.summary?.monthlyForecast?.projectedBalance || 0) >= 0 ? 'amount-income' : 'amount-expense'">
+              {{ formatCurrency(store.summary?.monthlyForecast?.projectedBalance || 0) }}
+            </strong>
+          </div>
+          <div>
+            <span>{{ t('dashboard.forecast.pendingRecurring') }}</span>
+            <strong>{{ formatCurrency(pendingRecurringTotal) }}</strong>
+          </div>
+        </div>
+        <div v-if="forecastWarnings.length" class="warning-list">
+          <span v-for="warning in forecastWarnings" :key="warning">{{ warning }}</span>
+        </div>
+        <div v-else class="empty-state compact-empty">{{ t('dashboard.forecast.noWarnings') }}</div>
+      </article>
+
+      <article class="card planning-card">
+        <div class="section-heading">
+          <div>
+            <h2>{{ t('dashboard.unbudgeted.title') }}</h2>
+            <p>{{ t('dashboard.unbudgeted.subtitle') }}</p>
+          </div>
+        </div>
+        <div v-if="store.loading && !store.summary" class="loading-text">{{ t('common.loading') }}</div>
+        <div v-else-if="!store.summary?.unbudgetedSpending?.length" class="empty-state compact-empty">
+          {{ t('dashboard.unbudgeted.empty') }}
+        </div>
+        <div v-else class="unbudgeted-list">
+          <div v-for="item in store.summary.unbudgetedSpending" :key="item.category" class="unbudgeted-item">
+            <div>
+              <strong>{{ translateCategory(t, item.category) }}</strong>
+              <span>{{ t('dashboard.unbudgeted.transactionCount', { count: item.transactionCount }) }}</span>
+            </div>
+            <strong class="amount-expense">{{ formatCurrency(item.amount) }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
     <section class="insight-section">
       <div class="section-copy">
         <h2>{{ t('nav.dashboard') }}</h2>
@@ -350,6 +408,15 @@ const incomeExpenseTrend = computed(() => ({
     }
   ]
 }))
+
+const pendingRecurringTotal = computed(() => {
+  const forecast = store.summary?.monthlyForecast
+  return (forecast?.recurringIncomePending || 0) + (forecast?.recurringExpensePending || 0)
+})
+
+const forecastWarnings = computed(() => (
+  store.summary?.monthlyForecast?.forecastWarnings?.map((key) => t(`dashboard.forecast.warnings.${key}`)) || []
+))
 
 const budgetUsage = computed(() =>
   [...(store.summary?.budgetItems || [])].sort((a, b) => b.usagePercent - a.usagePercent)
@@ -677,6 +744,14 @@ onMounted(() => {
   color: #d04d48;
 }
 
+.amount-income {
+  color: #1f8f5f;
+}
+
+.amount-expense {
+  color: #d04d48;
+}
+
 .balance {
   color: #2b6cb0;
 }
@@ -702,6 +777,70 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
+}
+
+.planning-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.planning-card {
+  padding: 24px;
+}
+
+.forecast-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.forecast-metrics div,
+.unbudgeted-item {
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafb;
+  border: 1px solid #e4ebf2;
+}
+
+.forecast-metrics span,
+.unbudgeted-item span {
+  display: block;
+  color: #66788a;
+  font-size: 12px;
+}
+
+.forecast-metrics strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.warning-list,
+.unbudgeted-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.warning-list span {
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #8b5b13;
+  background: #fff7e6;
+  border: 1px solid #f3d79f;
+  font-size: 13px;
+}
+
+.unbudgeted-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compact-empty {
+  padding: 14px 0;
 }
 
 .month-input {
@@ -877,6 +1016,7 @@ onMounted(() => {
 
 @media (max-width: 1024px) {
   .hero-panel,
+  .planning-grid,
   .bottom-grid,
   .ai-grid {
     grid-template-columns: 1fr;

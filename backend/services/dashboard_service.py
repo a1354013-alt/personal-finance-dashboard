@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from calendar import monthrange
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
 from sqlalchemy.orm import Session
 
 from models.expense import ExpenseORM
+from models.budget import BudgetORM
+from models.recurring_transaction import RecurringTransactionORM
 from services.budget_summary import build_budget_status, build_budget_summary
+from services.recurring_transaction_service import pending_occurrences_until
 
 
 def _money(value: Decimal) -> float:
@@ -33,6 +37,7 @@ def _load_expense_aggregates(*, db: Session, user_id: int) -> tuple[list[Expense
 def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
     today = date.today()
     current_month_key = today.strftime("%Y-%m")
+    month_end = date(today.year, today.month, monthrange(today.year, today.month)[1])
     
     # Load all records for trend and recent transactions
     all_records = db.query(ExpenseORM).filter(ExpenseORM.user_id == user_id).order_by(ExpenseORM.date.desc(), ExpenseORM.id.desc()).all()
@@ -125,6 +130,65 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         for item in budget_summary["items"]
     ]
 
+    active_budget_categories = {
+        row.category
+        for row in db.query(BudgetORM)
+        .filter(BudgetORM.user_id == user_id, BudgetORM.month == current_month_key)
+        .all()
+    }
+    unbudgeted_spending = [
+        {
+            "category": category,
+            "amount": _money(amount),
+            "transactionCount": sum(
+                1
+                for record in all_records
+                if record.type == "expense"
+                and record.category == category
+                and record.date.strftime("%Y-%m") == current_month_key
+            ),
+        }
+        for category, amount in sorted(category_map.items(), key=lambda item: (-item[1], item[0]))
+        if category not in active_budget_categories
+    ]
+
+    recurring_income_pending = Decimal("0")
+    recurring_expense_pending = Decimal("0")
+    active_recurring = (
+        db.query(RecurringTransactionORM)
+        .filter(RecurringTransactionORM.user_id == user_id, RecurringTransactionORM.is_active.is_(True))
+        .all()
+    )
+    for recurring in active_recurring:
+        occurrences = pending_occurrences_until(recurring, month_end, today=today)
+        pending_amount = Decimal(recurring.amount) * len(occurrences)
+        if recurring.type == "income":
+            recurring_income_pending += pending_amount
+        else:
+            recurring_expense_pending += pending_amount
+
+    projected_income = monthly_income + recurring_income_pending
+    projected_expense = monthly_expense + recurring_expense_pending
+    projected_balance = projected_income - projected_expense
+    forecast_warnings: list[str] = []
+    if projected_balance < 0:
+        forecast_warnings.append("projected_balance_negative")
+    elif budget_summary["totalBudget"] and projected_expense > Decimal(str(budget_summary["totalBudget"])):
+        forecast_warnings.append("projected_expense_over_budget")
+    elif monthly_income and projected_expense >= monthly_income * Decimal("0.9"):
+        forecast_warnings.append("projected_expense_near_income")
+
+    monthly_forecast = {
+        "projectedIncome": _money(projected_income),
+        "projectedExpense": _money(projected_expense),
+        "projectedBalance": _money(projected_balance),
+        "actualIncomeToDate": _money(monthly_income),
+        "actualExpenseToDate": _money(monthly_expense),
+        "recurringIncomePending": _money(recurring_income_pending),
+        "recurringExpensePending": _money(recurring_expense_pending),
+        "forecastWarnings": forecast_warnings,
+    }
+
     return {
         "monthlyIncome": _money(monthly_income),
         "monthlyExpense": _money(monthly_expense),
@@ -140,6 +204,8 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         "budgetOverCount": over_count,
         "budgetWarningCount": warning_count,
         "budgetItems": budget_items,
+        "monthlyForecast": monthly_forecast,
+        "unbudgetedSpending": unbudgeted_spending,
     }
 
 

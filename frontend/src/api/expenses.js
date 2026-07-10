@@ -16,6 +16,10 @@ export function createExpense(data) {
   return api.post('/expenses', data)
 }
 
+export function updateExpense(id, data) {
+  return api.put(`/expenses/${id}`, data)
+}
+
 /**
  * Delete an expense record by id.
  * @param {number} id

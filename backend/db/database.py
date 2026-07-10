@@ -20,6 +20,7 @@ EXPECTED_TABLES = {
     "budgets",
     "transaction_import_batches",
     "transaction_import_rows",
+    "recurring_transactions",
     "watchlist",
     "stock_prices",
     "stock_price_history",

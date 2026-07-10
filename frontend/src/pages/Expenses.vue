@@ -6,11 +6,11 @@
     </div>
 
     <section class="card">
-      <h2>{{ t('expenses.addRecord') }}</h2>
+      <h2>{{ editingId ? t('expenses.editRecord') : t('expenses.addRecord') }}</h2>
 
       <div v-if="formError || store.error" class="error-msg">{{ formError || store.error }}</div>
 
-      <form class="form-row" @submit.prevent="handleAdd">
+      <form class="form-row" @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="expense-amount">{{ t('common.amount') }}</label>
           <input id="expense-amount" v-model.number="form.amount" type="number" min="0.01" step="0.01" :placeholder="t('expenses.amountPlaceholder')" />
@@ -18,7 +18,7 @@
 
         <div class="form-group">
           <label for="expense-type">{{ t('common.type') }}</label>
-          <select id="expense-type" v-model="form.type">
+          <select id="expense-type" v-model="form.type" @change="form.category = ''">
             <option value="expense">{{ t('expenses.typeExpense') }}</option>
             <option value="income">{{ t('expenses.typeIncome') }}</option>
           </select>
@@ -43,7 +43,10 @@
         </div>
 
         <button class="btn btn-primary" :disabled="store.submitting">
-          {{ store.submitting ? t('expenses.addLoading') : t('expenses.addAction') }}
+          {{ store.submitting ? t('expenses.addLoading') : (editingId ? t('expenses.updateAction') : t('expenses.addAction')) }}
+        </button>
+        <button v-if="editingId" type="button" class="btn btn-secondary" @click="resetForm">
+          {{ t('common.cancel') }}
         </button>
       </form>
     </section>
@@ -96,7 +99,10 @@
                 {{ item.type === 'income' ? '+' : '-' }}{{ formatCurrency(item.amount) }}
               </td>
               <td>{{ item.note || '-' }}</td>
-              <td>
+              <td class="action-cell">
+                <button class="btn btn-secondary" @click="startEdit(item)">
+                  {{ t('common.edit') }}
+                </button>
                 <button class="btn btn-danger" :disabled="store.deleting" @click="handleDelete(item.id)">
                   {{ store.deleting ? t('expenses.deleteLoading') : t('expenses.deleteAction') }}
                 </button>
@@ -121,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/constants/categories'
 import { useExpenseStore } from '@/stores/expenseStore'
@@ -142,15 +148,9 @@ const form = ref({
   date: today,
   note: ''
 })
+const editingId = ref(null)
 
 const activeCategories = computed(() => (form.value.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES))
-
-watch(
-  () => form.value.type,
-  () => {
-    form.value.category = ''
-  }
-)
 
 onMounted(() => {
   store.fetchExpenses()
@@ -160,7 +160,7 @@ function formatCurrency(value) {
   return formatCurrencyValue(value, locale.value)
 }
 
-async function handleAdd() {
+async function handleSubmit() {
   formError.value = ''
 
   if (!form.value.amount || form.value.amount <= 0) {
@@ -180,16 +180,36 @@ async function handleAdd() {
 
   try {
     filterType.value = ''
-    await store.addExpense({ ...form.value }, { refreshParams: {} })
-    form.value = {
-      amount: null,
-      type: 'expense',
-      category: '',
-      date: today,
-      note: ''
+    if (editingId.value) {
+      await store.editExpense(editingId.value, { ...form.value }, { refreshParams: {} })
+    } else {
+      await store.addExpense({ ...form.value }, { refreshParams: {} })
     }
+    resetForm()
   } catch (_error) {
     // Store error is already shown above.
+  }
+}
+
+function startEdit(item) {
+  editingId.value = item.id
+  form.value = {
+    amount: item.amount,
+    type: item.type,
+    category: item.category,
+    date: item.date,
+    note: item.note || ''
+  }
+}
+
+function resetForm() {
+  editingId.value = null
+  form.value = {
+    amount: null,
+    type: 'expense',
+    category: '',
+    date: today,
+    note: ''
   }
 }
 
@@ -224,6 +244,12 @@ function resetFilter() {
   padding-top: 16px;
   border-top: 1px solid #e7edf3;
   color: #546575;
+}
+
+.action-cell {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .amount-income {

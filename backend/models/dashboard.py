@@ -35,6 +35,23 @@ class DashboardRecentTransaction(BaseModel):
     amount: float
 
 
+class DashboardForecast(BaseModel):
+    projectedIncome: float
+    projectedExpense: float
+    projectedBalance: float
+    actualIncomeToDate: float
+    actualExpenseToDate: float
+    recurringIncomePending: float
+    recurringExpensePending: float
+    forecastWarnings: list[str] = Field(default_factory=list)
+
+
+class DashboardUnbudgetedSpendingItem(BaseModel):
+    category: str
+    amount: float
+    transactionCount: int
+
+
 class DashboardSummaryResponse(BaseModel):
     monthlyIncome: float
     monthlyExpense: float
@@ -49,6 +66,8 @@ class DashboardSummaryResponse(BaseModel):
     budgetOverCount: int
     budgetWarningCount: int
     budgetItems: list["DashboardBudgetSummaryItem"] = Field(default_factory=list)
+    monthlyForecast: DashboardForecast
+    unbudgetedSpending: list[DashboardUnbudgetedSpendingItem] = Field(default_factory=list)
 
 
 class DashboardBudgetUsageItem(BaseModel):

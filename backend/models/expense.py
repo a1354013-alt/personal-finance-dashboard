@@ -65,6 +65,10 @@ class ExpenseCreate(BaseModel):
         return note or None
 
 
+class ExpenseUpdate(ExpenseCreate):
+    pass
+
+
 class ExpenseResponse(BaseModel):
     id: int
     amount: Decimal

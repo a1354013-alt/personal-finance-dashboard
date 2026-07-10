@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 const routes = [
   { path: '/', name: 'Dashboard', component: () => import('@/pages/Dashboard.vue'), meta: { requiresAuth: true } },
   { path: '/expenses', name: 'Expenses', component: () => import('@/pages/Expenses.vue'), meta: { requiresAuth: true } },
+  { path: '/recurring-transactions', name: 'RecurringTransactions', component: () => import('@/pages/RecurringTransactions.vue'), meta: { requiresAuth: true } },
   { path: '/imports/transactions', name: 'TransactionImport', component: () => import('@/pages/TransactionImport.vue'), meta: { requiresAuth: true } },
   { path: '/stocks', name: 'Stocks', component: () => import('@/pages/Stocks.vue'), meta: { requiresAuth: true } },
   { path: '/budgets', name: 'Budgets', component: () => import('@/pages/Budgets.vue'), meta: { requiresAuth: true } },

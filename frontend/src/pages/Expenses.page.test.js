@@ -9,11 +9,13 @@ const getExpensesMock = vi.fn(async () => [
   { id: 1, amount: 120, category: 'Food', type: 'expense', date: '2026-04-10', note: 'Lunch' }
 ])
 const createExpenseMock = vi.fn(async () => ({ id: 2 }))
+const updateExpenseMock = vi.fn(async () => ({ id: 1 }))
 const deleteExpenseMock = vi.fn(async () => ({}))
 
 vi.mock('@/api/expenses', () => ({
   getExpenses: (...args) => getExpensesMock(...args),
   createExpense: (...args) => createExpenseMock(...args),
+  updateExpense: (...args) => updateExpenseMock(...args),
   deleteExpense: (...args) => deleteExpenseMock(...args)
 }))
 
@@ -22,6 +24,7 @@ describe('Expenses page', () => {
     setActivePinia(createPinia())
     getExpensesMock.mockClear()
     createExpenseMock.mockClear()
+    updateExpenseMock.mockClear()
     deleteExpenseMock.mockClear()
   })
 
@@ -85,6 +88,31 @@ describe('Expenses page', () => {
       expect(createExpenseMock).toHaveBeenCalled()
       expect(getExpensesMock).toHaveBeenLastCalledWith({})
       expect(wrapper.find('#filter-type').element.value).toBe('')
+    })
+  })
+
+  it('edits an existing expense via the reused form', async () => {
+    const pinia = createPinia()
+    const i18n = createI18nInstance()
+    setActivePinia(pinia)
+    const wrapper = mount(Expenses, { global: { plugins: [pinia, i18n] } })
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Lunch')
+    })
+
+    await wrapper.findAll('tbody button')[0].trigger('click')
+    await wrapper.find('#expense-amount').setValue('155')
+    await wrapper.find('#expense-note').setValue('Dinner')
+    await wrapper.find('form.form-row').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(updateExpenseMock).toHaveBeenCalledWith(1, expect.objectContaining({
+        amount: 155,
+        category: 'Food',
+        note: 'Dinner'
+      }))
+      expect(getExpensesMock).toHaveBeenLastCalledWith({})
     })
   })
 })

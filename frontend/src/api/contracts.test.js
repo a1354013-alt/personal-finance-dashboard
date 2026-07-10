@@ -5,6 +5,7 @@ import {
   normalizeDashboardCharts,
   normalizeDashboardSummary,
   normalizeFundamentalsSnapshot,
+  normalizeRecurringTransaction,
   normalizeStockAlert,
   normalizeStockIndicators,
   normalizeWatchlistItem
@@ -80,6 +81,51 @@ describe('API contract normalizers', () => {
       usagePercent: 70,
       overBudget: false,
       warning: true
+    })
+    expect(result.monthlyForecast).toMatchObject({
+      projectedIncome: 0,
+      projectedExpense: 0,
+      projectedBalance: 0
+    })
+  })
+
+  it('normalizes planning contract additions', () => {
+    const recurring = normalizeRecurringTransaction({
+      id: '4',
+      amount: '1200.50',
+      category: 'Housing',
+      type: 'expense',
+      frequency: 'monthly',
+      is_active: true,
+      next_run_date: '2026-07-15'
+    })
+    const summary = normalizeDashboardSummary({
+      monthlyForecast: {
+        projectedIncome: '10000',
+        projectedExpense: '7500',
+        projectedBalance: '2500',
+        recurringIncomePending: '1000',
+        forecastWarnings: ['projected_expense_near_income']
+      },
+      unbudgeted_spending: [{ category: 'Travel', amount: '400', transaction_count: '2' }]
+    })
+
+    expect(recurring).toMatchObject({
+      id: 4,
+      amount: 1200.5,
+      is_active: true,
+      next_run_date: '2026-07-15'
+    })
+    expect(summary.monthlyForecast).toMatchObject({
+      projectedIncome: 10000,
+      projectedExpense: 7500,
+      projectedBalance: 2500,
+      recurringIncomePending: 1000
+    })
+    expect(summary.unbudgetedSpending[0]).toEqual({
+      category: 'Travel',
+      amount: 400,
+      transactionCount: 2
     })
   })
 

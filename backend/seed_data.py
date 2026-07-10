@@ -7,6 +7,7 @@ from calendar import monthrange
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
+from models.recurring_transaction import RecurringTransactionORM
 from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
@@ -35,6 +36,7 @@ FIXED_MOCK_EXPENSES = [
     {"amount": 2800.0, "category": "Travel", "type": "expense", "date": date(2026, 5, 2), "note": "Future booking"},
     {"amount": 50000.0, "category": "Salary", "type": "income", "date": date.today(), "note": "Current month salary"},
     {"amount": 1500.0, "category": "Food", "type": "expense", "date": date.today(), "note": "Lunch"},
+    {"amount": 2200.0, "category": "Shopping", "type": "expense", "date": date.today(), "note": "Unbudgeted household item"},
 ]
 
 MOCK_BUDGETS = [
@@ -82,6 +84,12 @@ FIXED_MOCK_PRICES = [
         "low": 169.0,
         "volume": 55000000,
     },
+]
+
+MOCK_RECURRING_TRANSACTIONS = [
+    {"amount": 50000.0, "category": "Salary", "type": "income", "note": "Monthly salary", "frequency": "monthly", "day": 5},
+    {"amount": 12500.0, "category": "Housing", "type": "expense", "note": "Monthly rent", "frequency": "monthly", "day": 1},
+    {"amount": 1800.0, "category": "Utilities", "type": "expense", "note": "Utility bill", "frequency": "monthly", "day": 20},
 ]
 
 
@@ -191,6 +199,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             db.refresh(demo_user)
 
         db.query(ExpenseORM).filter(ExpenseORM.user_id == demo_user.id).delete()
+        db.query(RecurringTransactionORM).filter(RecurringTransactionORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
         db.query(StockPriceAlertORM).filter(StockPriceAlertORM.user_id == demo_user.id).delete()
         db.query(WatchlistORM).filter(WatchlistORM.user_id == demo_user.id).delete()
@@ -207,6 +216,25 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
 
         for item in MOCK_BUDGETS:
             db.add(BudgetORM(user_id=demo_user.id, month=budget_month, **item))
+
+        today = date.today()
+        for item in MOCK_RECURRING_TRANSACTIONS:
+            run_day = min(item["day"], monthrange(today.year, today.month)[1])
+            start_date = date(today.year, today.month, run_day)
+            db.add(
+                RecurringTransactionORM(
+                    user_id=demo_user.id,
+                    amount=item["amount"],
+                    category=item["category"],
+                    type=item["type"],
+                    note=item["note"],
+                    frequency=item["frequency"],
+                    start_date=start_date,
+                    end_date=None,
+                    next_run_date=start_date if start_date >= today else None,
+                    is_active=True,
+                )
+            )
 
         price_by_code = {item["stock_code"]: item for item in mock_prices}
         seeded_at = datetime.now(timezone.utc)

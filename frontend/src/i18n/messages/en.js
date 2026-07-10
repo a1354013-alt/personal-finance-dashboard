@@ -29,6 +29,7 @@ export default {
     dashboard: 'Dashboard',
     expenses: 'Expenses',
     imports: 'Import',
+    recurring: 'Recurring',
     budgets: 'Budgets',
     stocks: 'Stocks',
     logout: 'Sign Out'
@@ -108,6 +109,26 @@ export default {
       warning: 'Near limit',
       danger: 'Overspent'
     },
+    forecast: {
+      title: 'Monthly Forecast',
+      subtitle: 'Projected cash flow after pending recurring transactions.',
+      projectedIncome: 'Projected income',
+      projectedExpense: 'Projected expense',
+      projectedBalance: 'Projected balance',
+      pendingRecurring: 'Pending recurring',
+      noWarnings: 'No forecast warnings for this month.',
+      warnings: {
+        projected_balance_negative: 'Projected balance is below zero.',
+        projected_expense_over_budget: 'Projected expenses may exceed this month’s budget.',
+        projected_expense_near_income: 'Projected expenses are close to projected income.'
+      }
+    },
+    unbudgeted: {
+      title: 'Unbudgeted Spending',
+      subtitle: 'Current-month spending categories without an active budget.',
+      empty: 'All current-month spending categories are budgeted.',
+      transactionCount: '{count} transaction(s)'
+    },
     ai: {
       summaryTitle: 'Smart Summary',
       adviceTitle: 'Budget Advice',
@@ -146,12 +167,14 @@ export default {
     title: 'Expenses',
     subtitle: 'Capture income and expenses in one steady workflow to understand your day-to-day cash flow.',
     addRecord: 'Add Record',
+    editRecord: 'Edit Record',
     amountPlaceholder: '1500',
     typeExpense: 'Expense',
     typeIncome: 'Income',
     selectCategory: 'Select a category',
     notePlaceholder: 'Optional note',
     addAction: 'Add Record',
+    updateAction: 'Update Record',
     addLoading: 'Saving...',
     filters: 'Filters',
     records: 'Records',
@@ -164,6 +187,36 @@ export default {
     dateError: 'Please select a date.',
     deleteLoading: 'Deleting...',
     deleteAction: 'Delete'
+  },
+  recurring: {
+    title: 'Recurring Transactions',
+    subtitle: 'Plan fixed income and expenses before they hit the month-end forecast.',
+    formTitle: 'Create Recurring Transaction',
+    editTitle: 'Edit Recurring Transaction',
+    listTitle: 'Recurring Schedule',
+    frequency: 'Frequency',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    nextRunDate: 'Next Run',
+    status: 'Status',
+    active: 'Active',
+    inactive: 'Inactive',
+    deactivate: 'Deactivate',
+    createAction: 'Create Recurring',
+    updateAction: 'Update Recurring',
+    saving: 'Saving...',
+    loading: 'Loading recurring transactions...',
+    empty: 'No recurring transactions yet.',
+    startDateError: 'Please choose a start date.',
+    endDateError: 'End date must be on or after start date.',
+    frequencies: {
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+      yearly: 'Yearly'
+    },
+    errors: {
+      load: 'Unable to load recurring transactions right now.'
+    }
   },
   imports: {
     title: 'Transaction Import',

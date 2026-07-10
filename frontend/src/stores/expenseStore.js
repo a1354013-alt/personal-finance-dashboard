@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { createExpense, deleteExpense, getExpenses } from '@/api/expenses'
+import { createExpense, deleteExpense, getExpenses, updateExpense } from '@/api/expenses'
 import { normalizeExpense } from '@/api/contracts'
 import i18n from '@/i18n'
 import { toErrorMessage } from '@/stores/storeUtils'
@@ -56,6 +56,21 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
+  async function editExpense(id, data, options = {}) {
+    const refreshParams = options.refreshParams ? { ...options.refreshParams } : { ...lastParams.value }
+    submitting.value = true
+    error.value = null
+    try {
+      await updateExpense(id, data)
+      await fetchExpenses(refreshParams)
+    } catch (e) {
+      error.value = toErrorMessage(e, i18n.global.t('common.unknownError'))
+      throw e
+    } finally {
+      submitting.value = false
+    }
+  }
+
   async function removeExpense(id) {
     if (deleting.value) return
     error.value = null
@@ -81,6 +96,7 @@ export const useExpenseStore = defineStore('expense', () => {
     totalExpense,
     fetchExpenses,
     addExpense,
+    editExpense,
     removeExpense
   }
 })

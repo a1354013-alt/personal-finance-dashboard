@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from models.expense import ExpenseCreate, ExpenseORM, ExpenseResponse
+from models.expense import ExpenseCreate, ExpenseORM, ExpenseResponse, ExpenseUpdate
 from models.user import UserORM
 from services.auth import get_current_user
 
@@ -40,6 +40,31 @@ def create_expense(
         note=payload.note,
     )
     db.add(expense)
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
+@router.put("/{expense_id}", response_model=ExpenseResponse)
+def update_expense(
+    expense_id: int,
+    payload: ExpenseUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    expense = (
+        db.query(ExpenseORM)
+        .filter(ExpenseORM.id == expense_id, ExpenseORM.user_id == current_user.id)
+        .first()
+    )
+    if not expense:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found.")
+
+    expense.amount = payload.amount
+    expense.category = payload.category
+    expense.type = payload.type
+    expense.date = payload.date
+    expense.note = payload.note
     db.commit()
     db.refresh(expense)
     return expense

@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.3.0 release.
+This repository is a portfolio/demo project prepared for the v1.4.0-rc1 release.
 
 Implemented demo surface:
 
@@ -14,6 +14,7 @@ Implemented demo surface:
 - Vue frontend
 - Auth with access token, refresh token, and logout revoke flow
 - Dashboard analytics
+- Transaction editing and recurring transaction planning
 - Budget management and budget health summaries
 - Stock watchlist
 - Taiwan stock technical indicators and in-app price alerts
@@ -32,8 +33,10 @@ Demo readiness already in place:
 ## Features
 
 - Expense and income tracking
+- Transaction editing on the Expenses page
+- Recurring transactions with weekly, monthly, and yearly schedules
 - Monthly budget setup and budget health summaries
-- Dashboard cards, charts, recent transactions, and report export
+- Dashboard cards, monthly forecast, unbudgeted spending insight, charts, recent transactions, and report export
 - Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, MA5/MA20/RSI14 technical indicators, in-app price alerts, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
 - Transaction import for CSV/XLSX files with preview, row validation, duplicate detection, and batch history
@@ -97,7 +100,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.3.0 release.
+Windows is the supported F5 path for this v1.4.0-rc1 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -184,11 +187,13 @@ This creates demo data for:
 
 - demo user
 - transactions
+- recurring transactions
 - budgets
+- an unbudgeted current-month spending category
 - stock watchlist
 - cached stock prices
 
-The default `python seed_data.py --reset` command creates current-month transactions and budgets so Dashboard Budget Health is populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
+The default `python seed_data.py --reset` command creates current-month transactions, recurring income/expense schedules, budgets, and one unbudgeted spending category so Dashboard Budget Health, Monthly Forecast, and Unbudgeted Spending are populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
 
 Demo account:
 
@@ -213,6 +218,15 @@ Transaction import demo flow:
 5. Review the preview table, validation messages, and duplicate markers.
 6. Confirm the valid rows you want to import.
 7. Open Dashboard or Expenses to verify the imported records appear.
+
+Smart monthly planning demo flow:
+
+1. Run `python seed_data.py --reset` from `backend`.
+2. Start the backend and frontend, then sign in with the demo account.
+3. Open Expenses, edit an existing transaction, and save it.
+4. Open Recurring from the top navigation and create or adjust a recurring transaction.
+5. Open Dashboard and review Monthly Forecast for projected income, projected expense, projected balance, and pending recurring items.
+6. Review Unbudgeted Spending to find current-month categories with spending but no active budget.
 
 AI interpretation is informational only and not financial advice. It summarizes cached data, recent price movement, volume/liquidity context, risk notes, and watch points; it does not provide buy/sell recommendations.
 

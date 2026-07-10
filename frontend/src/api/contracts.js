@@ -144,6 +144,26 @@ export function normalizeExpense(row) {
   }
 }
 
+export function normalizeRecurringTransaction(row) {
+  if (!row || typeof row !== 'object') return null
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+  return {
+    id,
+    amount: toNumberOrZero(row.amount),
+    category: toStringOrEmpty(row.category),
+    type: row.type === 'income' ? 'income' : 'expense',
+    note: toStringOrEmpty(row.note),
+    frequency: ['weekly', 'monthly', 'yearly'].includes(row.frequency) ? row.frequency : 'monthly',
+    start_date: row.start_date ?? row.startDate ?? null,
+    end_date: row.end_date ?? row.endDate ?? null,
+    next_run_date: row.next_run_date ?? row.nextRunDate ?? null,
+    is_active: Boolean(row.is_active ?? row.isActive),
+    created_at: row.created_at ?? row.createdAt ?? null,
+    updated_at: row.updated_at ?? row.updatedAt ?? null
+  }
+}
+
 export function normalizeTransactionImportBatch(row) {
   if (!row || typeof row !== 'object') return null
   return {
@@ -309,6 +329,30 @@ export function normalizeDashboardSummary(payload) {
         overBudget: Boolean(item.overBudget ?? item.over_budget),
         warning: Boolean(item.warning)
       }))
+      : [],
+    monthlyForecast: normalizeMonthlyForecast(payload.monthlyForecast ?? payload.monthly_forecast),
+    unbudgetedSpending: Array.isArray(payload.unbudgetedSpending ?? payload.unbudgeted_spending)
+      ? (payload.unbudgetedSpending ?? payload.unbudgeted_spending).map(item => ({
+        category: String(item.category || ''),
+        amount: toNumberOrZero(item.amount),
+        transactionCount: toNumberOrZero(item.transactionCount ?? item.transaction_count)
+      }))
+      : []
+  }
+}
+
+export function normalizeMonthlyForecast(payload) {
+  const row = payload && typeof payload === 'object' ? payload : {}
+  return {
+    projectedIncome: toNumberOrZero(row.projectedIncome ?? row.projected_income),
+    projectedExpense: toNumberOrZero(row.projectedExpense ?? row.projected_expense),
+    projectedBalance: toNumberOrZero(row.projectedBalance ?? row.projected_balance),
+    actualIncomeToDate: toNumberOrZero(row.actualIncomeToDate ?? row.actual_income_to_date),
+    actualExpenseToDate: toNumberOrZero(row.actualExpenseToDate ?? row.actual_expense_to_date),
+    recurringIncomePending: toNumberOrZero(row.recurringIncomePending ?? row.recurring_income_pending),
+    recurringExpensePending: toNumberOrZero(row.recurringExpensePending ?? row.recurring_expense_pending),
+    forecastWarnings: Array.isArray(row.forecastWarnings ?? row.forecast_warnings)
+      ? (row.forecastWarnings ?? row.forecast_warnings).map(toStringOrEmpty).filter(Boolean)
       : []
   }
 }
