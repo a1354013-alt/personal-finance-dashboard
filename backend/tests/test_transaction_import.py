@@ -179,6 +179,33 @@ def test_duplicate_detection_against_existing_database_rows(client):
     assert row["duplicate_reasons"] == ["duplicate_in_database"]
 
 
+def test_reupload_after_confirm_detects_database_duplicate_with_payment_method(client):
+    token = register_and_login(client, "import-reupload-payment-method@example.com")
+    content = make_csv_bytes(
+        "date,amount,type,category,note,payment_method\n"
+        "2026-07-02,88,expense,Food,Tea,Cash\n"
+    )
+    first_preview = preview_import(client, token, file_name="transactions.csv", content=content)
+    assert first_preview.status_code == 201
+    assert first_preview.json()["rows"][0]["status"] == "valid"
+
+    batch_id = first_preview.json()["batch"]["id"]
+    confirm = client.post(
+        f"/api/imports/transactions/{batch_id}/confirm",
+        headers=auth_headers(token),
+        json={"selected_row_numbers": None},
+    )
+    assert confirm.status_code == 200
+    assert confirm.json()["created_count"] == 1
+
+    second_preview = preview_import(client, token, file_name="transactions.csv", content=content)
+
+    assert second_preview.status_code == 201
+    row = second_preview.json()["rows"][0]
+    assert row["status"] == "duplicate"
+    assert row["duplicate_reasons"] == ["duplicate_in_database"]
+
+
 def test_confirm_import_creates_valid_rows_and_skips_invalid_or_duplicates(client):
     token = register_and_login(client, "import-confirm@example.com")
     client.post(

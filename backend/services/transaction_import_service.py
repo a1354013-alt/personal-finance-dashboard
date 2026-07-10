@@ -166,16 +166,18 @@ def preview_transaction_import(
         normalized_records.append(_normalize_row(row=row, source_row_number=index, file_name=file_name, batch_id=batch.id, header_map=header_map))
 
     fingerprints = [record["fingerprint"] for record in normalized_records if record["fingerprint"]]
+    database_fingerprints = [record["database_fingerprint"] for record in normalized_records if record["database_fingerprint"]]
     file_duplicates = {fingerprint for fingerprint, count in Counter(fingerprints).items() if count > 1}
-    database_duplicates = _find_database_duplicates(db, user_id=user.id, fingerprints=set(fingerprints))
+    database_duplicates = _find_database_duplicates(db, user_id=user.id, fingerprints=set(database_fingerprints))
 
     row_models: list[TransactionImportRowORM] = []
     for record in normalized_records:
         duplicate_reasons = list(record["duplicate_reasons"])
         fingerprint = record["fingerprint"]
+        database_fingerprint = record["database_fingerprint"]
         if fingerprint and fingerprint in file_duplicates:
             duplicate_reasons.append("duplicate_in_file")
-        if fingerprint and fingerprint in database_duplicates:
+        if database_fingerprint and database_fingerprint in database_duplicates:
             duplicate_reasons.append("duplicate_in_database")
         duplicate_reasons = sorted(set(duplicate_reasons))
 
@@ -391,13 +393,20 @@ def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: st
         "description": note or "",
         "payment_method": payment_method,
     }
-    fingerprint = _build_fingerprint(
+    fingerprint = _build_import_row_fingerprint(
         transaction_date=normalized_date,
         amount=amount_abs,
         transaction_type=normalized_type,
         category=normalized_category,
         note=note,
         payment_method=payment_method,
+    )
+    database_fingerprint = _build_persisted_expense_fingerprint(
+        transaction_date=normalized_date,
+        amount=amount_abs,
+        transaction_type=normalized_type,
+        category=normalized_category,
+        note=note,
     )
     if normalized_type == "income" and parsed_amount is not None and parsed_amount < 0:
         warnings.append("Negative income amount was converted to a positive stored value.")
@@ -411,6 +420,7 @@ def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: st
         "warnings": sorted(set(warnings)),
         "duplicate_reasons": duplicate_reasons,
         "fingerprint": fingerprint,
+        "database_fingerprint": database_fingerprint,
         "status": status_value,
     }
 
@@ -470,7 +480,7 @@ def _parse_type_value(value: Any) -> str | None:
     return TYPE_ALIASES.get(text)
 
 
-def _build_fingerprint(
+def _build_import_row_fingerprint(
     *,
     transaction_date: date | None,
     amount: Decimal | None,
@@ -479,12 +489,32 @@ def _build_fingerprint(
     note: str | None,
     payment_method: str | None,
 ) -> str | None:
+    normalized_payment_method = re.sub(r"\s+", " ", (payment_method or "").strip().lower())
+    base = _build_persisted_expense_fingerprint(
+        transaction_date=transaction_date,
+        amount=amount,
+        transaction_type=transaction_type,
+        category=category,
+        note=note,
+    )
+    if base is None:
+        return None
+    return f"{base}|{normalized_payment_method}"
+
+
+def _build_persisted_expense_fingerprint(
+    *,
+    transaction_date: date | None,
+    amount: Decimal | None,
+    transaction_type: str | None,
+    category: str,
+    note: str | None,
+) -> str | None:
     if transaction_date is None or amount is None or not transaction_type or not category.strip():
         return None
     normalized_note = re.sub(r"\s+", " ", (note or "").strip().lower())
     normalized_category = re.sub(r"\s+", " ", category.strip().lower())
-    normalized_payment_method = re.sub(r"\s+", " ", (payment_method or "").strip().lower())
-    return f"{transaction_date.isoformat()}|{amount:.2f}|{transaction_type}|{normalized_category}|{normalized_note}|{normalized_payment_method}"
+    return f"{transaction_date.isoformat()}|{amount:.2f}|{transaction_type}|{normalized_category}|{normalized_note}"
 
 
 def _find_database_duplicates(db: Session, *, user_id: int, fingerprints: set[str]) -> set[str]:
@@ -493,13 +523,12 @@ def _find_database_duplicates(db: Session, *, user_id: int, fingerprints: set[st
     matches: set[str] = set()
     expenses = db.query(ExpenseORM).filter(ExpenseORM.user_id == user_id).all()
     for expense in expenses:
-        fingerprint = _build_fingerprint(
+        fingerprint = _build_persisted_expense_fingerprint(
             transaction_date=expense.date,
             amount=Decimal(str(expense.amount)),
             transaction_type=expense.type,
             category=expense.category,
             note=expense.note,
-            payment_method=None,
         )
         if fingerprint in fingerprints:
             matches.add(fingerprint)
