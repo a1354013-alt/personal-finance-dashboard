@@ -4,6 +4,26 @@ export function getWatchlist() {
   return api.get('/stocks/watchlist')
 }
 
+export function getStockHoldings() {
+  return api.get('/stocks/holdings')
+}
+
+export function createStockHolding(payload) {
+  return api.post('/stocks/holdings', payload)
+}
+
+export function updateStockHolding(holdingId, payload) {
+  return api.put(`/stocks/holdings/${holdingId}`, payload)
+}
+
+export function deleteStockHolding(holdingId) {
+  return api.delete(`/stocks/holdings/${holdingId}`)
+}
+
+export function getStockPortfolio() {
+  return api.get('/stocks/portfolio')
+}
+
 export function addToWatchlist(stockCode) {
   return api.post('/stocks/watchlist', { stock_code: stockCode })
 }

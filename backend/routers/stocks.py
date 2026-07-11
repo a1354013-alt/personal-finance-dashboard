@@ -8,11 +8,15 @@ from db.database import get_db
 from models.fundamentals import FundamentalsSnapshot, FundamentalsSyncOptions
 from models.job import CreateJobRequest
 from models.stock import (
+    StockHoldingCreate,
+    StockHoldingResponse,
+    StockHoldingUpdate,
     StockAIAnalysisResponse,
     StockDashboardResponse,
     StockFilterRequest,
     StockFilterResult,
     StockIndicatorsResponse,
+    StockPortfolioResponse,
     StockPriceAlertCheckResponse,
     StockPriceAlertCreate,
     StockPriceAlertResponse,
@@ -38,6 +42,7 @@ from services.stock_alert_service import (
 )
 from services.stock_ai_analysis_service import build_stock_ai_analysis
 from services.stock_indicator_service import build_stock_indicators
+from services.stock_portfolio_service import build_portfolio_summary, create_holding, delete_holding, list_holdings, update_holding
 from services.stocks_ai_explanation_service import build_stock_ai_explanation
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
 from services.watchlist_service import (
@@ -91,6 +96,61 @@ def get_watchlist(
     current_user: UserORM = Depends(get_current_user),
 ):
     return list_watchlist(db, user_id=current_user.id)
+
+
+@router.get("/holdings", response_model=list[StockHoldingResponse])
+def get_stock_holdings(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    return list_holdings(db, user_id=current_user.id)
+
+
+@router.post("/holdings", response_model=StockHoldingResponse, status_code=status.HTTP_201_CREATED)
+def create_stock_holding(
+    payload: StockHoldingCreate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    try:
+        return create_holding(db, user_id=current_user.id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.put("/holdings/{holding_id}", response_model=StockHoldingResponse)
+def update_stock_holding(
+    holding_id: int,
+    payload: StockHoldingUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    try:
+        updated = update_holding(db, user_id=current_user.id, holding_id=holding_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock holding not found.")
+    return updated
+
+
+@router.delete("/holdings/{holding_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_stock_holding(
+    holding_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    ok = delete_holding(db, user_id=current_user.id, holding_id=holding_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock holding not found.")
+
+
+@router.get("/portfolio", response_model=StockPortfolioResponse)
+def get_stock_portfolio(
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    return build_portfolio_summary(db, user_id=current_user.id)
 
 
 @router.post("/watchlist", response_model=WatchlistItemResponse, status_code=status.HTTP_201_CREATED)

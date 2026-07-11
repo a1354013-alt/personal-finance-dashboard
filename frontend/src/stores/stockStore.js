@@ -5,10 +5,12 @@ import i18n from '@/i18n'
 import {
   normalizeFilterMetadata,
   normalizeFundamentalsFilterResult,
+  normalizeStockHolding,
   normalizeStockAiAnalysis,
   normalizeStockDashboard,
   normalizeStockAlert,
   normalizeStockIndicators,
+  normalizeStockPortfolio,
   normalizeWatchlistItem
 } from '@/api/contracts'
 import { toErrorMessage } from '@/stores/storeUtils'
@@ -31,6 +33,13 @@ export const useStockStore = defineStore('stock', () => {
   const alertsLoading = ref(false)
   const alertsChecking = ref(false)
   const alertsError = ref(null)
+  const holdings = ref([])
+  const portfolio = ref(null)
+  const holdingsLoading = ref(false)
+  const holdingsSaving = ref(false)
+  const holdingsDeletingIds = ref([])
+  const portfolioLoading = ref(false)
+  const holdingsError = ref(null)
 
   const watchlistLoading = ref(false)
   const filterLoading = ref(false)
@@ -51,6 +60,97 @@ export const useStockStore = defineStore('stock', () => {
     const itemId = selectedWatchlistItem.value?.id
     return itemId ? indicatorsByItemId.value[itemId] || null : null
   })
+
+  async function fetchHoldings() {
+    holdingsLoading.value = true
+    holdingsError.value = null
+    try {
+      const response = await stockApi.getStockHoldings()
+      holdings.value = Array.isArray(response) ? response.map(normalizeStockHolding).filter(Boolean) : []
+      return holdings.value
+    } catch (error) {
+      holdings.value = []
+      holdingsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      holdingsLoading.value = false
+    }
+  }
+
+  async function fetchPortfolio() {
+    portfolioLoading.value = true
+    holdingsError.value = null
+    try {
+      const response = await stockApi.getStockPortfolio()
+      portfolio.value = normalizeStockPortfolio(response)
+      return portfolio.value
+    } catch (error) {
+      portfolio.value = null
+      holdingsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      portfolioLoading.value = false
+    }
+  }
+
+  async function refreshPortfolioWorkspace() {
+    await Promise.allSettled([fetchHoldings(), fetchPortfolio()])
+  }
+
+  async function createHolding(payload) {
+    holdingsSaving.value = true
+    holdingsError.value = null
+    try {
+      const response = await stockApi.createStockHolding(payload)
+      const normalized = normalizeStockHolding(response)
+      await refreshPortfolioWorkspace()
+      return normalized || response
+    } catch (error) {
+      holdingsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      holdingsSaving.value = false
+    }
+  }
+
+  async function updateHolding(holdingId, payload) {
+    holdingsSaving.value = true
+    holdingsError.value = null
+    try {
+      const response = await stockApi.updateStockHolding(holdingId, payload)
+      const normalized = normalizeStockHolding(response)
+      await refreshPortfolioWorkspace()
+      return normalized || response
+    } catch (error) {
+      holdingsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      holdingsSaving.value = false
+    }
+  }
+
+  function isHoldingDeleting(id) {
+    return holdingsDeletingIds.value.includes(Number(id))
+  }
+
+  async function deleteHolding(holdingId) {
+    const numericId = Number(holdingId)
+    if (!Number.isFinite(numericId) || isHoldingDeleting(numericId)) {
+      return null
+    }
+    holdingsDeletingIds.value.push(numericId)
+    holdingsError.value = null
+    try {
+      await stockApi.deleteStockHolding(numericId)
+      await refreshPortfolioWorkspace()
+      return true
+    } catch (error) {
+      holdingsError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      holdingsDeletingIds.value = holdingsDeletingIds.value.filter((id) => id !== numericId)
+    }
+  }
 
   async function fetchWatchlist() {
     watchlistLoading.value = true
@@ -414,7 +514,17 @@ export const useStockStore = defineStore('stock', () => {
     alertsLoading,
     alertsChecking,
     alertsError,
+    holdings,
+    portfolio,
+    holdingsLoading,
+    holdingsSaving,
+    holdingsDeletingIds,
+    portfolioLoading,
+    holdingsError,
     fetchWatchlist,
+    fetchHoldings,
+    fetchPortfolio,
+    refreshPortfolioWorkspace,
     fetchDashboard,
     fetchFilterResults,
     fetchStockIndicators,
@@ -423,6 +533,9 @@ export const useStockStore = defineStore('stock', () => {
     createStockAlert,
     updateStockAlert,
     deleteStockAlert,
+    createHolding,
+    updateHolding,
+    deleteHolding,
     checkStockAlerts,
     syncFundamentals,
     syncSingleFundamentals,
@@ -435,6 +548,7 @@ export const useStockStore = defineStore('stock', () => {
     isSingleFundamentalsSyncing,
     isSingleSyncing,
     isItemSyncing,
+    isHoldingDeleting,
     isIndicatorLoading,
     isAnalyzing,
     evaluateStock,

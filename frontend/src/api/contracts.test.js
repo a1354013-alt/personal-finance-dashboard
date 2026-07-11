@@ -7,7 +7,9 @@ import {
   normalizeFundamentalsSnapshot,
   normalizeRecurringTransaction,
   normalizeStockAlert,
+  normalizeStockHolding,
   normalizeStockIndicators,
+  normalizeStockPortfolio,
   normalizeWatchlistItem
 } from '@/api/contracts'
 
@@ -221,6 +223,62 @@ describe('API contract normalizers', () => {
       target_price: 900,
       is_active: false,
       last_price_at_trigger: 899.5
+    })
+  })
+
+  it('normalizes portfolio holdings and summary payloads', () => {
+    const holding = normalizeStockHolding({
+      id: '11',
+      stock_code: '2330.tw',
+      shares: '10',
+      average_cost: '900.5',
+      currency: 'twd',
+      note: ' core '
+    })
+    const portfolio = normalizeStockPortfolio({
+      total_cost: '9005',
+      total_market_value: '10000',
+      total_unrealized_pnl: '995',
+      total_unrealized_pnl_percent: '11.05',
+      holdings_count: '1',
+      currency: 'twd',
+      warnings: ['Latest price unavailable for: AAPL.'],
+      positions: [{
+        holding_id: '11',
+        stock_code: '2330.tw',
+        stock_name: 'TSMC',
+        shares: '10',
+        average_cost: '900.5',
+        latest_price: '1000',
+        cost_basis: '9005',
+        market_value: '10000',
+        unrealized_pnl: '995',
+        unrealized_pnl_percent: '11.05',
+        allocation_percent: '100',
+        currency: 'twd'
+      }]
+    })
+
+    expect(holding).toMatchObject({
+      id: 11,
+      stock_code: '2330.TW',
+      shares: 10,
+      average_cost: 900.5,
+      currency: 'TWD',
+      note: 'core'
+    })
+    expect(portfolio).toMatchObject({
+      total_cost: 9005,
+      total_market_value: 10000,
+      total_unrealized_pnl: 995,
+      total_unrealized_pnl_percent: 11.05,
+      holdings_count: 1,
+      currency: 'TWD'
+    })
+    expect(portfolio.positions[0]).toMatchObject({
+      holding_id: 11,
+      stock_code: '2330.TW',
+      allocation_percent: 100
     })
   })
 })

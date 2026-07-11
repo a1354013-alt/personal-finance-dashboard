@@ -102,3 +102,25 @@ def test_watchlist_contract_infers_currency_per_item(client):
     assert currency_by_code["2330.TW"] == "TWD"
     assert currency_by_code["AAPL"] == "USD"
 
+
+def test_portfolio_contract_serializes_numbers_without_user_scope_leak(client):
+    token = register_and_login(client, "portfolio-contract@example.com")
+    headers = auth_headers(token)
+
+    holding = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "AAPL", "shares": 2.5, "average_cost": 120.25, "note": "taxable"},
+    )
+    assert holding.status_code == 201
+    holding_payload = holding.json()
+    assert "user_id" not in holding_payload
+    assert isinstance(holding_payload["shares"], (int, float))
+    assert isinstance(holding_payload["average_cost"], (int, float))
+
+    portfolio = client.get("/api/stocks/portfolio", headers=headers)
+    assert portfolio.status_code == 200
+    payload = portfolio.json()
+    assert isinstance(payload["total_cost"], (int, float))
+    assert payload["positions"][0]["latest_price"] is None
+

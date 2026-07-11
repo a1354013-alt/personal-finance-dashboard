@@ -1,12 +1,12 @@
 # Personal Finance Dashboard
 
-Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, AI-assisted summaries, monthly report exports, and transaction imports.
+Personal Finance Dashboard is a full-stack portfolio/demo project for tracking expenses, budgets, dashboard analytics, stock watchlists, portfolio holdings, AI-assisted summaries, monthly report exports, and transaction imports.
 
 The current release is intended for local demo use: it should start from VS Code F5 on Windows, pass backend/frontend tests, build the frontend, and keep API contracts aligned across FastAPI and Vue.
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.5.0 release.
+This repository is a portfolio/demo project prepared for the v1.6.0-rc1 release.
 
 Implemented demo surface:
 
@@ -17,6 +17,7 @@ Implemented demo surface:
 - Transaction editing and recurring transaction planning/automation
 - Budget management and budget health summaries
 - Stock watchlist
+- Portfolio holdings with unrealized P/L
 - Taiwan stock technical indicators and in-app price alerts
 - Monthly reports
 - AI-assisted finance summary
@@ -37,7 +38,7 @@ Demo readiness already in place:
 - Recurring transactions with weekly, monthly, and yearly schedules plus current-month occurrence generation
 - Monthly budget setup and budget health summaries
 - Dashboard cards, monthly forecast, unbudgeted spending insight, charts, recent transactions, and report export
-- Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, MA5/MA20/RSI14 technical indicators, in-app price alerts, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
+- Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, portfolio holdings, unrealized P/L summary, MA5/MA20/RSI14 technical indicators, in-app price alerts, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
 - Transaction import for CSV/XLSX files with preview, optional manual column mapping, row validation, duplicate detection, and batch history
 - CSV and PDF monthly report export
@@ -100,7 +101,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.5.0 release.
+Windows is the supported F5 path for this v1.6.0-rc1 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -192,6 +193,7 @@ This creates demo data for:
 - budgets
 - an unbudgeted current-month spending category
 - stock watchlist
+- stock portfolio holdings
 - cached stock prices
 
 The default `python seed_data.py --reset` command creates current-month transactions, recurring income/expense schedules, generated/skipped recurring occurrence examples, budgets, and one unbudgeted spending category so Dashboard Budget Health, Monthly Forecast, and Unbudgeted Spending are populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
@@ -201,14 +203,16 @@ Demo account:
 - Email: `demo@example.com`
 - Password: `demo1234`
 
-Taiwan stock demo flow:
+Portfolio and stock demo flow:
 
 1. Run `python seed_data.py --reset` from `backend`.
 2. Start the backend and frontend, then sign in with the demo account.
 3. Open Stocks.
-4. Add `2330`, `0050`, or `00878`; four-digit Taiwan symbols are normalized to `.TW`.
-5. Use Price Sync on the watchlist item.
-6. Use AI Interpretation to generate observation notes from cached price data.
+4. Review the seeded portfolio summary and unrealized P/L cards.
+5. Add or edit a holding such as `2330` or `AAPL`; four-digit Taiwan symbols are normalized to `.TW`.
+6. Check each position's cost basis, market value, allocation, and unrealized P/L.
+7. Use Price Sync on a watchlist item if you want to refresh cached price data.
+8. Use AI Interpretation to generate observation notes from cached price data.
 
 Transaction import demo flow:
 
@@ -426,8 +430,9 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 ## Known Limitations / Roadmap
 
 - Playwright E2E smoke coverage is not included yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
-- Stock functionality is a watchlist, not a full portfolio profit/loss system.
+- Portfolio unrealized P/L depends on whichever latest cached price is available for each holding; when price data is missing, price-dependent fields are intentionally returned as `null` with warnings.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
+- `zh-CN` and `ja` keep key parity for the new portfolio strings, but the wording is still largely English and should be localized in a follow-up polish pass.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.
 
 ## Common Issues

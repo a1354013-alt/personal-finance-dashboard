@@ -104,6 +104,27 @@ class StockPriceAlertORM(Base):
     watchlist_item = relationship("WatchlistORM")
 
 
+class StockHoldingORM(Base):
+    __tablename__ = "stock_holdings"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stock_code = Column(String(20), nullable=False, index=True)
+    shares = Column(Numeric(18, 6), nullable=False)
+    average_cost = Column(Numeric(18, 4), nullable=False)
+    currency = Column(String(10), nullable=False, default="USD")
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("UserORM")
+
+
 class WatchlistCreate(BaseModel):
     stock_code: str
 
@@ -272,6 +293,127 @@ class StockPriceAlertResponse(BaseModel):
         return float(value)
 
 
+class StockHoldingBase(BaseModel):
+    stock_code: str
+    shares: Decimal
+    average_cost: Decimal
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
+    @field_validator("stock_code")
+    @classmethod
+    def validate_holding_stock_code(cls, value: str) -> str:
+        stock_code = value.strip().upper()
+        if not stock_code:
+            raise ValueError("Stock code is required.")
+        if len(stock_code) > 20:
+            raise ValueError("Stock code must be 20 characters or fewer.")
+        return stock_code
+
+    @field_validator("shares")
+    @classmethod
+    def validate_shares(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Shares must be greater than 0.")
+        return value
+
+    @field_validator("average_cost")
+    @classmethod
+    def validate_average_cost(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Average cost must be greater than 0.")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        currency = value.strip().upper()
+        if not currency:
+            return None
+        return currency[:10]
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        note = value.strip()
+        return note or None
+
+
+class StockHoldingCreate(StockHoldingBase):
+    pass
+
+
+class StockHoldingUpdate(BaseModel):
+    stock_code: Optional[str] = None
+    shares: Optional[Decimal] = None
+    average_cost: Optional[Decimal] = None
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
+    @field_validator("stock_code")
+    @classmethod
+    def validate_optional_stock_code(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stock_code = value.strip().upper()
+        if not stock_code:
+            raise ValueError("Stock code is required.")
+        if len(stock_code) > 20:
+            raise ValueError("Stock code must be 20 characters or fewer.")
+        return stock_code
+
+    @field_validator("shares")
+    @classmethod
+    def validate_optional_shares(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("Shares must be greater than 0.")
+        return value
+
+    @field_validator("average_cost")
+    @classmethod
+    def validate_optional_average_cost(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("Average cost must be greater than 0.")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_optional_currency(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        currency = value.strip().upper()
+        return currency[:10] if currency else None
+
+    @field_validator("note")
+    @classmethod
+    def validate_optional_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        note = value.strip()
+        return note or None
+
+
+class StockHoldingResponse(BaseModel):
+    id: int
+    stock_code: str
+    shares: Decimal
+    average_cost: Decimal
+    currency: str
+    note: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("shares", "average_cost")
+    def serialize_holding_numbers(self, value: Decimal) -> float:
+        return float(value)
+
+
 class StockPriceAlertCheckResponse(BaseModel):
     checked_count: int
     triggered_count: int
@@ -295,3 +437,57 @@ class StockDashboardResponse(BaseModel):
     price_history: list[StockPriceHistoryPoint]
     fundamentals: Optional[dict] = None
     ai_explanation: Optional[StockAIExplanationResponse] = None
+
+
+class PortfolioPositionResponse(BaseModel):
+    holding_id: int
+    stock_code: str
+    stock_name: Optional[str] = None
+    shares: Decimal
+    average_cost: Decimal
+    latest_price: Optional[Decimal] = None
+    cost_basis: Decimal
+    market_value: Optional[Decimal] = None
+    unrealized_pnl: Optional[Decimal] = None
+    unrealized_pnl_percent: Optional[Decimal] = None
+    allocation_percent: Optional[Decimal] = None
+    currency: str
+    warning: Optional[str] = None
+    updated_at: datetime
+
+    @field_serializer(
+        "shares",
+        "average_cost",
+        "latest_price",
+        "cost_basis",
+        "market_value",
+        "unrealized_pnl",
+        "unrealized_pnl_percent",
+        "allocation_percent",
+    )
+    def serialize_position_numbers(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class StockPortfolioResponse(BaseModel):
+    total_cost: Decimal
+    total_market_value: Optional[Decimal] = None
+    total_unrealized_pnl: Optional[Decimal] = None
+    total_unrealized_pnl_percent: Optional[Decimal] = None
+    holdings_count: int
+    currency: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)
+    positions: list[PortfolioPositionResponse] = Field(default_factory=list)
+
+    @field_serializer(
+        "total_cost",
+        "total_market_value",
+        "total_unrealized_pnl",
+        "total_unrealized_pnl_percent",
+    )
+    def serialize_portfolio_numbers(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)

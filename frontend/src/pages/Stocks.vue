@@ -11,6 +11,90 @@
     <div v-if="actionMessage" class="success-msg">{{ actionMessage }}</div>
     <div v-if="actionError" class="error-msg">{{ actionError }}</div>
 
+    <section class="card portfolio-card">
+      <div class="section-header">
+        <div>
+          <h2>{{ t('stocks.portfolio.title') }}</h2>
+          <p class="helper-text">{{ t('stocks.portfolio.subtitle') }}</p>
+        </div>
+        <span class="badge" :class="portfolioPnLClass">{{ portfolioPnLLabel }}</span>
+      </div>
+
+      <div v-if="stockStore.holdingsError" class="error-msg">{{ stockStore.holdingsError }}</div>
+
+      <div class="portfolio-summary-grid">
+        <article v-for="item in portfolioSummaryItems" :key="item.label" class="portfolio-summary-item">
+          <span class="fundamentals-label">{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </article>
+      </div>
+
+      <div v-if="portfolioWarnings.length" class="portfolio-warning-list">
+        <div v-for="warning in portfolioWarnings" :key="warning" class="tile-warning">{{ warning }}</div>
+      </div>
+
+      <form class="form-row holding-form" @submit.prevent="handleSaveHolding">
+        <div class="form-group">
+          <label for="holding-stock-code">{{ t('stocks.portfolio.stockCode') }}</label>
+          <input id="holding-stock-code" v-model.trim="holdingForm.stock_code" type="text" placeholder="2330 or AAPL" required />
+        </div>
+        <div class="form-group">
+          <label for="holding-shares">{{ t('stocks.portfolio.shares') }}</label>
+          <input id="holding-shares" v-model.number="holdingForm.shares" type="number" min="0.000001" step="0.000001" required />
+        </div>
+        <div class="form-group">
+          <label for="holding-average-cost">{{ t('stocks.portfolio.averageCost') }}</label>
+          <input id="holding-average-cost" v-model.number="holdingForm.average_cost" type="number" min="0.0001" step="0.0001" required />
+        </div>
+        <div class="form-group">
+          <label for="holding-note">{{ t('stocks.portfolio.note') }}</label>
+          <input id="holding-note" v-model.trim="holdingForm.note" type="text" :placeholder="t('stocks.portfolio.notePlaceholder')" />
+        </div>
+        <div class="holding-form-actions">
+          <button type="submit" class="btn btn-primary" :disabled="stockStore.holdingsSaving">
+            {{ stockStore.holdingsSaving ? t('stocks.portfolio.saving') : editingHoldingId ? t('stocks.portfolio.update') : t('stocks.portfolio.create') }}
+          </button>
+          <button v-if="editingHoldingId" type="button" class="btn btn-secondary" @click="resetHoldingForm">
+            {{ t('stocks.portfolio.cancelEdit') }}
+          </button>
+        </div>
+      </form>
+
+      <div v-if="stockStore.holdingsLoading || stockStore.portfolioLoading" class="loading-text">{{ t('stocks.portfolio.loading') }}</div>
+      <div v-else-if="!stockStore.holdings.length" class="empty-state">{{ t('stocks.portfolio.empty') }}</div>
+      <div v-else class="portfolio-position-list">
+        <article v-for="position in portfolioPositions" :key="position.holding_id" class="portfolio-position-card">
+          <div class="tile-head">
+            <div>
+              <strong>{{ position.stock_code }}</strong>
+              <div class="tile-name">{{ position.stock_name || position.stock_code }}</div>
+            </div>
+            <span class="badge" :class="position.unrealized_pnl == null ? 'badge-warning' : position.unrealized_pnl >= 0 ? 'badge-success' : 'badge-danger'">
+              {{
+                position.allocation_percent == null
+                  ? t('stocks.portfolio.pricePending')
+                  : t('stocks.portfolio.allocationValue', { value: position.allocation_percent.toFixed(2) })
+              }}
+            </span>
+          </div>
+          <div class="portfolio-metrics-grid">
+            <article v-for="metric in buildPositionMetrics(position)" :key="metric.label" class="portfolio-metric-item">
+              <span>{{ metric.label }}</span>
+              <strong :class="metric.tone">{{ metric.value }}</strong>
+            </article>
+          </div>
+          <div v-if="position.warning" class="tile-warning">{{ position.warning }}</div>
+          <div v-if="holdingNote(position.holding_id)" class="tile-meta">{{ holdingNote(position.holding_id) }}</div>
+          <div class="tile-actions">
+            <button class="btn btn-secondary" @click="startEditingHolding(position.holding_id)">{{ t('common.edit') }}</button>
+            <button class="btn btn-danger" :disabled="stockStore.isHoldingDeleting(position.holding_id)" @click="handleDeleteHolding(position.holding_id)">
+              {{ t('common.delete') }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section class="card">
       <div class="section-header">
         <h2>{{ t('stocks.controls') }}</h2>
@@ -235,11 +319,7 @@
               {{ alert.triggered_at ? t('stocks.alerts.triggered') : alert.is_active ? t('stocks.alerts.active') : t('stocks.alerts.inactive') }}
             </span>
             <div class="alert-actions">
-              <button
-                class="btn btn-secondary"
-                :disabled="Boolean(alert.triggered_at)"
-                @click="handleToggleAlert(alert)"
-              >
+              <button class="btn btn-secondary" :disabled="Boolean(alert.triggered_at)" @click="handleToggleAlert(alert)">
                 {{ alert.is_active ? t('stocks.alerts.deactivate') : t('stocks.alerts.activate') }}
               </button>
               <button class="btn btn-danger" @click="handleDeleteAlert(alert.id)">{{ t('common.delete') }}</button>
@@ -296,12 +376,20 @@ const newStockCode = ref('')
 const isAdding = ref(false)
 const isCreatingAlert = ref(false)
 const newAlert = ref({ condition_type: 'above', target_price: null })
+const editingHoldingId = ref(null)
+const holdingForm = ref({ stock_code: '', shares: null, average_cost: null, note: '' })
 const actionMessage = ref('')
 const actionError = ref('')
 const { t, locale } = useI18n()
 
 function formatPrice(value, currency) {
   return formatCurrencyValue(Number(value), locale.value, currency || null)
+}
+
+function formatSignedCurrency(value, currency) {
+  const amount = Number(value || 0)
+  const sign = amount > 0 ? '+' : ''
+  return `${sign}${formatPrice(amount, currency)}`
 }
 
 function formatChange(priceChange, changePercent) {
@@ -364,8 +452,45 @@ const priceTrend = computed(() => ({
 }))
 
 const aiExplanation = computed(() => stockStore.dashboard?.ai_explanation || null)
-
 const selectedCurrency = computed(() => stockStore.selectedWatchlistItem?.currency || null)
+const portfolioCurrency = computed(() => stockStore.portfolio?.currency || selectedCurrency.value || null)
+const portfolioWarnings = computed(() => stockStore.portfolio?.warnings || [])
+const portfolioPositions = computed(() => stockStore.portfolio?.positions || [])
+
+const portfolioSummaryItems = computed(() => [
+  {
+    label: t('stocks.portfolio.totalMarketValue'),
+    value: stockStore.portfolio?.total_market_value == null
+      ? t('common.empty')
+      : formatPrice(stockStore.portfolio.total_market_value, portfolioCurrency.value)
+  },
+  {
+    label: t('stocks.portfolio.totalCost'),
+    value: formatPrice(stockStore.portfolio?.total_cost || 0, portfolioCurrency.value)
+  },
+  {
+    label: t('stocks.portfolio.totalPnL'),
+    value: stockStore.portfolio?.total_unrealized_pnl == null
+      ? t('common.empty')
+      : formatSignedCurrency(stockStore.portfolio.total_unrealized_pnl, portfolioCurrency.value)
+  },
+  {
+    label: t('stocks.portfolio.holdingsCount'),
+    value: String(stockStore.portfolio?.holdings_count || 0)
+  }
+])
+
+const portfolioPnLClass = computed(() => {
+  const pnl = stockStore.portfolio?.total_unrealized_pnl
+  if (pnl == null) return 'badge-warning'
+  return pnl >= 0 ? 'badge-success' : 'badge-danger'
+})
+
+const portfolioPnLLabel = computed(() => {
+  const percent = stockStore.portfolio?.total_unrealized_pnl_percent
+  if (percent == null) return t('stocks.portfolio.pricePending')
+  return t('stocks.portfolio.pnlPercent', { value: percent.toFixed(2) })
+})
 
 const indicatorItems = computed(() => {
   const indicators = stockStore.selectedIndicators
@@ -409,10 +534,105 @@ const fundamentalsItems = computed(() => {
 
 async function refreshStockWorkspace(selectedCode = null) {
   await Promise.allSettled([
+    stockStore.refreshPortfolioWorkspace(),
     stockStore.fetchDashboard(selectedCode),
     stockStore.fetchFilterResults(),
     stockStore.listStockAlerts()
   ])
+}
+
+function resetHoldingForm() {
+  editingHoldingId.value = null
+  holdingForm.value = { stock_code: '', shares: null, average_cost: null, note: '' }
+}
+
+function holdingById(holdingId) {
+  return stockStore.holdings.find((item) => item.id === Number(holdingId)) || null
+}
+
+function holdingNote(holdingId) {
+  return holdingById(holdingId)?.note || ''
+}
+
+function startEditingHolding(holdingId) {
+  const holding = holdingById(holdingId)
+  if (!holding) return
+  editingHoldingId.value = holding.id
+  holdingForm.value = {
+    stock_code: holding.stock_code,
+    shares: holding.shares,
+    average_cost: holding.average_cost,
+    note: holding.note || ''
+  }
+}
+
+function buildPositionMetrics(position) {
+  return [
+    {
+      label: t('stocks.portfolio.shares'),
+      value: position.shares == null ? t('common.empty') : String(position.shares),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.averageCost'),
+      value: position.average_cost == null ? t('common.empty') : formatPrice(position.average_cost, position.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.latestPrice'),
+      value: position.latest_price == null ? t('common.empty') : formatPrice(position.latest_price, position.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.marketValue'),
+      value: position.market_value == null ? t('common.empty') : formatPrice(position.market_value, position.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.costBasis'),
+      value: position.cost_basis == null ? t('common.empty') : formatPrice(position.cost_basis, position.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.unrealizedPnL'),
+      value: position.unrealized_pnl == null
+        ? t('common.empty')
+        : `${formatSignedCurrency(position.unrealized_pnl, position.currency)} (${position.unrealized_pnl_percent?.toFixed(2) ?? '0.00'}%)`,
+      tone: position.unrealized_pnl == null ? '' : position.unrealized_pnl >= 0 ? 'positive' : 'negative'
+    }
+  ]
+}
+
+async function handleSaveHolding() {
+  if (!holdingForm.value.stock_code || !holdingForm.value.shares || !holdingForm.value.average_cost) return
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    if (editingHoldingId.value) {
+      await stockStore.updateHolding(editingHoldingId.value, holdingForm.value)
+      actionMessage.value = t('stocks.portfolio.updated')
+    } else {
+      await stockStore.createHolding(holdingForm.value)
+      actionMessage.value = t('stocks.portfolio.created')
+    }
+    resetHoldingForm()
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleDeleteHolding(holdingId) {
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await stockStore.deleteHolding(holdingId)
+    if (editingHoldingId.value === Number(holdingId)) {
+      resetHoldingForm()
+    }
+    actionMessage.value = t('stocks.portfolio.deleted')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
 }
 
 async function handleAddWatchlist() {
@@ -661,23 +881,62 @@ onMounted(() => {
   gap: 16px;
 }
 
-.watchlist-grid {
+.watchlist-grid,
+.portfolio-position-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
 }
 
-.watchlist-tile {
+.watchlist-tile,
+.portfolio-position-card {
   border: 1px solid #e1eaf2;
   border-radius: 16px;
   padding: 16px;
   background: linear-gradient(180deg, #fff 0%, #f7fbfd 100%);
 }
 
+.portfolio-card {
+  display: grid;
+  gap: 16px;
+}
+
+.portfolio-summary-grid,
+.portfolio-metrics-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.portfolio-summary-item,
+.portfolio-metric-item {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f5f8fb;
+  display: grid;
+  gap: 8px;
+}
+
+.portfolio-warning-list {
+  display: grid;
+  gap: 8px;
+}
+
+.holding-form {
+  align-items: end;
+}
+
+.holding-form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .tile-name,
 .tile-meta,
 .helper-text,
-.fundamentals-label {
+.fundamentals-label,
+.portfolio-metric-item span {
   color: #66788a;
 }
 
@@ -711,11 +970,13 @@ onMounted(() => {
   color: #445767;
 }
 
-.tile-change.positive {
+.tile-change.positive,
+.positive {
   color: #12733d;
 }
 
-.tile-change.negative {
+.tile-change.negative,
+.negative {
   color: #a33a2b;
 }
 
@@ -744,13 +1005,15 @@ onMounted(() => {
   min-height: 340px;
 }
 
-.fundamentals-grid {
+.fundamentals-grid,
+.indicator-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.fundamentals-item {
+.fundamentals-item,
+.indicator-item {
   padding: 14px;
   border-radius: 14px;
   background: #f5f8fb;
@@ -758,23 +1021,10 @@ onMounted(() => {
   gap: 8px;
 }
 
-.indicator-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-}
-
 .indicator-item {
   min-height: 82px;
-  padding: 14px;
-  border-radius: 8px;
-  background: #f5f8fb;
-  display: grid;
-  gap: 8px;
 }
 
-.indicator-item span,
 .disclaimer-text,
 .alert-row small {
   color: #66788a;
@@ -785,7 +1035,8 @@ onMounted(() => {
   margin: 14px 0;
 }
 
-.alert-list {
+.alert-list,
+.result-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -804,12 +1055,20 @@ onMounted(() => {
   background: #f7fafc;
 }
 
-.alert-row > div:first-child {
+.alert-row > div:first-child,
+.result-list li {
   display: grid;
   gap: 4px;
 }
 
-.alert-actions {
+.result-list li {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.alert-actions,
+.ai-status-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -840,35 +1099,14 @@ onMounted(() => {
   line-height: 1.7;
 }
 
-.ai-status-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.result-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-
-.result-list li {
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 14px;
-  background: #f7fafc;
-}
-
 @media (max-width: 760px) {
   .alert-row {
     grid-template-columns: 1fr;
     align-items: stretch;
   }
 
-  .alert-actions {
+  .alert-actions,
+  .ai-status-actions {
     justify-content: flex-start;
   }
 }

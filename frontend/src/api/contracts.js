@@ -164,6 +164,22 @@ export function normalizeRecurringTransaction(row) {
   }
 }
 
+export function normalizeStockHolding(row) {
+  if (!row || typeof row !== 'object') return null
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+  return {
+    id,
+    stock_code: String(row.stock_code || '').toUpperCase(),
+    shares: toNumberOrNull(row.shares),
+    average_cost: toNumberOrNull(row.average_cost),
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
+    note: toTrimmedStringOrEmpty(row.note),
+    created_at: row.created_at ?? row.createdAt ?? null,
+    updated_at: row.updated_at ?? row.updatedAt ?? null
+  }
+}
+
 export function normalizeRecurringOccurrence(row) {
   if (!row || typeof row !== 'object') return null
   return {
@@ -634,6 +650,40 @@ export function normalizeStockAlert(payload) {
     last_price_at_trigger: toNumberOrNull(payload.last_price_at_trigger ?? payload.lastPriceAtTrigger),
     created_at: payload.created_at ?? payload.createdAt ?? null,
     updated_at: payload.updated_at ?? payload.updatedAt ?? null
+  }
+}
+
+export function normalizePortfolioPosition(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    holding_id: toNumberOrNull(row.holding_id ?? row.holdingId),
+    stock_code: String(row.stock_code || '').toUpperCase(),
+    stock_name: toTrimmedStringOrEmpty(row.stock_name ?? row.stockName),
+    shares: toNumberOrNull(row.shares),
+    average_cost: toNumberOrNull(row.average_cost ?? row.averageCost),
+    latest_price: toNumberOrNull(row.latest_price ?? row.latestPrice),
+    cost_basis: toNumberOrNull(row.cost_basis ?? row.costBasis),
+    market_value: toNumberOrNull(row.market_value ?? row.marketValue),
+    unrealized_pnl: toNumberOrNull(row.unrealized_pnl ?? row.unrealizedPnL),
+    unrealized_pnl_percent: toNumberOrNull(row.unrealized_pnl_percent ?? row.unrealizedPnLPercent),
+    allocation_percent: toNumberOrNull(row.allocation_percent ?? row.allocationPercent),
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
+    warning: toTrimmedStringOrEmpty(row.warning),
+    updated_at: row.updated_at ?? row.updatedAt ?? null
+  }
+}
+
+export function normalizeStockPortfolio(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    total_cost: toNumberOrZero(payload.total_cost ?? payload.totalCost),
+    total_market_value: toNumberOrNull(payload.total_market_value ?? payload.totalMarketValue),
+    total_unrealized_pnl: toNumberOrNull(payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL),
+    total_unrealized_pnl_percent: toNumberOrNull(payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent),
+    holdings_count: toNumberOrZero(payload.holdings_count ?? payload.holdingsCount),
+    currency: payload.currency == null ? null : String(payload.currency).trim().toUpperCase(),
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map(toStringOrEmpty).filter(Boolean) : [],
+    positions: Array.isArray(payload.positions) ? payload.positions.map(normalizePortfolioPosition).filter(Boolean) : []
   }
 }
 

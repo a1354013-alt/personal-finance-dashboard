@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.6.0-rc1
+
+- Added stock portfolio holdings with user-scoped CRUD APIs at `GET/POST/PUT/DELETE /api/stocks/holdings`.
+- Added `GET /api/stocks/portfolio` for deterministic unrealized P/L, allocation, warning, and position summary data based on cached latest prices.
+- Added a Portfolio Holdings section on the Stocks page for creating, editing, deleting, and reviewing holdings alongside market value, cost basis, unrealized P/L, and allocation.
+- Refreshed demo seed data with Taiwan and US holdings so the demo account shows positive and negative unrealized P/L immediately after reset.
+- Added backend and frontend regression coverage for holdings CRUD, portfolio summary contracts, missing-price handling, and the new Stocks page portfolio flows.
+- Kept Playwright E2E smoke deferred for this release candidate to avoid destabilizing the current release gate.
+- Updated application version metadata to `1.6.0-rc1`.
+
 ## v1.5.0
 
 - Promoted `v1.5.0-rc1` to the final `v1.5.0` release.

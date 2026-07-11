@@ -8,7 +8,7 @@ from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
 from models.recurring_transaction import RecurringTransactionOccurrenceORM, RecurringTransactionORM
-from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
+from models.stock import StockHoldingORM, StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
 from services.recurring_transaction_service import derive_next_run_date, recalculate_next_run_date
@@ -52,6 +52,12 @@ MOCK_WATCHLIST = [
     {"stock_code": "2330.TW", "name": "TSMC"},
     {"stock_code": "2317.TW", "name": "Hon Hai"},
     {"stock_code": "AAPL", "name": "Apple"},
+]
+
+MOCK_HOLDINGS = [
+    {"stock_code": "2330.TW", "shares": 12.0, "average_cost": 780.0, "currency": "TWD", "note": "Taiwan core position"},
+    {"stock_code": "2317.TW", "shares": 20.0, "average_cost": 175.0, "currency": "TWD", "note": "Negative P/L example"},
+    {"stock_code": "AAPL", "shares": 6.0, "average_cost": 160.0, "currency": "USD", "note": "US growth example"},
 ]
 
 FIXED_MOCK_PRICES = [
@@ -203,6 +209,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         db.query(RecurringTransactionORM).filter(RecurringTransactionORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
         db.query(StockPriceAlertORM).filter(StockPriceAlertORM.user_id == demo_user.id).delete()
+        db.query(StockHoldingORM).filter(StockHoldingORM.user_id == demo_user.id).delete()
         db.query(WatchlistORM).filter(WatchlistORM.user_id == demo_user.id).delete()
         db.query(StockPriceORM).filter(StockPriceORM.stock_code.in_([item["stock_code"] for item in mock_prices])).delete(
             synchronize_session=False
@@ -295,6 +302,9 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
                     **item,
                 )
             )
+
+        for item in MOCK_HOLDINGS:
+            db.add(StockHoldingORM(user_id=demo_user.id, **item))
 
         for item in mock_prices:
             for history_row in _build_history_series(item):

@@ -8,6 +8,11 @@ import Stocks from '@/pages/Stocks.vue'
 const getFilterResultsMock = vi.fn()
 const getFilterMetadataMock = vi.fn()
 const getStockDashboardMock = vi.fn()
+const getStockHoldingsMock = vi.fn()
+const getStockPortfolioMock = vi.fn()
+const createStockHoldingMock = vi.fn()
+const updateStockHoldingMock = vi.fn()
+const deleteStockHoldingMock = vi.fn()
 const addToWatchlistMock = vi.fn()
 const syncWatchlistItemMock = vi.fn()
 const analyzeWatchlistItemMock = vi.fn()
@@ -21,6 +26,11 @@ const checkStockAlertsMock = vi.fn()
 
 vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
+  getStockHoldings: (...args) => getStockHoldingsMock(...args),
+  getStockPortfolio: (...args) => getStockPortfolioMock(...args),
+  createStockHolding: (...args) => createStockHoldingMock(...args),
+  updateStockHolding: (...args) => updateStockHoldingMock(...args),
+  deleteStockHolding: (...args) => deleteStockHoldingMock(...args),
   getFilterResults: (...args) => getFilterResultsMock(...args),
   getFilterMetadata: (...args) => getFilterMetadataMock(...args),
   getStockDashboard: (...args) => getStockDashboardMock(...args),
@@ -118,12 +128,62 @@ function mountStocksPage() {
   })
 }
 
+function holding(overrides = {}) {
+  return {
+    id: 11,
+    stock_code: '2330.TW',
+    shares: 10,
+    average_cost: 900,
+    currency: 'TWD',
+    note: 'Core',
+    created_at: '2026-07-06T01:00:00Z',
+    updated_at: '2026-07-06T01:00:00Z',
+    ...overrides
+  }
+}
+
+function portfolioPayload(overrides = {}) {
+  return {
+    total_cost: 9000,
+    total_market_value: 10000,
+    total_unrealized_pnl: 1000,
+    total_unrealized_pnl_percent: 11.11,
+    holdings_count: 1,
+    currency: 'TWD',
+    warnings: [],
+    positions: [
+      {
+        holding_id: 11,
+        stock_code: '2330.TW',
+        stock_name: 'TSMC',
+        shares: 10,
+        average_cost: 900,
+        latest_price: 1000,
+        cost_basis: 9000,
+        market_value: 10000,
+        unrealized_pnl: 1000,
+        unrealized_pnl_percent: 11.11,
+        allocation_percent: 100,
+        currency: 'TWD',
+        warning: null,
+        updated_at: '2026-07-06T01:00:00Z'
+      }
+    ],
+    ...overrides
+  }
+}
+
 describe('Stocks page', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     getFilterResultsMock.mockReset()
     getFilterMetadataMock.mockReset()
     getStockDashboardMock.mockReset()
+    getStockHoldingsMock.mockReset()
+    getStockPortfolioMock.mockReset()
+    createStockHoldingMock.mockReset()
+    updateStockHoldingMock.mockReset()
+    deleteStockHoldingMock.mockReset()
     addToWatchlistMock.mockReset()
     syncWatchlistItemMock.mockReset()
     analyzeWatchlistItemMock.mockReset()
@@ -143,6 +203,20 @@ describe('Stocks page', () => {
       timeout_seconds: 8,
       message: 'metadata'
     })
+    getStockHoldingsMock.mockResolvedValue([])
+    getStockPortfolioMock.mockResolvedValue({
+      total_cost: 0,
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      holdings_count: 0,
+      currency: null,
+      warnings: [],
+      positions: []
+    })
+    createStockHoldingMock.mockResolvedValue(holding())
+    updateStockHoldingMock.mockResolvedValue(holding({ shares: 12 }))
+    deleteStockHoldingMock.mockResolvedValue({})
     getStockDashboardMock.mockResolvedValue(buildDashboard())
     addToWatchlistMock.mockResolvedValue(taiwanItem({ id: 2, stock_code: '0050.TW', symbol: '0050.TW' }))
     syncWatchlistItemMock.mockResolvedValue(taiwanItem())
@@ -205,6 +279,104 @@ describe('Stocks page', () => {
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Build your market dashboard')
+      expect(wrapper.text()).toContain('No holdings yet')
+    })
+  })
+
+  it('renders portfolio summary', async () => {
+    getStockHoldingsMock.mockResolvedValue([holding()])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload())
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portfolio Holdings')
+      expect(wrapper.text()).toContain('NT$ 10,000')
+      expect(wrapper.text()).toContain('+NT$ 1,000')
+      expect(wrapper.text()).toContain('TSMC')
+    })
+  })
+
+  it('creates a holding', async () => {
+    const wrapper = mountStocksPage()
+
+    await wrapper.find('#holding-stock-code').setValue('2330')
+    await wrapper.find('#holding-shares').setValue('5')
+    await wrapper.find('#holding-average-cost').setValue('880')
+    await wrapper.find('form.holding-form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(createStockHoldingMock).toHaveBeenCalledWith({
+        stock_code: '2330',
+        shares: 5,
+        average_cost: 880,
+        note: ''
+      })
+      expect(wrapper.text()).toContain('Holding saved.')
+    })
+  })
+
+  it('edits and deletes a holding', async () => {
+    getStockHoldingsMock.mockResolvedValue([holding()])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload())
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('TSMC')
+    })
+
+    await wrapper.find('.portfolio-position-card .btn.btn-secondary').trigger('click')
+    await wrapper.find('#holding-shares').setValue('12')
+    await wrapper.find('form.holding-form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(updateStockHoldingMock).toHaveBeenCalledWith(11, {
+        stock_code: '2330.TW',
+        shares: 12,
+        average_cost: 900,
+        note: 'Core'
+      })
+    })
+
+    await wrapper.find('.portfolio-position-card .btn.btn-danger').trigger('click')
+    await vi.waitFor(() => {
+      expect(deleteStockHoldingMock).toHaveBeenCalledWith(11)
+    })
+  })
+
+  it('renders missing price warnings', async () => {
+    getStockHoldingsMock.mockResolvedValue([holding()])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload({
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      warnings: ['Latest price unavailable for: 2330.TW. Price-dependent fields are null.'],
+      positions: [
+        {
+          holding_id: 11,
+          stock_code: '2330.TW',
+          stock_name: 'TSMC',
+          shares: 10,
+          average_cost: 900,
+          latest_price: null,
+          cost_basis: 9000,
+          market_value: null,
+          unrealized_pnl: null,
+          unrealized_pnl_percent: null,
+          allocation_percent: null,
+          currency: 'TWD',
+          warning: 'Latest price unavailable for 2330.TW.',
+          updated_at: '2026-07-06T01:00:00Z'
+        }
+      ]
+    }))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Latest price unavailable for: 2330.TW. Price-dependent fields are null.')
+      expect(wrapper.text()).toContain('Latest price unavailable for 2330.TW.')
     })
   })
 
@@ -212,7 +384,7 @@ describe('Stocks page', () => {
     const wrapper = mountStocksPage()
 
     await wrapper.find('#stock-code').setValue('0050')
-    await wrapper.find('form.form-row').trigger('submit')
+    await wrapper.findAll('form.form-row')[1].trigger('submit')
 
     await vi.waitFor(() => {
       expect(addToWatchlistMock).toHaveBeenCalledWith('0050')

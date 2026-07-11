@@ -6,7 +6,7 @@ from db.database import SessionLocal
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
 from models.recurring_transaction import RecurringTransactionOccurrenceORM, RecurringTransactionORM
-from models.stock import StockPriceHistoryORM, WatchlistORM
+from models.stock import StockHoldingORM, StockPriceHistoryORM, WatchlistORM
 from models.user import UserORM
 from seed_data import DEMO_EMAIL, build_demo_dates, seed
 from tests.conftest import auth_headers
@@ -54,6 +54,9 @@ def test_seed_reset_creates_current_month_demo_data(client):
         assert taiwan_item.sync_error is None
         assert taiwan_item.price_sync_status == "success"
         assert db.query(StockPriceHistoryORM).filter(StockPriceHistoryORM.stock_code == "2330.TW").count() > 0
+        holdings = db.query(StockHoldingORM).filter(StockHoldingORM.user_id == demo_user.id).all()
+        assert len(holdings) >= 3
+        assert any(item.stock_code == "2330.TW" for item in holdings)
         active_recurring = (
             db.query(RecurringTransactionORM)
             .filter(RecurringTransactionORM.user_id == demo_user.id, RecurringTransactionORM.is_active.is_(True))
@@ -85,6 +88,12 @@ def test_seed_reset_creates_current_month_demo_data(client):
     assert taiwan_by_code["2330.TW"]["market"] == "Taiwan"
     assert taiwan_by_code["2330.TW"]["last_price"] is not None
     assert stock_payload["price_history"]
+    portfolio = client.get("/api/stocks/portfolio", headers=headers)
+    assert portfolio.status_code == 200
+    portfolio_payload = portfolio.json()
+    assert portfolio_payload["holdings_count"] >= 3
+    assert portfolio_payload["positions"]
+    assert any(position["stock_code"] == "2330.TW" for position in portfolio_payload["positions"])
     indicators = client.get(f"/api/stocks/watchlist/{taiwan_by_code['2330.TW']['id']}/indicators", headers=headers)
     assert indicators.status_code == 200
     indicator_payload = indicators.json()
