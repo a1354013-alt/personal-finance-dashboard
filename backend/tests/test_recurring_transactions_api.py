@@ -115,3 +115,87 @@ def test_recurring_cross_user_access_blocked(client):
     )
 
     assert response.status_code == 404
+
+
+def test_generate_current_month_creates_transactions_once(client):
+    token = register_and_login(client, "recurring-generate@example.com")
+    item = _create(client, token, amount=450, category="Utilities", note="Monthly bill")
+
+    first = client.post("/api/recurring-transactions/generate-current-month", headers=auth_headers(token))
+    second = client.post("/api/recurring-transactions/generate-current-month", headers=auth_headers(token))
+    expenses = client.get("/api/expenses", headers=auth_headers(token))
+    occurrences = client.get("/api/recurring-transactions/occurrences", headers=auth_headers(token))
+
+    assert first.status_code == 200
+    assert first.json()["created_count"] == 1
+    assert second.status_code == 200
+    assert second.json()["already_existing_count"] == 1
+    assert len(expenses.json()) == 1
+    assert expenses.json()[0]["category"] == "Utilities"
+    assert occurrences.status_code == 200
+    assert occurrences.json()[0]["recurring_transaction_id"] == item["id"]
+    assert occurrences.json()[0]["status"] == "generated"
+
+
+def test_generate_current_month_skips_inactive_and_ended_recurring(client):
+    token = register_and_login(client, "recurring-generate-inactive@example.com")
+    active = _create(client, token, amount=300, category="Food", note="Meal plan")
+    inactive = _create(client, token, amount=700, category="Travel", note="Paused travel")
+    client.patch(f"/api/recurring-transactions/{inactive['id']}/deactivate", headers=auth_headers(token))
+    _create(
+        client,
+        token,
+        amount=500,
+        category="Housing",
+        note="Expired",
+        start_date="2026-01-01",
+        end_date="2026-01-01",
+    )
+
+    response = client.post("/api/recurring-transactions/generate-current-month", headers=auth_headers(token))
+    expenses = client.get("/api/expenses", headers=auth_headers(token))
+
+    assert response.status_code == 200
+    assert response.json()["created_count"] == 1
+    assert len(expenses.json()) == 1
+    assert expenses.json()[0]["category"] == "Food"
+    assert expenses.json()[0]["note"] == "Meal plan"
+
+
+def test_generate_occurrence_and_skip_are_user_scoped(client):
+    token = register_and_login(client, "recurring-occurrence-owner@example.com")
+    other_token = register_and_login(client, "recurring-occurrence-other@example.com")
+    _create(client, token, amount=220, category="Shopping", note="Subscription")
+    occurrences = client.get("/api/recurring-transactions/occurrences", headers=auth_headers(token))
+    occurrence_id = occurrences.json()[0]["id"]
+
+    generate_response = client.post(
+        f"/api/recurring-transactions/occurrences/{occurrence_id}/generate",
+        headers=auth_headers(other_token),
+    )
+    skip_response = client.post(
+        f"/api/recurring-transactions/occurrences/{occurrence_id}/skip",
+        headers=auth_headers(other_token),
+    )
+
+    assert generate_response.status_code == 404
+    assert skip_response.status_code == 404
+
+
+def test_skip_occurrence_updates_status_without_creating_transaction(client):
+    token = register_and_login(client, "recurring-skip-occurrence@example.com")
+    _create(client, token, amount=120, category="Entertainment", note="Streaming")
+    occurrences = client.get("/api/recurring-transactions/occurrences", headers=auth_headers(token))
+    occurrence_id = occurrences.json()[0]["id"]
+
+    response = client.post(
+        f"/api/recurring-transactions/occurrences/{occurrence_id}/skip",
+        headers=auth_headers(token),
+    )
+    updated_occurrences = client.get("/api/recurring-transactions/occurrences", headers=auth_headers(token))
+    expenses = client.get("/api/expenses", headers=auth_headers(token))
+
+    assert response.status_code == 200
+    assert response.json()["summary"]["skipped_count"] == 1
+    assert updated_occurrences.json()[0]["status"] == "skipped"
+    assert expenses.json() == []

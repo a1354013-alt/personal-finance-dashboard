@@ -5,7 +5,7 @@ from datetime import date
 from db.database import SessionLocal
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
-from models.recurring_transaction import RecurringTransactionORM
+from models.recurring_transaction import RecurringTransactionOccurrenceORM, RecurringTransactionORM
 from models.stock import StockPriceHistoryORM, WatchlistORM
 from models.user import UserORM
 from seed_data import DEMO_EMAIL, build_demo_dates, seed
@@ -61,6 +61,13 @@ def test_seed_reset_creates_current_month_demo_data(client):
         )
         assert active_recurring
         assert all(item.next_run_date is not None for item in active_recurring)
+        occurrences = (
+            db.query(RecurringTransactionOccurrenceORM)
+            .filter(RecurringTransactionOccurrenceORM.user_id == demo_user.id)
+            .all()
+        )
+        assert any(item.status == "generated" for item in occurrences)
+        assert any(item.status == "skipped" for item in occurrences)
 
     login = client.post("/api/auth/login", json={"email": DEMO_EMAIL, "password": "demo1234"})
     assert login.status_code == 200

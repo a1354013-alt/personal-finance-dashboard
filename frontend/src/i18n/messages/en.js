@@ -191,6 +191,8 @@ export default {
   recurring: {
     title: 'Recurring Transactions',
     subtitle: 'Plan fixed income and expenses before they hit the month-end forecast.',
+    automationTitle: 'This Month',
+    automationSubtitle: 'Generate or skip current-month occurrences without creating duplicate records.',
     formTitle: 'Create Recurring Transaction',
     editTitle: 'Edit Recurring Transaction',
     listTitle: 'Recurring Schedule',
@@ -199,23 +201,40 @@ export default {
     endDate: 'End Date',
     nextRunDate: 'Next Run',
     status: 'Status',
+    occurrenceStatus: 'Occurrence Status',
     active: 'Active',
     inactive: 'Inactive',
     deactivate: 'Deactivate',
     createAction: 'Create Recurring',
     updateAction: 'Update Recurring',
     saving: 'Saving...',
+    generating: 'Generating...',
+    generateMonthAction: 'Generate This Month',
+    markPaidAction: 'Mark as Paid',
+    skipOccurrenceAction: 'Skip',
     loading: 'Loading recurring transactions...',
+    loadingOccurrences: 'Loading this month\'s occurrences...',
     empty: 'No recurring transactions yet.',
+    emptyOccurrences: 'No recurring occurrences for this month.',
     startDateError: 'Please choose a start date.',
     endDateError: 'End date must be on or after start date.',
+    generationSummary: 'Created {created}, skipped {skipped}, existing {existing}.',
+    generatedExpense: 'Expense #{id}',
+    statuses: {
+      pending: 'Pending',
+      generated: 'Generated',
+      skipped: 'Skipped'
+    },
     frequencies: {
       weekly: 'Weekly',
       monthly: 'Monthly',
       yearly: 'Yearly'
     },
     errors: {
-      load: 'Unable to load recurring transactions right now.'
+      load: 'Unable to load recurring transactions right now.',
+      occurrences: 'Unable to load recurring occurrences right now.',
+      generate: 'Unable to generate recurring transactions right now.',
+      skip: 'Unable to skip this recurring occurrence right now.'
     }
   },
   imports: {
@@ -231,6 +250,7 @@ export default {
     previewTitle: 'Preview',
     confirmAction: 'Confirm Import',
     importing: 'Importing...',
+    mappingTitle: 'Map Columns',
     historyTitle: 'Recent Imports',
     historySubtitle: 'Recent transaction import batches for your account.',
     emptyHistory: 'No import batches yet.',
@@ -253,6 +273,14 @@ export default {
       valid: 'Valid',
       invalid: 'Invalid',
       duplicate: 'Duplicate'
+    },
+    mapping: {
+      title: 'Map Columns',
+      subtitle: 'Required fields were not detected automatically. Choose which uploaded columns should fill each system field.',
+      missingRequired: 'Missing required fields: {fields}',
+      applyAction: 'Preview With Mapping',
+      skipField: 'Do not map',
+      paymentMethod: 'Payment Method'
     },
     errors: {
       preview: 'Unable to preview this import file right now.',

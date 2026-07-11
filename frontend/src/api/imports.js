@@ -1,8 +1,11 @@
 import api from './index'
 
-export function previewTransactionImport(file) {
+export function previewTransactionImport(file, columnMapping = null) {
   const formData = new FormData()
   formData.append('file', file)
+  if (columnMapping && typeof columnMapping === 'object') {
+    formData.append('column_mapping', JSON.stringify(columnMapping))
+  }
   return api.post('/imports/transactions/preview', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })

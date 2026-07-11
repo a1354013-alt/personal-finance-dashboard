@@ -63,6 +63,21 @@ def test_monthly_forecast_with_monthly_recurring_expense(client):
     assert forecast["projectedExpense"] == 800
 
 
+def test_monthly_forecast_excludes_generated_current_month_occurrence(client):
+    token = register_and_login(client, "forecast-generated-occurrence@example.com")
+    _first, future = _current_month_dates()
+    client.post(
+        "/api/recurring-transactions",
+        headers=auth_headers(token),
+        json={"amount": 800, "category": "Utilities", "type": "expense", "frequency": "monthly", "start_date": future},
+    )
+    generate = client.post("/api/recurring-transactions/generate-current-month", headers=auth_headers(token))
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+
+    assert generate.status_code == 200
+    assert response.json()["monthlyForecast"]["recurringExpensePending"] == 0
+
+
 def test_monthly_forecast_ignores_inactive_recurring_transactions(client):
     token = register_and_login(client, "forecast-inactive@example.com")
     _first, future = _current_month_dates()

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+import json
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -8,6 +10,7 @@ from models.import_batch import (
     TransactionImportConfirmRequest,
     TransactionImportConfirmResponse,
     TransactionImportBatchResponse,
+    TransactionImportColumnMappingRequest,
     TransactionImportPreviewResponse,
 )
 from models.user import UserORM
@@ -25,15 +28,23 @@ router = APIRouter(prefix="/api/imports/transactions", tags=["Transaction Import
 @router.post("/preview", response_model=TransactionImportPreviewResponse, status_code=status.HTTP_201_CREATED)
 async def preview_import(
     file: UploadFile = File(...),
+    column_mapping: str | None = Form(default=None),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
+    mapping_payload = None
+    if column_mapping:
+        try:
+            mapping_payload = TransactionImportColumnMappingRequest.model_validate(json.loads(column_mapping))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail="Invalid column mapping payload.") from exc
     content = await file.read()
     return preview_transaction_import(
         db,
         user=current_user,
         file_name=file.filename or "upload",
         content=content,
+        column_mapping=mapping_payload,
     )
 
 

@@ -7,11 +7,11 @@ from calendar import monthrange
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
-from models.recurring_transaction import RecurringTransactionORM
+from models.recurring_transaction import RecurringTransactionOccurrenceORM, RecurringTransactionORM
 from models.stock import StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
-from services.recurring_transaction_service import derive_next_run_date
+from services.recurring_transaction_service import derive_next_run_date, recalculate_next_run_date
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "demo1234"
@@ -212,30 +212,62 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         ).delete(synchronize_session=False)
         db.commit()
 
+        seeded_expenses: list[ExpenseORM] = []
         for item in mock_expenses:
-            db.add(ExpenseORM(user_id=demo_user.id, **item))
+            expense = ExpenseORM(user_id=demo_user.id, **item)
+            db.add(expense)
+            seeded_expenses.append(expense)
 
         for item in MOCK_BUDGETS:
             db.add(BudgetORM(user_id=demo_user.id, month=budget_month, **item))
 
         today = date.today()
+        recurring_rows: list[RecurringTransactionORM] = []
         for item in MOCK_RECURRING_TRANSACTIONS:
             run_day = min(item["day"], monthrange(today.year, today.month)[1])
             start_date = date(today.year, today.month, run_day)
+            recurring = RecurringTransactionORM(
+                user_id=demo_user.id,
+                amount=item["amount"],
+                category=item["category"],
+                type=item["type"],
+                note=item["note"],
+                frequency=item["frequency"],
+                start_date=start_date,
+                end_date=None,
+                next_run_date=derive_next_run_date(start_date, item["frequency"], None, today=today),
+                is_active=True,
+            )
+            db.add(recurring)
+            recurring_rows.append(recurring)
+
+        db.flush()
+
+        current_month_salary = next(
+            (expense for expense in seeded_expenses if expense.category == "Salary" and expense.date.month == today.month),
+            None,
+        )
+        if current_month_salary and recurring_rows:
             db.add(
-                RecurringTransactionORM(
+                RecurringTransactionOccurrenceORM(
+                    recurring_transaction_id=recurring_rows[0].id,
                     user_id=demo_user.id,
-                    amount=item["amount"],
-                    category=item["category"],
-                    type=item["type"],
-                    note=item["note"],
-                    frequency=item["frequency"],
-                    start_date=start_date,
-                    end_date=None,
-                    next_run_date=derive_next_run_date(start_date, item["frequency"], None, today=today),
-                    is_active=True,
+                    scheduled_date=current_month_salary.date,
+                    status="generated",
+                    generated_expense_id=current_month_salary.id,
                 )
             )
+        if len(recurring_rows) > 1:
+            db.add(
+                RecurringTransactionOccurrenceORM(
+                    recurring_transaction_id=recurring_rows[1].id,
+                    user_id=demo_user.id,
+                    scheduled_date=recurring_rows[1].start_date,
+                    status="skipped",
+                )
+            )
+        for recurring in recurring_rows:
+            recurring.next_run_date = recalculate_next_run_date(db, recurring, today=today)
 
         price_by_code = {item["stock_code"]: item for item in mock_prices}
         seeded_at = datetime.now(timezone.utc)

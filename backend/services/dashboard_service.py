@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from models.expense import ExpenseORM
 from models.budget import BudgetORM
+from models.recurring_transaction import RecurringTransactionOccurrenceORM
 from models.recurring_transaction import RecurringTransactionORM
 from services.budget_summary import build_budget_status, build_budget_summary
-from services.recurring_transaction_service import pending_occurrences_until
+from services.recurring_transaction_service import ensure_occurrences_for_user_month
 
 
 def _money(value: Decimal) -> float:
@@ -152,16 +153,28 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         if category not in active_budget_categories
     ]
 
+    ensure_occurrences_for_user_month(db, user_id=user_id, target_date=today)
+    db.flush()
     recurring_income_pending = Decimal("0")
     recurring_expense_pending = Decimal("0")
-    active_recurring = (
-        db.query(RecurringTransactionORM)
-        .filter(RecurringTransactionORM.user_id == user_id, RecurringTransactionORM.is_active.is_(True))
+    pending_occurrences = (
+        db.query(RecurringTransactionOccurrenceORM)
+        .join(
+            RecurringTransactionORM,
+            RecurringTransactionORM.id == RecurringTransactionOccurrenceORM.recurring_transaction_id,
+        )
+        .filter(
+            RecurringTransactionOccurrenceORM.user_id == user_id,
+            RecurringTransactionOccurrenceORM.scheduled_date >= today,
+            RecurringTransactionOccurrenceORM.scheduled_date <= month_end,
+            RecurringTransactionOccurrenceORM.status == "pending",
+            RecurringTransactionORM.is_active.is_(True),
+        )
         .all()
     )
-    for recurring in active_recurring:
-        occurrences = pending_occurrences_until(recurring, month_end, today=today)
-        pending_amount = Decimal(recurring.amount) * len(occurrences)
+    for occurrence in pending_occurrences:
+        recurring = occurrence.recurring_transaction
+        pending_amount = Decimal(recurring.amount)
         if recurring.type == "income":
             recurring_income_pending += pending_amount
         else:

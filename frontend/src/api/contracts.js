@@ -164,6 +164,42 @@ export function normalizeRecurringTransaction(row) {
   }
 }
 
+export function normalizeRecurringOccurrence(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    id: toNumberOrNull(row.id),
+    recurring_transaction_id: toNumberOrZero(row.recurring_transaction_id ?? row.recurringTransactionId),
+    user_id: toNumberOrZero(row.user_id ?? row.userId),
+    scheduled_date: row.scheduled_date ?? row.scheduledDate ?? null,
+    status: ['pending', 'generated', 'skipped'].includes(row.status) ? row.status : 'pending',
+    generated_expense_id: toNumberOrNull(row.generated_expense_id ?? row.generatedExpenseId),
+    recurring_transaction: normalizeRecurringTransaction(row.recurring_transaction ?? row.recurringTransaction),
+    created_at: row.created_at ?? row.createdAt ?? null,
+    updated_at: row.updated_at ?? row.updatedAt ?? null
+  }
+}
+
+export function normalizeRecurringGenerationSummary(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    created_count: toNumberOrZero(row.created_count ?? row.createdCount),
+    skipped_count: toNumberOrZero(row.skipped_count ?? row.skippedCount),
+    already_existing_count: toNumberOrZero(row.already_existing_count ?? row.alreadyExistingCount),
+    created_transaction_ids: Array.isArray(row.created_transaction_ids ?? row.createdTransactionIds)
+      ? (row.created_transaction_ids ?? row.createdTransactionIds).map(toNumberOrZero)
+      : [],
+    generated_occurrence_ids: Array.isArray(row.generated_occurrence_ids ?? row.generatedOccurrenceIds)
+      ? (row.generated_occurrence_ids ?? row.generatedOccurrenceIds).map(toNumberOrZero)
+      : [],
+    skipped_occurrence_ids: Array.isArray(row.skipped_occurrence_ids ?? row.skippedOccurrenceIds)
+      ? (row.skipped_occurrence_ids ?? row.skippedOccurrenceIds).map(toNumberOrZero)
+      : [],
+    existing_occurrence_ids: Array.isArray(row.existing_occurrence_ids ?? row.existingOccurrenceIds)
+      ? (row.existing_occurrence_ids ?? row.existingOccurrenceIds).map(toNumberOrZero)
+      : []
+  }
+}
+
 export function normalizeTransactionImportBatch(row) {
   if (!row || typeof row !== 'object') return null
   return {
@@ -194,6 +230,19 @@ export function normalizeTransactionImportPreview(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
     batch: normalizeTransactionImportBatch(payload.batch),
+    requires_mapping: Boolean(payload.requires_mapping ?? payload.requiresMapping),
+    available_columns: Array.isArray(payload.available_columns ?? payload.availableColumns)
+      ? (payload.available_columns ?? payload.availableColumns).map(toStringOrEmpty).filter(Boolean)
+      : [],
+    suggested_mapping: payload.suggested_mapping && typeof payload.suggested_mapping === 'object'
+      ? Object.fromEntries(Object.entries(payload.suggested_mapping).map(([key, value]) => [key, toStringOrEmpty(value)]).filter(([, value]) => value))
+      : {},
+    applied_mapping: payload.applied_mapping && typeof payload.applied_mapping === 'object'
+      ? Object.fromEntries(Object.entries(payload.applied_mapping).map(([key, value]) => [key, toStringOrEmpty(value)]).filter(([, value]) => value))
+      : {},
+    missing_required_fields: Array.isArray(payload.missing_required_fields ?? payload.missingRequiredFields)
+      ? (payload.missing_required_fields ?? payload.missingRequiredFields).map(toStringOrEmpty).filter(Boolean)
+      : [],
     rows: Array.isArray(payload.rows)
       ? payload.rows.map(row => ({
         id: toNumberOrNull(row.id),

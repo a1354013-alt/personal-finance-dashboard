@@ -14,6 +14,7 @@ from models.expense import ExpenseCreate, ExpenseORM
 from models.import_batch import (
     TransactionImportBatchORM,
     TransactionImportBatchResponse,
+    TransactionImportColumnMappingRequest,
     TransactionImportNormalizedRow,
     TransactionImportPreviewResponse,
     TransactionImportPreviewRow,
@@ -25,14 +26,43 @@ from parsers import parse_csv_rows, parse_excel_rows
 
 FILE_SIZE_LIMIT_BYTES = 2 * 1024 * 1024
 SUPPORTED_FILE_TYPES = {".csv": "csv", ".xlsx": "xlsx"}
+SUPPORTED_IMPORT_FIELDS = ("date", "amount", "type", "category", "note", "payment_method")
+REQUIRED_IMPORT_FIELDS = ("date", "amount")
 
 HEADER_ALIASES = {
-    "date": {"date", "transaction_date", "transaction date", "日期", "交易日期", "入帳日期", "消費日期", "付款日期", "交易日"},
-    "amount": {"amount", "金額", "交易金額"},
-    "type": {"type", "類型", "收支類型", "交易類型", "收支", "收入支出"},
-    "category": {"category", "分類", "類別"},
-    "note": {"description", "note", "memo", "摘要", "說明", "備註"},
-    "payment_method": {"payment_method", "payment method", "支付方式", "付款方式"},
+    "date": {
+        "date",
+        "transaction_date",
+        "transaction date",
+        "consumption_date",
+        "payment_date",
+        "transaction_day",
+        "消費日期",
+        "付款日期",
+        "交易日",
+        "?交?",
+        "鈭斗??交?",
+        "?亙董?交?",
+        "瘨祥?交?",
+        "隞狡?交?",
+        "鈭斗???",
+    },
+    "amount": {"amount", "金額", "??", "鈭斗???"},
+    "type": {
+        "type",
+        "cash_flow",
+        "income_expense",
+        "收支",
+        "收入支出",
+        "憿?",
+        "?嗆憿?",
+        "鈭斗?憿?",
+        "?嗆",
+        "?嗅?臬",
+    },
+    "category": {"category", "分類", "??", "憿"},
+    "note": {"description", "note", "memo", "備註", "??", "隤芣?", "?酉"},
+    "payment_method": {"payment_method", "payment method", "付款方式", "?臭??孵?", "隞狡?孵?"},
 }
 
 TYPE_ALIASES = {
@@ -40,11 +70,13 @@ TYPE_ALIASES = {
     "spend": "expense",
     "debit": "expense",
     "支出": "expense",
-    "消費": "expense",
+    "?臬": "expense",
+    "瘨祥": "expense",
     "income": "income",
     "credit": "income",
     "收入": "income",
-    "入帳": "income",
+    "?嗅": "income",
+    "?亙董": "income",
 }
 
 
@@ -135,6 +167,7 @@ def preview_transaction_import(
     user: UserORM,
     file_name: str,
     content: bytes,
+    column_mapping: TransactionImportColumnMappingRequest | None = None,
 ) -> TransactionImportPreviewResponse:
     file_type = _infer_file_type(file_name)
     if len(content) > FILE_SIZE_LIMIT_BYTES:
@@ -150,20 +183,49 @@ def preview_transaction_import(
     if not parsed_rows:
         raise HTTPException(status_code=400, detail="The file contains no transaction rows.")
 
-    header_map = _resolve_header_map(parsed_rows)
+    available_columns = [str(column) for column in parsed_rows[0].keys()]
+    suggested_mapping = _suggest_header_map(parsed_rows)
+    applied_mapping = _resolve_column_mapping(
+        rows=parsed_rows,
+        requested_mapping=column_mapping,
+        suggested_mapping=suggested_mapping,
+    )
+    missing_required = [field for field in REQUIRED_IMPORT_FIELDS if field not in applied_mapping]
+
     batch = TransactionImportBatchORM(
         id=str(uuid.uuid4()),
         user_id=user.id,
         file_name=file_name,
         file_type=file_type,
-        status="previewed",
+        status="mapping_required" if missing_required else "previewed",
     )
     db.add(batch)
     db.flush()
 
+    if missing_required:
+        db.commit()
+        db.refresh(batch)
+        return TransactionImportPreviewResponse(
+            batch=build_batch_response(batch),
+            rows=[],
+            requires_mapping=True,
+            available_columns=available_columns,
+            suggested_mapping=suggested_mapping,
+            applied_mapping=applied_mapping,
+            missing_required_fields=missing_required,
+        )
+
     normalized_records: list[dict[str, Any]] = []
     for index, row in enumerate(parsed_rows, start=2):
-        normalized_records.append(_normalize_row(row=row, source_row_number=index, file_name=file_name, batch_id=batch.id, header_map=header_map))
+        normalized_records.append(
+            _normalize_row(
+                row=row,
+                source_row_number=index,
+                file_name=file_name,
+                batch_id=batch.id,
+                header_map=applied_mapping,
+            )
+        )
 
     fingerprints = [record["fingerprint"] for record in normalized_records if record["fingerprint"]]
     database_fingerprints = [record["database_fingerprint"] for record in normalized_records if record["database_fingerprint"]]
@@ -214,12 +276,18 @@ def preview_transaction_import(
     batch.invalid_rows = sum(1 for row in row_models if row.status == "invalid")
     batch.duplicate_rows = sum(1 for row in row_models if row.status == "duplicate")
     batch.valid_rows = sum(1 for row in row_models if row.status == "valid")
+    batch.status = "previewed"
     db.commit()
     db.refresh(batch)
 
     return TransactionImportPreviewResponse(
         batch=build_batch_response(batch),
         rows=[build_preview_row(row) for row in batch.rows],
+        requires_mapping=False,
+        available_columns=available_columns,
+        suggested_mapping=suggested_mapping,
+        applied_mapping=applied_mapping,
+        missing_required_fields=[],
     )
 
 
@@ -233,6 +301,8 @@ def confirm_transaction_import(
     batch = get_import_batch_or_404(db, batch_id=batch_id, user_id=user.id)
     if batch.status == "imported":
         raise HTTPException(status_code=409, detail="This import batch has already been confirmed.")
+    if batch.status != "previewed":
+        raise HTTPException(status_code=409, detail="This import batch is not ready to confirm.")
 
     rows = batch.rows
     if selected_row_numbers == []:
@@ -315,27 +385,61 @@ def _parse_rows(*, file_type: str, content: bytes) -> list[dict[str, Any]]:
     raise ValueError("Unsupported file type.")
 
 
-def _resolve_header_map(rows: list[dict[str, Any]]) -> dict[str, str]:
+def _normalize_header_name(value: Any) -> str:
+    return re.sub(r"[\s\-]+", "_", str(value or "").strip().lower())
+
+
+def _suggest_header_map(rows: list[dict[str, Any]]) -> dict[str, str]:
     first_row = rows[0] if rows else {}
-    normalized_headers = {key: _normalize_header_name(key) for key in first_row.keys()}
+    normalized_headers = {str(key): _normalize_header_name(key) for key in first_row.keys()}
     mapping: dict[str, str] = {}
     for target, aliases in HEADER_ALIASES.items():
         for raw_header, normalized_header in normalized_headers.items():
             if normalized_header in aliases:
                 mapping[target] = raw_header
                 break
-
-    missing_required = [field for field in ("date", "amount", "category") if field not in mapping]
-    if missing_required:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Missing required columns: {', '.join(missing_required)}.",
-        )
     return mapping
 
 
-def _normalize_header_name(value: Any) -> str:
-    return re.sub(r"[\s\-]+", "_", str(value or "").strip().lower())
+def _resolve_column_mapping(
+    *,
+    rows: list[dict[str, Any]],
+    requested_mapping: TransactionImportColumnMappingRequest | None,
+    suggested_mapping: dict[str, str],
+) -> dict[str, str]:
+    available_columns = {str(column) for column in rows[0].keys()} if rows else set()
+    if not requested_mapping:
+        return dict(suggested_mapping)
+
+    requested = requested_mapping.model_dump(exclude_none=True)
+    invalid_fields = sorted(set(requested) - set(SUPPORTED_IMPORT_FIELDS))
+    if invalid_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported mapped fields: {', '.join(invalid_fields)}.",
+        )
+
+    invalid_columns = sorted(column for column in requested.values() if column not in available_columns)
+    if invalid_columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Mapped columns not found in upload: {', '.join(invalid_columns)}.",
+        )
+
+    duplicate_source_columns = sorted(
+        column
+        for column, count in Counter(requested.values()).items()
+        if count > 1
+    )
+    if duplicate_source_columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Each uploaded column can only be mapped once: {', '.join(duplicate_source_columns)}.",
+        )
+
+    resolved = dict(suggested_mapping)
+    resolved.update({field: column for field, column in requested.items() if column})
+    return resolved
 
 
 def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: str, batch_id: str, header_map: dict[str, str]) -> dict[str, Any]:
@@ -346,7 +450,7 @@ def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: st
     date_value = row.get(header_map.get("date", ""))
     amount_value = row.get(header_map.get("amount", ""))
     type_value = row.get(header_map.get("type", "")) if "type" in header_map else None
-    category_value = row.get(header_map.get("category", ""))
+    category_value = row.get(header_map.get("category", "")) if "category" in header_map else None
     note_value = row.get(header_map.get("note", "")) if "note" in header_map else None
     payment_method_value = row.get(header_map.get("payment_method", "")) if "payment_method" in header_map else None
 
@@ -361,7 +465,8 @@ def _normalize_row(*, row: dict[str, Any], source_row_number: int, file_name: st
     normalized_type = _parse_type_value(type_value)
     normalized_category = str(category_value or "").strip()
     if not normalized_category:
-        validation_errors.append("Category is required.")
+        normalized_category = "Other"
+        warnings.append("Category was not provided. Defaulted to Other.")
     elif len(normalized_category) > 50:
         validation_errors.append("Category must be 50 characters or fewer.")
 

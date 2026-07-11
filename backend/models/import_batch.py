@@ -124,6 +124,20 @@ class TransactionImportBatchResponse(BaseModel):
 class TransactionImportPreviewResponse(BaseModel):
     batch: TransactionImportBatchResponse
     rows: list[TransactionImportPreviewRow]
+    requires_mapping: bool = False
+    available_columns: list[str] = Field(default_factory=list)
+    suggested_mapping: dict[str, str] = Field(default_factory=dict)
+    applied_mapping: dict[str, str] = Field(default_factory=dict)
+    missing_required_fields: list[str] = Field(default_factory=list)
+
+
+class TransactionImportColumnMappingRequest(BaseModel):
+    date: Optional[str] = None
+    amount: Optional[str] = None
+    type: Optional[str] = None
+    category: Optional[str] = None
+    note: Optional[str] = None
+    payment_method: Optional[str] = None
 
 
 class TransactionImportConfirmRequest(BaseModel):
@@ -137,4 +151,3 @@ class TransactionImportConfirmResponse(BaseModel):
     duplicate_count: int
     error_count: int
     created_transaction_ids: list[int] = Field(default_factory=list)
-

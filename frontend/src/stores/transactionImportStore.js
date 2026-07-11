@@ -21,6 +21,7 @@ export const useTransactionImportStore = defineStore('transactionImport', () => 
   const result = ref(null)
   const loadingHistory = ref(false)
   const error = ref('')
+  const mapping = ref({})
 
   const hasPreview = computed(() => Boolean(preview.value?.batch?.id))
   const validRows = computed(() => preview.value?.rows?.filter(row => row.status === 'valid') ?? [])
@@ -37,13 +38,14 @@ export const useTransactionImportStore = defineStore('transactionImport', () => 
     }
   }
 
-  async function uploadFile(file) {
+  async function uploadFile(file, columnMapping = null) {
     status.value = 'uploading'
     error.value = ''
     result.value = null
     try {
-      const payload = await previewTransactionImport(file)
+      const payload = await previewTransactionImport(file, columnMapping)
       preview.value = normalizeTransactionImportPreview(payload)
+      mapping.value = preview.value?.applied_mapping ?? {}
       status.value = 'preview_ready'
       await fetchHistory()
       return preview.value
@@ -77,6 +79,7 @@ export const useTransactionImportStore = defineStore('transactionImport', () => 
   return {
     status,
     preview,
+    mapping,
     history,
     result,
     loadingHistory,

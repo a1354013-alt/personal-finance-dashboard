@@ -1,6 +1,10 @@
 import api from './index'
 
 export const getRecurringTransactions = () => api.get('/recurring-transactions')
+export const getRecurringOccurrences = (month) => api.get('/recurring-transactions/occurrences', { params: month ? { month } : {} })
+export const generateCurrentMonthRecurringTransactions = () => api.post('/recurring-transactions/generate-current-month')
+export const generateRecurringOccurrence = (id) => api.post(`/recurring-transactions/occurrences/${id}/generate`)
+export const skipRecurringOccurrence = (id) => api.post(`/recurring-transactions/occurrences/${id}/skip`)
 
 export const createRecurringTransaction = (data) => api.post('/recurring-transactions', data)
 

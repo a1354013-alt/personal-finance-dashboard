@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.4.0 release.
+This repository is a portfolio/demo project prepared for the v1.5.0-rc1 release.
 
 Implemented demo surface:
 
@@ -14,13 +14,13 @@ Implemented demo surface:
 - Vue frontend
 - Auth with access token, refresh token, and logout revoke flow
 - Dashboard analytics
-- Transaction editing and recurring transaction planning
+- Transaction editing and recurring transaction planning/automation
 - Budget management and budget health summaries
 - Stock watchlist
 - Taiwan stock technical indicators and in-app price alerts
 - Monthly reports
 - AI-assisted finance summary
-- Transaction import preview/confirm flow
+- Transaction import preview/confirm flow with manual column mapping fallback
 - CSV and PDF export
 
 Demo readiness already in place:
@@ -34,12 +34,12 @@ Demo readiness already in place:
 
 - Expense and income tracking
 - Transaction editing on the Expenses page
-- Recurring transactions with weekly, monthly, and yearly schedules
+- Recurring transactions with weekly, monthly, and yearly schedules plus current-month occurrence generation
 - Monthly budget setup and budget health summaries
 - Dashboard cards, monthly forecast, unbudgeted spending insight, charts, recent transactions, and report export
 - Stock watchlist with cached market data, Taiwan stock/ETF symbol normalization, MA5/MA20/RSI14 technical indicators, in-app price alerts, sync status, fundamentals screening, AI interpretation notes, and per-item currency display
 - AI finance summary and budget advice with deterministic fallback behavior
-- Transaction import for CSV/XLSX files with preview, row validation, duplicate detection, and batch history
+- Transaction import for CSV/XLSX files with preview, optional manual column mapping, row validation, duplicate detection, and batch history
 - CSV and PDF monthly report export
 - Demo auth with access tokens, refresh tokens, and logout refresh-token revoke flow
 
@@ -100,7 +100,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.4.0 release.
+Windows is the supported F5 path for this v1.5.0-rc1 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -188,12 +188,13 @@ This creates demo data for:
 - demo user
 - transactions
 - recurring transactions
+- recurring occurrence automation examples
 - budgets
 - an unbudgeted current-month spending category
 - stock watchlist
 - cached stock prices
 
-The default `python seed_data.py --reset` command creates current-month transactions, recurring income/expense schedules, budgets, and one unbudgeted spending category so Dashboard Budget Health, Monthly Forecast, and Unbudgeted Spending are populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
+The default `python seed_data.py --reset` command creates current-month transactions, recurring income/expense schedules, generated/skipped recurring occurrence examples, budgets, and one unbudgeted spending category so Dashboard Budget Health, Monthly Forecast, and Unbudgeted Spending are populated immediately after seeding. `--relative-dates` is still available for shifting the older fixed demo records, and it avoids future-dated demo transactions.
 
 Demo account:
 
@@ -214,10 +215,11 @@ Transaction import demo flow:
 1. Run the release verification sequence from the repository root.
 2. Start the backend and frontend, then sign in with the demo account.
 3. Open Import from the top navigation.
-4. Upload [docs/demo/sample-transactions.csv](docs/demo/sample-transactions.csv).
-5. Review the preview table, validation messages, and duplicate markers.
-6. Confirm the valid rows you want to import.
-7. Open Dashboard or Expenses to verify the imported records appear.
+4. Upload [docs/demo/sample-transactions.csv](docs/demo/sample-transactions.csv) for the normal flow, or [frontend/public/demo/sample-transactions-unmapped.csv](frontend/public/demo/sample-transactions-unmapped.csv) to exercise manual mapping.
+5. If required headers are missing, map uploaded columns to `date`, `amount`, and any optional fields you want to carry through.
+6. Review the preview table, validation messages, and duplicate markers.
+7. Confirm the valid rows you want to import.
+8. Open Dashboard or Expenses to verify the imported records appear.
 
 Smart monthly planning demo flow:
 
@@ -225,8 +227,9 @@ Smart monthly planning demo flow:
 2. Start the backend and frontend, then sign in with the demo account.
 3. Open Expenses, edit an existing transaction, and save it.
 4. Open Recurring from the top navigation and create or adjust a recurring transaction.
-5. Open Dashboard and review Monthly Forecast for projected income, projected expense, projected balance, and pending recurring items.
-6. Review Unbudgeted Spending to find current-month categories with spending but no active budget.
+5. Use Generate This Month or Mark as Paid on a pending occurrence.
+6. Open Dashboard and review Monthly Forecast for projected income, projected expense, projected balance, and pending recurring items.
+7. Review Unbudgeted Spending to find current-month categories with spending but no active budget.
 
 AI interpretation is informational only and not financial advice. It summarizes cached data, recent price movement, volume/liquidity context, risk notes, and watch points; it does not provide buy/sell recommendations.
 
@@ -301,7 +304,7 @@ Recognized columns include these common names:
 - Description: `description`, `note`, `memo`, `摘要`, `說明`, `備註`
 - Payment method: `payment_method`, `payment method`, `支付方式`, `付款方式`
 
-If required columns are missing, the preview endpoint returns a clear validation error instead of guessing a mapping.
+If required columns are missing, the preview endpoint now returns a mapping-required preview state so the user can map uploaded columns before re-running preview.
 
 ## Release Verification
 
@@ -422,8 +425,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Manual column mapping is not implemented yet; the MVP relies on recognized headers and returns a clear missing-column error otherwise.
-- Recurring transactions currently support planning and forecasting, but they do not automatically generate real transaction records yet.
+- Playwright E2E smoke coverage is not included in this RC yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
 - Stock functionality is a watchlist, not a full portfolio profit/loss system.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

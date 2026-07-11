@@ -36,7 +36,37 @@
       </p>
     </section>
 
-    <section v-if="store.preview" class="card summary-card">
+    <section v-if="store.preview?.requires_mapping" class="card mapping-card">
+      <div class="section-heading">
+        <div>
+          <h2>{{ t('imports.mapping.title') }}</h2>
+          <p>{{ t('imports.mapping.subtitle') }}</p>
+        </div>
+      </div>
+
+      <div v-if="store.preview.missing_required_fields.length" class="warning-msg">
+        {{ t('imports.mapping.missingRequired', { fields: store.preview.missing_required_fields.join(', ') }) }}
+      </div>
+
+      <div class="mapping-grid">
+        <div v-for="field in mappingFields" :key="field.key" class="form-group">
+          <label :for="`mapping-${field.key}`">
+            {{ field.label }}
+            <span v-if="field.required">*</span>
+          </label>
+          <select :id="`mapping-${field.key}`" v-model="mapping[field.key]">
+            <option value="">{{ t('imports.mapping.skipField') }}</option>
+            <option v-for="column in store.preview.available_columns" :key="column" :value="column">{{ column }}</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" :disabled="!selectedFile || store.status === 'uploading'" @click="handleApplyMapping">
+        {{ t('imports.mapping.applyAction') }}
+      </button>
+    </section>
+
+    <section v-if="store.preview && !store.preview.requires_mapping" class="card summary-card">
       <div class="section-heading">
         <div>
           <h2>{{ t('imports.previewTitle') }}</h2>
@@ -128,7 +158,7 @@
         <article v-for="batch in store.history" :key="batch.id" class="history-item">
           <div>
             <strong>{{ batch.file_name }}</strong>
-            <p>{{ batch.status }} · {{ batch.summary.rows_to_import }} {{ t('imports.readyRows') }}</p>
+            <p>{{ batch.status }} | {{ batch.summary.rows_to_import }} {{ t('imports.readyRows') }}</p>
           </div>
           <span>{{ batch.created_at || '' }}</span>
         </article>
@@ -146,7 +176,17 @@ import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 const store = useTransactionImportStore()
 const selectedFile = ref(null)
 const selectedRows = ref([])
+const mapping = ref({})
 const { t, locale } = useI18n()
+
+const mappingFields = computed(() => [
+  { key: 'date', label: t('common.date'), required: true },
+  { key: 'amount', label: t('common.amount'), required: true },
+  { key: 'type', label: t('common.type'), required: false },
+  { key: 'category', label: t('common.category'), required: false },
+  { key: 'note', label: t('common.note'), required: false },
+  { key: 'payment_method', label: t('imports.mapping.paymentMethod'), required: false }
+])
 
 const summaryCards = computed(() => {
   const summary = store.preview?.batch?.summary
@@ -172,10 +212,12 @@ const successMessage = computed(() => {
 })
 
 watch(
-  () => store.preview?.batch?.id,
-  () => {
+  () => store.preview,
+  (preview) => {
     selectedRows.value = validRowNumbers.value.slice()
-  }
+    mapping.value = { ...(preview?.applied_mapping || preview?.suggested_mapping || {}) }
+  },
+  { immediate: true }
 )
 
 onMounted(() => {
@@ -194,6 +236,16 @@ async function handlePreview() {
   if (!selectedFile.value) return
   try {
     await store.uploadFile(selectedFile.value)
+  } catch (_error) {
+    // Store error is already shown in the page.
+  }
+}
+
+async function handleApplyMapping() {
+  if (!selectedFile.value) return
+  const payload = Object.fromEntries(Object.entries(mapping.value).filter(([, value]) => value))
+  try {
+    await store.uploadFile(selectedFile.value, payload)
   } catch (_error) {
     // Store error is already shown in the page.
   }
@@ -235,7 +287,8 @@ function statusBadgeClass(status) {
 
 .upload-card,
 .summary-card,
-.history-card {
+.history-card,
+.mapping-card {
   display: grid;
   gap: 18px;
 }
@@ -261,6 +314,12 @@ function statusBadgeClass(status) {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+}
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
 }
 
 .summary-grid {

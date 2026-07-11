@@ -21,10 +21,15 @@ def make_xlsx_bytes(rows: list[list[object]]) -> bytes:
     return buffer.getvalue()
 
 
-def preview_import(client, token: str, *, file_name: str, content: bytes):
+def preview_import(client, token: str, *, file_name: str, content: bytes, column_mapping: dict | None = None):
+    data = {}
+    if column_mapping is not None:
+        import json
+        data["column_mapping"] = json.dumps(column_mapping)
     return client.post(
         "/api/imports/transactions/preview",
         headers=auth_headers(token),
+        data=data,
         files={"file": (file_name, content)},
     )
 
@@ -106,6 +111,104 @@ def test_preview_valid_xlsx(client):
     assert payload["batch"]["file_type"] == "xlsx"
     assert payload["rows"][0]["normalized"]["transaction_date"] == "2024-07-01"
     assert payload["rows"][1]["normalized"]["transaction_date"] == "2026-07-04"
+
+
+def test_preview_returns_mapping_required_when_required_headers_are_missing(client):
+    token = register_and_login(client, "import-mapping-required@example.com")
+    content = make_csv_bytes(
+        "Txn Date,Money,Memo\n"
+        "2026-07-01,88,Tea\n"
+    )
+
+    response = preview_import(client, token, file_name="transactions.csv", content=content)
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["requires_mapping"] is True
+    assert payload["missing_required_fields"] == ["date", "amount"]
+    assert payload["available_columns"] == ["Txn Date", "Money", "Memo"]
+
+
+def test_preview_accepts_manual_mapping_for_csv(client):
+    token = register_and_login(client, "import-manual-mapping-csv@example.com")
+    content = make_csv_bytes(
+        "Txn Date,Money,Memo\n"
+        "2026-07-01,88,Tea\n"
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=content,
+        column_mapping={"date": "Txn Date", "amount": "Money", "note": "Memo"},
+    )
+
+    assert response.status_code == 201
+    row = response.json()["rows"][0]
+    assert row["normalized"]["transaction_date"] == "2026-07-01"
+    assert row["normalized"]["amount"] == 88
+    assert row["normalized"]["category"] == "Other"
+    assert "Category was not provided. Defaulted to Other." in row["warnings"]
+
+
+def test_preview_accepts_manual_mapping_for_xlsx(client):
+    token = register_and_login(client, "import-manual-mapping-xlsx@example.com")
+    content = make_xlsx_bytes(
+        [
+            ["Posted On", "Value", "Kind"],
+            ["2026-07-04", 5000, "income"],
+        ]
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.xlsx",
+        content=content,
+        column_mapping={"date": "Posted On", "amount": "Value", "type": "Kind"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["rows"][0]["normalized"]["type"] == "income"
+
+
+def test_preview_rejects_invalid_manual_mapping(client):
+    token = register_and_login(client, "import-invalid-mapping@example.com")
+    content = make_csv_bytes(
+        "Txn Date,Money\n"
+        "2026-07-01,88\n"
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=content,
+        column_mapping={"date": "Missing Column", "amount": "Money"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Mapped columns not found in upload: Missing Column."
+
+
+def test_preview_rejects_duplicate_manual_mapping_columns(client):
+    token = register_and_login(client, "import-duplicate-mapping@example.com")
+    content = make_csv_bytes(
+        "Txn Date,Money\n"
+        "2026-07-01,88\n"
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=content,
+        column_mapping={"date": "Txn Date", "amount": "Txn Date"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Each uploaded column can only be mapped once: Txn Date."
 
 
 def test_reject_unsupported_file_type(client):

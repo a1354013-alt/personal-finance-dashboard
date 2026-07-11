@@ -21,6 +21,7 @@ EXPECTED_TABLES = {
     "transaction_import_batches",
     "transaction_import_rows",
     "recurring_transactions",
+    "recurring_transaction_occurrences",
     "watchlist",
     "stock_prices",
     "stock_price_history",

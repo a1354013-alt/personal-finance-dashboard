@@ -26,6 +26,11 @@ class UserORM(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    recurring_transaction_occurrences = relationship(
+        "RecurringTransactionOccurrenceORM",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     refresh_tokens = relationship("RefreshTokenORM", back_populates="user", cascade="all, delete-orphan")
     transaction_import_batches = relationship(
         "TransactionImportBatchORM",

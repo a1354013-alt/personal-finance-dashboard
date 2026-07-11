@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.0-rc1
+
+- Added recurring transaction occurrence automation with Alembic migration `0008_add_recurring_transaction_occurrences`, current-month generation, per-occurrence generate/skip actions, and user-scoped occurrence APIs.
+- Updated dashboard monthly forecast logic to exclude generated or skipped current-month recurring occurrences so forecast and actual transaction records stay aligned.
+- Added manual transaction import column mapping for CSV/XLSX preview when automatic required-header detection is incomplete, while keeping duplicate detection and preview-first import behavior intact.
+- Expanded seed/demo data with generated and skipped recurring occurrence examples plus an unmapped CSV fixture for the import mapping flow.
+- Added focused backend and frontend coverage for recurring automation, occurrence actions, manual import mapping, and locale key parity.
+- Deferred Playwright smoke coverage for a follow-up pass to avoid destabilizing the RC validation gate.
+- Updated application version metadata to `1.5.0-rc1`.
+
 ## v1.4.0
 
 - Added user-scoped transaction editing through `PUT /api/expenses/{id}` and the Expenses page edit flow.
