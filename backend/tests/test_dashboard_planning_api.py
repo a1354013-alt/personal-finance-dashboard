@@ -63,6 +63,23 @@ def test_monthly_forecast_with_monthly_recurring_expense(client):
     assert forecast["projectedExpense"] == 800
 
 
+def test_monthly_forecast_includes_overdue_pending_current_month_occurrence(client):
+    token = register_and_login(client, "forecast-overdue-pending@example.com")
+    first, _future = _current_month_dates()
+    client.post(
+        "/api/recurring-transactions",
+        headers=auth_headers(token),
+        json={"amount": 800, "category": "Utilities", "type": "expense", "frequency": "monthly", "start_date": first},
+    )
+
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+    forecast = response.json()["monthlyForecast"]
+
+    assert forecast["recurringExpensePending"] == 800
+    assert forecast["overdueRecurringExpensePending"] == 800
+    assert forecast["projectedExpense"] == 800
+
+
 def test_monthly_forecast_excludes_generated_current_month_occurrence(client):
     token = register_and_login(client, "forecast-generated-occurrence@example.com")
     _first, future = _current_month_dates()
@@ -75,7 +92,31 @@ def test_monthly_forecast_excludes_generated_current_month_occurrence(client):
     response = client.get("/api/dashboard/summary", headers=auth_headers(token))
 
     assert generate.status_code == 200
-    assert response.json()["monthlyForecast"]["recurringExpensePending"] == 0
+    forecast = response.json()["monthlyForecast"]
+    assert forecast["recurringExpensePending"] == 0
+    assert forecast["overdueRecurringExpensePending"] == 0
+
+
+def test_monthly_forecast_excludes_skipped_current_month_occurrence(client):
+    token = register_and_login(client, "forecast-skipped-occurrence@example.com")
+    first, _future = _current_month_dates()
+    client.post(
+        "/api/recurring-transactions",
+        headers=auth_headers(token),
+        json={"amount": 650, "category": "Housing", "type": "expense", "frequency": "monthly", "start_date": first},
+    )
+    occurrences = client.get("/api/recurring-transactions/occurrences", headers=auth_headers(token))
+    occurrence_id = occurrences.json()[0]["id"]
+    skip = client.post(
+        f"/api/recurring-transactions/occurrences/{occurrence_id}/skip",
+        headers=auth_headers(token),
+    )
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+
+    assert skip.status_code == 200
+    forecast = response.json()["monthlyForecast"]
+    assert forecast["recurringExpensePending"] == 0
+    assert forecast["overdueRecurringExpensePending"] == 0
 
 
 def test_monthly_forecast_ignores_inactive_recurring_transactions(client):
@@ -106,6 +147,23 @@ def test_monthly_forecast_user_scoping(client):
     response = client.get("/api/dashboard/summary", headers=auth_headers(token))
 
     assert response.json()["monthlyForecast"]["recurringIncomePending"] == 0
+
+
+def test_monthly_forecast_keeps_future_current_month_pending_occurrence(client):
+    token = register_and_login(client, "forecast-future-pending@example.com")
+    _first, future = _current_month_dates()
+    client.post(
+        "/api/recurring-transactions",
+        headers=auth_headers(token),
+        json={"amount": 2500, "category": "Salary", "type": "income", "frequency": "monthly", "start_date": future},
+    )
+
+    response = client.get("/api/dashboard/summary", headers=auth_headers(token))
+    forecast = response.json()["monthlyForecast"]
+
+    assert forecast["recurringIncomePending"] == 2500
+    assert forecast["overdueRecurringIncomePending"] == 0
+    assert forecast["projectedIncome"] == 2500
 
 
 def test_monthly_forecast_derives_missing_next_run_date_for_active_recurring(client):

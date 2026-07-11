@@ -199,3 +199,27 @@ def test_skip_occurrence_updates_status_without_creating_transaction(client):
     assert response.json()["summary"]["skipped_count"] == 1
     assert updated_occurrences.json()[0]["status"] == "skipped"
     assert expenses.json() == []
+
+
+def test_list_occurrences_accepts_valid_month_query(client):
+    token = register_and_login(client, "recurring-occurrences-valid-month@example.com")
+
+    response = client.get("/api/recurring-transactions/occurrences?month=2026-07", headers=auth_headers(token))
+
+    assert response.status_code == 200
+
+
+def test_list_occurrences_rejects_invalid_month_string(client):
+    token = register_and_login(client, "recurring-occurrences-invalid-string@example.com")
+
+    response = client.get("/api/recurring-transactions/occurrences?month=2026/07", headers=auth_headers(token))
+
+    assert response.status_code == 422
+
+
+def test_list_occurrences_rejects_invalid_month_number(client):
+    token = register_and_login(client, "recurring-occurrences-invalid-number@example.com")
+
+    response = client.get("/api/recurring-transactions/occurrences?month=2026-13", headers=auth_headers(token))
+
+    assert response.status_code == 422

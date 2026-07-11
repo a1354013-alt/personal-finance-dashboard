@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -17,6 +17,7 @@ from models.recurring_transaction import (
     RecurringTransactionUpdate,
 )
 from models.user import UserORM
+from routers._validators import month_query
 from services.auth import get_current_user
 from services.recurring_transaction_service import (
     create_recurring_transaction,
@@ -57,7 +58,7 @@ def list_recurring_transactions(
 
 @router.get("/occurrences", response_model=list[RecurringTransactionOccurrenceResponse])
 def get_occurrences(
-    month: str | None = Query(default=None),
+    month: str | None = month_query(),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):

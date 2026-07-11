@@ -105,6 +105,7 @@ describe('API contract normalizers', () => {
         projectedExpense: '7500',
         projectedBalance: '2500',
         recurringIncomePending: '1000',
+        overdueRecurringExpensePending: '250',
         forecastWarnings: ['projected_expense_near_income']
       },
       unbudgeted_spending: [{ category: 'Travel', amount: '400', transaction_count: '2' }]
@@ -120,7 +121,8 @@ describe('API contract normalizers', () => {
       projectedIncome: 10000,
       projectedExpense: 7500,
       projectedBalance: 2500,
-      recurringIncomePending: 1000
+      recurringIncomePending: 1000,
+      overdueRecurringExpensePending: 250
     })
     expect(summary.unbudgetedSpending[0]).toEqual({
       category: 'Travel',

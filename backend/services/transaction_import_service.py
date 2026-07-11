@@ -426,19 +426,18 @@ def _resolve_column_mapping(
             detail=f"Mapped columns not found in upload: {', '.join(invalid_columns)}.",
         )
 
+    resolved = dict(suggested_mapping)
+    resolved.update({field: column for field, column in requested.items() if column})
     duplicate_source_columns = sorted(
         column
-        for column, count in Counter(requested.values()).items()
-        if count > 1
+        for column, count in Counter(resolved.values()).items()
+        if column and count > 1
     )
     if duplicate_source_columns:
         raise HTTPException(
             status_code=400,
             detail=f"Each uploaded column can only be mapped once: {', '.join(duplicate_source_columns)}.",
         )
-
-    resolved = dict(suggested_mapping)
-    resolved.update({field: column for field, column in requested.items() if column})
     return resolved
 
 

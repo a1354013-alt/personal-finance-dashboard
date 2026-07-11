@@ -132,6 +132,8 @@ class TransactionImportPreviewResponse(BaseModel):
 
 
 class TransactionImportColumnMappingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     date: Optional[str] = None
     amount: Optional[str] = None
     type: Optional[str] = None

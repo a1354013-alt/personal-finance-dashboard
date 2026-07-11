@@ -114,6 +114,9 @@
             <strong>{{ formatCurrency(pendingRecurringTotal) }}</strong>
           </div>
         </div>
+        <p v-if="overduePendingRecurringTotal > 0" class="forecast-overdue-note">
+          {{ t('dashboard.forecast.overduePendingRecurring', { amount: formatCurrency(overduePendingRecurringTotal) }) }}
+        </p>
         <div v-if="forecastWarnings.length" class="warning-list">
           <span v-for="warning in forecastWarnings" :key="warning">{{ warning }}</span>
         </div>
@@ -412,6 +415,11 @@ const incomeExpenseTrend = computed(() => ({
 const pendingRecurringTotal = computed(() => {
   const forecast = store.summary?.monthlyForecast
   return (forecast?.recurringIncomePending || 0) + (forecast?.recurringExpensePending || 0)
+})
+
+const overduePendingRecurringTotal = computed(() => {
+  const forecast = store.summary?.monthlyForecast
+  return (forecast?.overdueRecurringIncomePending || 0) + (forecast?.overdueRecurringExpensePending || 0)
 })
 
 const forecastWarnings = computed(() => (
@@ -814,6 +822,12 @@ onMounted(() => {
 .forecast-metrics strong {
   display: block;
   margin-top: 4px;
+}
+
+.forecast-overdue-note {
+  margin: 0.75rem 0 0;
+  color: #8b5b13;
+  font-size: 13px;
 }
 
 .warning-list,

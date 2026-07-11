@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -25,6 +26,26 @@ from services.transaction_import_service import (
 router = APIRouter(prefix="/api/imports/transactions", tags=["Transaction Imports"])
 
 
+def _parse_column_mapping(column_mapping: str) -> TransactionImportColumnMappingRequest:
+    try:
+        raw_payload = json.loads(column_mapping)
+        return TransactionImportColumnMappingRequest.model_validate(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid column mapping payload.") from exc
+    except ValidationError as exc:
+        unsupported_fields = sorted(
+            ".".join(str(part) for part in error.get("loc", ()) if part != "__root__")
+            for error in exc.errors()
+            if error.get("type") == "extra_forbidden"
+        )
+        if unsupported_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported mapped fields: {', '.join(unsupported_fields)}.",
+            ) from exc
+        raise HTTPException(status_code=400, detail="Invalid column mapping payload.") from exc
+
+
 @router.post("/preview", response_model=TransactionImportPreviewResponse, status_code=status.HTTP_201_CREATED)
 async def preview_import(
     file: UploadFile = File(...),
@@ -34,10 +55,7 @@ async def preview_import(
 ):
     mapping_payload = None
     if column_mapping:
-        try:
-            mapping_payload = TransactionImportColumnMappingRequest.model_validate(json.loads(column_mapping))
-        except (ValueError, TypeError) as exc:
-            raise HTTPException(status_code=400, detail="Invalid column mapping payload.") from exc
+        mapping_payload = _parse_column_mapping(column_mapping)
     content = await file.read()
     return preview_transaction_import(
         db,

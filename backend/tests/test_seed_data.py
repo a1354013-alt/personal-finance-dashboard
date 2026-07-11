@@ -68,6 +68,8 @@ def test_seed_reset_creates_current_month_demo_data(client):
         )
         assert any(item.status == "generated" for item in occurrences)
         assert any(item.status == "skipped" for item in occurrences)
+        generated_occurrence = next(item for item in occurrences if item.status == "generated")
+        assert generated_occurrence.scheduled_date == generated_occurrence.recurring_transaction.start_date
 
     login = client.post("/api/auth/login", json={"email": DEMO_EMAIL, "password": "demo1234"})
     assert login.status_code == 200

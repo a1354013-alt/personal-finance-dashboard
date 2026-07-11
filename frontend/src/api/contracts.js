@@ -400,6 +400,8 @@ export function normalizeMonthlyForecast(payload) {
     actualExpenseToDate: toNumberOrZero(row.actualExpenseToDate ?? row.actual_expense_to_date),
     recurringIncomePending: toNumberOrZero(row.recurringIncomePending ?? row.recurring_income_pending),
     recurringExpensePending: toNumberOrZero(row.recurringExpensePending ?? row.recurring_expense_pending),
+    overdueRecurringIncomePending: toNumberOrZero(row.overdueRecurringIncomePending ?? row.overdue_recurring_income_pending),
+    overdueRecurringExpensePending: toNumberOrZero(row.overdueRecurringExpensePending ?? row.overdue_recurring_expense_pending),
     forecastWarnings: Array.isArray(row.forecastWarnings ?? row.forecast_warnings)
       ? (row.forecastWarnings ?? row.forecast_warnings).map(toStringOrEmpty).filter(Boolean)
       : []

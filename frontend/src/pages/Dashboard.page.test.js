@@ -44,6 +44,7 @@ vi.mock('@/api/dashboard', () => ({
       actualExpenseToDate: 5000,
       recurringIncomePending: 2000,
       recurringExpensePending: 2000,
+      overdueRecurringExpensePending: 500,
       forecastWarnings: []
     },
     unbudgetedSpending: [
@@ -152,6 +153,7 @@ describe('Dashboard page', () => {
       expect(wrapper.text()).toContain('Unbudgeted Spending')
       expect(wrapper.text()).toContain('NT$ 12,000')
       expect(wrapper.text()).toContain('NT$ 450')
+      expect(wrapper.text()).toContain('Includes overdue pending recurring items: NT$ 500')
     })
   })
 

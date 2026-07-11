@@ -116,6 +116,7 @@ export default {
       projectedExpense: 'Projected expense',
       projectedBalance: 'Projected balance',
       pendingRecurring: 'Pending recurring',
+      overduePendingRecurring: 'Includes overdue pending recurring items: {amount}',
       noWarnings: 'No forecast warnings for this month.',
       warnings: {
         projected_balance_negative: 'Projected balance is below zero.',

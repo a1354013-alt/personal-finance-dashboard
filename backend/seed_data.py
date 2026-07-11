@@ -252,7 +252,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
                 RecurringTransactionOccurrenceORM(
                     recurring_transaction_id=recurring_rows[0].id,
                     user_id=demo_user.id,
-                    scheduled_date=current_month_salary.date,
+                    scheduled_date=recurring_rows[0].start_date,
                     status="generated",
                     generated_expense_id=current_month_salary.id,
                 )

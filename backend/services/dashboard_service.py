@@ -38,6 +38,7 @@ def _load_expense_aggregates(*, db: Session, user_id: int) -> tuple[list[Expense
 def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
     today = date.today()
     current_month_key = today.strftime("%Y-%m")
+    month_start = today.replace(day=1)
     month_end = date(today.year, today.month, monthrange(today.year, today.month)[1])
     
     # Load all records for trend and recent transactions
@@ -157,6 +158,8 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
     db.flush()
     recurring_income_pending = Decimal("0")
     recurring_expense_pending = Decimal("0")
+    overdue_recurring_income_pending = Decimal("0")
+    overdue_recurring_expense_pending = Decimal("0")
     pending_occurrences = (
         db.query(RecurringTransactionOccurrenceORM)
         .join(
@@ -165,20 +168,26 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         )
         .filter(
             RecurringTransactionOccurrenceORM.user_id == user_id,
-            RecurringTransactionOccurrenceORM.scheduled_date >= today,
+            RecurringTransactionOccurrenceORM.scheduled_date >= month_start,
             RecurringTransactionOccurrenceORM.scheduled_date <= month_end,
             RecurringTransactionOccurrenceORM.status == "pending",
             RecurringTransactionORM.is_active.is_(True),
+            RecurringTransactionORM.next_run_date.is_not(None),
         )
         .all()
     )
     for occurrence in pending_occurrences:
         recurring = occurrence.recurring_transaction
         pending_amount = Decimal(recurring.amount)
+        is_overdue = occurrence.scheduled_date < today
         if recurring.type == "income":
             recurring_income_pending += pending_amount
+            if is_overdue:
+                overdue_recurring_income_pending += pending_amount
         else:
             recurring_expense_pending += pending_amount
+            if is_overdue:
+                overdue_recurring_expense_pending += pending_amount
 
     projected_income = monthly_income + recurring_income_pending
     projected_expense = monthly_expense + recurring_expense_pending
@@ -199,6 +208,8 @@ def build_dashboard_summary(*, db: Session, user_id: int) -> dict:
         "actualExpenseToDate": _money(monthly_expense),
         "recurringIncomePending": _money(recurring_income_pending),
         "recurringExpensePending": _money(recurring_expense_pending),
+        "overdueRecurringIncomePending": _money(overdue_recurring_income_pending),
+        "overdueRecurringExpensePending": _money(overdue_recurring_expense_pending),
         "forecastWarnings": forecast_warnings,
     }
 

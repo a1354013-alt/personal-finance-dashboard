@@ -43,6 +43,8 @@ class DashboardForecast(BaseModel):
     actualExpenseToDate: float
     recurringIncomePending: float
     recurringExpensePending: float
+    overdueRecurringIncomePending: float = 0
+    overdueRecurringExpensePending: float = 0
     forecastWarnings: list[str] = Field(default_factory=list)
 
 

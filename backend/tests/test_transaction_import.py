@@ -211,6 +211,44 @@ def test_preview_rejects_duplicate_manual_mapping_columns(client):
     assert response.json()["detail"] == "Each uploaded column can only be mapped once: Txn Date."
 
 
+def test_preview_rejects_unsupported_manual_mapping_field(client):
+    token = register_and_login(client, "import-unsupported-mapping-field@example.com")
+    content = make_csv_bytes(
+        "Txn Date,Money\n"
+        "2026-07-01,88\n"
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=content,
+        column_mapping={"date": "Txn Date", "amount": "Money", "merchant": "Store"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unsupported mapped fields: merchant."
+
+
+def test_preview_rejects_duplicate_mapping_after_merging_suggested_and_manual_fields(client):
+    token = register_and_login(client, "import-merged-duplicate-mapping@example.com")
+    content = make_csv_bytes(
+        "date,amount,note\n"
+        "2026-07-01,88,Tea\n"
+    )
+
+    response = preview_import(
+        client,
+        token,
+        file_name="transactions.csv",
+        content=content,
+        column_mapping={"amount": "date"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Each uploaded column can only be mapped once: date."
+
+
 def test_reject_unsupported_file_type(client):
     token = register_and_login(client, "import-badtype@example.com")
 
