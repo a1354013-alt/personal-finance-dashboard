@@ -1,13 +1,17 @@
 # Changelog
 
-## v1.4.0-rc1
+## v1.4.0
 
 - Added user-scoped transaction editing through `PUT /api/expenses/{id}` and the Expenses page edit flow.
 - Added recurring transactions with CRUD, deactivate support, Alembic migration `0007_add_recurring_transactions`, and a dedicated frontend page.
 - Added dashboard monthly forecast fields based on current-month actuals, pending recurring transactions, and budget context.
 - Added unbudgeted spending insight for current-month expense categories without active budgets.
+- Hardened recurring transaction `next_run_date` derivation for active schedules.
+- Preserved inactive recurring transaction status when editing existing items.
+- Cleaned up README limitation wording for current demo behavior.
+- Hardened dashboard planning tests against end-of-month timing flakiness.
 - Updated demo seed data with recurring income, recurring expenses, current-month forecast data, and an unbudgeted spending category.
-- Updated application version metadata to `1.4.0-rc1`.
+- Updated application version metadata to `1.4.0`.
 
 ## v1.3.0
 
