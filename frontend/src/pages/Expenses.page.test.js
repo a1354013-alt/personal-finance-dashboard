@@ -35,7 +35,7 @@ describe('Expenses page', () => {
     const wrapper = mount(Expenses, { global: { plugins: [pinia, i18n] } })
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('Lunch')
-      expect(wrapper.text()).toContain('食物')
+      expect(wrapper.text()).toContain('餐飲')
     })
   })
 

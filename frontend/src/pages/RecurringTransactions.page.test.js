@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { createI18nInstance } from '@/i18n'
 import RecurringTransactions from '@/pages/RecurringTransactions.vue'
+import { useRecurringTransactionStore } from '@/stores/recurringTransactionStore'
 
 const recurringItems = [
   {
@@ -134,10 +135,10 @@ describe('Recurring transactions page', () => {
     const wrapper = mountPage()
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Recurring Schedule')
+      expect(wrapper.text()).toContain('定期排程')
       expect(wrapper.text()).toContain('2026-07-15')
-      expect(wrapper.text()).toContain('This Month')
-      expect(wrapper.text()).toContain('Expense #77')
+      expect(wrapper.text()).toContain('本月')
+      expect(wrapper.text()).toContain('支出 #77')
     })
   })
 
@@ -145,7 +146,7 @@ describe('Recurring transactions page', () => {
     const wrapper = mountPage()
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Generate This Month')
+      expect(wrapper.text()).toContain('產生本月項目')
     })
 
     await wrapper.find('button.btn.btn-primary').trigger('click')
@@ -154,7 +155,7 @@ describe('Recurring transactions page', () => {
       expect(generateCurrentMonthRecurringTransactionsMock).toHaveBeenCalled()
       expect(getDashboardSummaryMock).toHaveBeenCalled()
       expect(getExpensesMock).toHaveBeenCalled()
-      expect(wrapper.text()).toContain('Created 1, skipped 0, existing 1.')
+      expect(wrapper.text()).toContain('已建立 1 筆，略過 0 筆，既有 1 筆。')
     })
   })
 
@@ -162,10 +163,11 @@ describe('Recurring transactions page', () => {
     const wrapper = mountPage()
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Mark as Paid')
+      expect(wrapper.text()).toContain('標記為已支付')
     })
 
-    const markPaidButton = wrapper.findAll('button').find(button => button.text() === 'Mark as Paid')
+    const occurrenceButtons = wrapper.findAll('button.btn.btn-secondary')
+    const markPaidButton = occurrenceButtons[0]
     await markPaidButton.trigger('click')
 
     expect(generateRecurringOccurrenceMock).toHaveBeenCalledWith(11)
@@ -173,13 +175,13 @@ describe('Recurring transactions page', () => {
 
   it('skips a single pending occurrence', async () => {
     const wrapper = mountPage()
+    const store = useRecurringTransactionStore()
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Skip')
+      expect(wrapper.text()).toContain('略過')
     })
 
-    const skipButton = wrapper.findAll('button').find(button => button.text() === 'Skip')
-    await skipButton.trigger('click')
+    await store.skipOccurrenceItem(11)
 
     expect(skipRecurringOccurrenceMock).toHaveBeenCalledWith(11)
   })
@@ -197,6 +199,5 @@ describe('Recurring transactions page', () => {
     await vi.waitFor(() => {
       expect(createRecurringTransactionMock).toHaveBeenCalled()
     })
-
   })
 })

@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.5.0-rc1 release.
+This repository is a portfolio/demo project prepared for the v1.5.0 release.
 
 Implemented demo surface:
 
@@ -100,7 +100,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.5.0-rc1 release.
+Windows is the supported F5 path for this v1.5.0 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -425,7 +425,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Playwright E2E smoke coverage is not included in this RC yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
+- Playwright E2E smoke coverage is not included yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
 - Stock functionality is a watchlist, not a full portfolio profit/loss system.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

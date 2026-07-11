@@ -1,14 +1,16 @@
 # Changelog
 
-## v1.5.0-rc1
+## v1.5.0
 
-- Added recurring transaction occurrence automation with Alembic migration `0008_add_recurring_transaction_occurrences`, current-month generation, per-occurrence generate/skip actions, and user-scoped occurrence APIs.
-- Updated dashboard monthly forecast logic to exclude generated or skipped current-month recurring occurrences so forecast and actual transaction records stay aligned.
+- Promoted `v1.5.0-rc1` to the final `v1.5.0` release.
+- Added recurring transaction occurrence automation with Alembic migration `0008_add_recurring_transaction_occurrences`, current-month recurring transaction generation, per-occurrence generate and skip actions, and user-scoped occurrence APIs.
 - Added manual transaction import column mapping for CSV/XLSX preview when automatic required-header detection is incomplete, while keeping duplicate detection and preview-first import behavior intact.
-- Expanded seed/demo data with generated and skipped recurring occurrence examples plus an unmapped CSV fixture for the import mapping flow.
-- Added focused backend and frontend coverage for recurring automation, occurrence actions, manual import mapping, and locale key parity.
-- Deferred Playwright smoke coverage for a follow-up pass to avoid destabilizing the RC validation gate.
-- Updated application version metadata to `1.5.0-rc1`.
+- Hardened dashboard monthly forecast handling so overdue current-month pending recurring occurrences are included while generated or skipped occurrences do not inflate the projection.
+- Hardened recurring occurrence month query validation so invalid `YYYY-MM` values are rejected consistently.
+- Hardened manual import mapping validation so unsupported fields and duplicate resolved source columns are rejected before preview/import continues.
+- Refreshed seed/demo data with more consistent recurring occurrence dates, generated/skipped occurrence examples, and an unmapped CSV fixture for the import mapping flow.
+- Validation status for the final release: backend compileall, Alembic upgrade, pytest, seed reset, frontend lint, tests, build, audit, and VS Code F5 JSON checks passed; Playwright E2E smoke coverage remains deferred for a follow-up pass.
+- Updated application version metadata to `1.5.0`.
 
 ## v1.4.0
 

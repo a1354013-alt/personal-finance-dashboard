@@ -149,11 +149,11 @@ describe('Dashboard page', () => {
     })
 
     await vi.waitFor(() => {
-      expect(wrapper.text()).toContain('Monthly Forecast')
-      expect(wrapper.text()).toContain('Unbudgeted Spending')
+      expect(wrapper.text()).toContain('每月預測')
+      expect(wrapper.text()).toContain('未編列預算的支出')
       expect(wrapper.text()).toContain('NT$ 12,000')
       expect(wrapper.text()).toContain('NT$ 450')
-      expect(wrapper.text()).toContain('Includes overdue pending recurring items: NT$ 500')
+      expect(wrapper.text()).toContain('包含逾期但仍待處理的定期項目：NT$ 500')
     })
   })
 
