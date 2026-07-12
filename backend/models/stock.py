@@ -471,14 +471,35 @@ class PortfolioPositionResponse(BaseModel):
         return float(value)
 
 
-class StockPortfolioResponse(BaseModel):
+class PortfolioCurrencyGroupResponse(BaseModel):
+    currency: str
     total_cost: Decimal
+    total_market_value: Optional[Decimal] = None
+    total_unrealized_pnl: Optional[Decimal] = None
+    total_unrealized_pnl_percent: Optional[Decimal] = None
+    holdings_count: int
+
+    @field_serializer(
+        "total_cost",
+        "total_market_value",
+        "total_unrealized_pnl",
+        "total_unrealized_pnl_percent",
+    )
+    def serialize_group_numbers(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
+
+class StockPortfolioResponse(BaseModel):
+    total_cost: Optional[Decimal] = None
     total_market_value: Optional[Decimal] = None
     total_unrealized_pnl: Optional[Decimal] = None
     total_unrealized_pnl_percent: Optional[Decimal] = None
     holdings_count: int
     currency: Optional[str] = None
     warnings: list[str] = Field(default_factory=list)
+    totals_by_currency: list[PortfolioCurrencyGroupResponse] = Field(default_factory=list)
     positions: list[PortfolioPositionResponse] = Field(default_factory=list)
 
     @field_serializer(

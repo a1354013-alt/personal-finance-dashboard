@@ -374,6 +374,11 @@ export default {
       costBasis: '成本基礎',
       unrealizedPnL: '未實現損益',
       allocationValue: '{value}%',
+      allocationUnavailable: '依幣別分組顯示占比',
+      groupedOnly: '依幣別分組',
+      groupedBadge: '分組總計',
+      currencyGroupTitle: '{currency} 總計',
+      groupHoldingsCount: '{count} 筆持股',
       pnlPercent: '損益 {value}%',
       pricePending: '待補價格'
     },

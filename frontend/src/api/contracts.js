@@ -673,16 +673,31 @@ export function normalizePortfolioPosition(row) {
   }
 }
 
+export function normalizePortfolioCurrencyGroup(row) {
+  if (!row || typeof row !== 'object') return null
+  return {
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
+    total_cost: toNumberOrNull(row.total_cost ?? row.totalCost),
+    total_market_value: toNumberOrNull(row.total_market_value ?? row.totalMarketValue),
+    total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
+    total_unrealized_pnl_percent: toNumberOrNull(row.total_unrealized_pnl_percent ?? row.totalUnrealizedPnLPercent),
+    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount)
+  }
+}
+
 export function normalizeStockPortfolio(payload) {
   if (!payload || typeof payload !== 'object') return null
   return {
-    total_cost: toNumberOrZero(payload.total_cost ?? payload.totalCost),
+    total_cost: toNumberOrNull(payload.total_cost ?? payload.totalCost),
     total_market_value: toNumberOrNull(payload.total_market_value ?? payload.totalMarketValue),
     total_unrealized_pnl: toNumberOrNull(payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL),
     total_unrealized_pnl_percent: toNumberOrNull(payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent),
     holdings_count: toNumberOrZero(payload.holdings_count ?? payload.holdingsCount),
     currency: payload.currency == null ? null : String(payload.currency).trim().toUpperCase(),
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(toStringOrEmpty).filter(Boolean) : [],
+    totals_by_currency: Array.isArray(payload.totals_by_currency ?? payload.totalsByCurrency)
+      ? (payload.totals_by_currency ?? payload.totalsByCurrency).map(normalizePortfolioCurrencyGroup).filter(Boolean)
+      : [],
     positions: Array.isArray(payload.positions) ? payload.positions.map(normalizePortfolioPosition).filter(Boolean) : []
   }
 }

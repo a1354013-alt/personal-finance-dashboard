@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.0
+
+- Promoted `v1.6.0-rc1` to the final `v1.6.0` release.
+- Hardened stock portfolio totals so mixed-currency holdings are grouped by currency instead of being combined into one misleading top-level number without FX conversion.
+- Added explicit portfolio warnings and grouped currency totals to the Stocks API and Stocks page when a portfolio contains multiple currencies.
+- Hardened holding updates so changing `stock_code` re-infers the holding currency from the normalized symbol when the client does not explicitly provide a currency.
+- Added backend and frontend regression coverage for mixed-currency portfolio summaries, grouped totals rendering, allocation safety, and stock-code currency re-inference.
+
 ## v1.6.0-rc1
 
 - Added stock portfolio holdings with user-scoped CRUD APIs at `GET/POST/PUT/DELETE /api/stocks/holdings`.

@@ -29,6 +29,21 @@
         </article>
       </div>
 
+      <div v-if="portfolioCurrencyGroups.length" class="portfolio-groups-grid">
+        <article v-for="group in portfolioCurrencyGroups" :key="group.currency" class="portfolio-group-card">
+          <div class="tile-head">
+            <strong>{{ t('stocks.portfolio.currencyGroupTitle', { currency: group.currency }) }}</strong>
+            <span class="badge badge-warning">{{ t('stocks.portfolio.groupHoldingsCount', { count: group.holdings_count }) }}</span>
+          </div>
+          <div class="portfolio-metrics-grid">
+            <article v-for="metric in buildCurrencyGroupMetrics(group)" :key="metric.label" class="portfolio-metric-item">
+              <span>{{ metric.label }}</span>
+              <strong :class="metric.tone">{{ metric.value }}</strong>
+            </article>
+          </div>
+        </article>
+      </div>
+
       <div v-if="portfolioWarnings.length" class="portfolio-warning-list">
         <div v-for="warning in portfolioWarnings" :key="warning" class="tile-warning">{{ warning }}</div>
       </div>
@@ -70,11 +85,7 @@
               <div class="tile-name">{{ position.stock_name || position.stock_code }}</div>
             </div>
             <span class="badge" :class="position.unrealized_pnl == null ? 'badge-warning' : position.unrealized_pnl >= 0 ? 'badge-success' : 'badge-danger'">
-              {{
-                position.allocation_percent == null
-                  ? t('stocks.portfolio.pricePending')
-                  : t('stocks.portfolio.allocationValue', { value: position.allocation_percent.toFixed(2) })
-              }}
+              {{ allocationBadgeText(position) }}
             </span>
           </div>
           <div class="portfolio-metrics-grid">
@@ -456,22 +467,32 @@ const selectedCurrency = computed(() => stockStore.selectedWatchlistItem?.curren
 const portfolioCurrency = computed(() => stockStore.portfolio?.currency || selectedCurrency.value || null)
 const portfolioWarnings = computed(() => stockStore.portfolio?.warnings || [])
 const portfolioPositions = computed(() => stockStore.portfolio?.positions || [])
+const portfolioCurrencyGroups = computed(() => stockStore.portfolio?.totals_by_currency || [])
+const isMultiCurrencyPortfolio = computed(() => portfolioCurrencyGroups.value.length > 1)
 
 const portfolioSummaryItems = computed(() => [
   {
     label: t('stocks.portfolio.totalMarketValue'),
     value: stockStore.portfolio?.total_market_value == null
-      ? t('common.empty')
+      ? isMultiCurrencyPortfolio.value
+        ? t('stocks.portfolio.groupedOnly')
+        : t('common.empty')
       : formatPrice(stockStore.portfolio.total_market_value, portfolioCurrency.value)
   },
   {
     label: t('stocks.portfolio.totalCost'),
-    value: formatPrice(stockStore.portfolio?.total_cost || 0, portfolioCurrency.value)
+    value: stockStore.portfolio?.total_cost == null
+      ? isMultiCurrencyPortfolio.value
+        ? t('stocks.portfolio.groupedOnly')
+        : formatPrice(0, portfolioCurrency.value)
+      : formatPrice(stockStore.portfolio.total_cost, portfolioCurrency.value)
   },
   {
     label: t('stocks.portfolio.totalPnL'),
     value: stockStore.portfolio?.total_unrealized_pnl == null
-      ? t('common.empty')
+      ? isMultiCurrencyPortfolio.value
+        ? t('stocks.portfolio.groupedOnly')
+        : t('common.empty')
       : formatSignedCurrency(stockStore.portfolio.total_unrealized_pnl, portfolioCurrency.value)
   },
   {
@@ -488,7 +509,11 @@ const portfolioPnLClass = computed(() => {
 
 const portfolioPnLLabel = computed(() => {
   const percent = stockStore.portfolio?.total_unrealized_pnl_percent
-  if (percent == null) return t('stocks.portfolio.pricePending')
+  if (percent == null) {
+    return isMultiCurrencyPortfolio.value
+      ? t('stocks.portfolio.groupedBadge')
+      : t('stocks.portfolio.pricePending')
+  }
   return t('stocks.portfolio.pnlPercent', { value: percent.toFixed(2) })
 })
 
@@ -601,6 +626,41 @@ function buildPositionMetrics(position) {
       tone: position.unrealized_pnl == null ? '' : position.unrealized_pnl >= 0 ? 'positive' : 'negative'
     }
   ]
+}
+
+function buildCurrencyGroupMetrics(group) {
+  return [
+    {
+      label: t('stocks.portfolio.totalMarketValue'),
+      value: group.total_market_value == null ? t('common.empty') : formatPrice(group.total_market_value, group.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.totalCost'),
+      value: group.total_cost == null ? t('common.empty') : formatPrice(group.total_cost, group.currency),
+      tone: ''
+    },
+    {
+      label: t('stocks.portfolio.totalPnL'),
+      value: group.total_unrealized_pnl == null
+        ? t('common.empty')
+        : `${formatSignedCurrency(group.total_unrealized_pnl, group.currency)} (${group.total_unrealized_pnl_percent?.toFixed(2) ?? '0.00'}%)`,
+      tone: group.total_unrealized_pnl == null ? '' : group.total_unrealized_pnl >= 0 ? 'positive' : 'negative'
+    }
+  ]
+}
+
+function allocationBadgeText(position) {
+  if (position.allocation_percent != null) {
+    return t('stocks.portfolio.allocationValue', { value: position.allocation_percent.toFixed(2) })
+  }
+  if (position.market_value == null) {
+    return t('stocks.portfolio.pricePending')
+  }
+  if (isMultiCurrencyPortfolio.value) {
+    return t('stocks.portfolio.allocationUnavailable')
+  }
+  return t('common.empty')
 }
 
 async function handleSaveHolding() {
@@ -908,8 +968,15 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+.portfolio-groups-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .portfolio-summary-item,
-.portfolio-metric-item {
+.portfolio-metric-item,
+.portfolio-group-card {
   padding: 14px;
   border-radius: 14px;
   background: #f5f8fb;

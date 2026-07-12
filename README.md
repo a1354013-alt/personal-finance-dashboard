@@ -431,6 +431,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 - Playwright E2E smoke coverage is not included yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
 - Portfolio unrealized P/L depends on whichever latest cached price is available for each holding; when price data is missing, price-dependent fields are intentionally returned as `null` with warnings.
+- Portfolio totals are grouped by holding currency. FX conversion is not implemented yet, so mixed-currency portfolios are not combined into one top-level total.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - `zh-CN` and `ja` keep key parity for the new portfolio strings, but the wording is still largely English and should be localized in a follow-up polish pass.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

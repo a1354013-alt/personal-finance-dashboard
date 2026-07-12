@@ -151,6 +151,16 @@ function portfolioPayload(overrides = {}) {
     holdings_count: 1,
     currency: 'TWD',
     warnings: [],
+    totals_by_currency: [
+      {
+        currency: 'TWD',
+        total_cost: 9000,
+        total_market_value: 10000,
+        total_unrealized_pnl: 1000,
+        total_unrealized_pnl_percent: 11.11,
+        holdings_count: 1
+      }
+    ],
     positions: [
       {
         holding_id: 11,
@@ -294,6 +304,69 @@ describe('Stocks page', () => {
       expect(wrapper.text()).toContain('NT$ 10,000')
       expect(wrapper.text()).toContain('+NT$ 1,000')
       expect(wrapper.text()).toContain('TSMC')
+    })
+  })
+
+  it('renders grouped portfolio totals and mixed-currency warning', async () => {
+    getStockHoldingsMock.mockResolvedValue([
+      holding(),
+      holding({ id: 12, stock_code: 'AAPL', currency: 'USD', average_cost: 150, shares: 1, note: 'US position' })
+    ])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload({
+      total_cost: null,
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      currency: null,
+      warnings: ['Portfolio contains multiple currencies: TWD, USD. Totals are grouped by currency and are not FX-converted.'],
+      totals_by_currency: [
+        {
+          currency: 'TWD',
+          total_cost: 9000,
+          total_market_value: 10000,
+          total_unrealized_pnl: 1000,
+          total_unrealized_pnl_percent: 11.11,
+          holdings_count: 1
+        },
+        {
+          currency: 'USD',
+          total_cost: 150,
+          total_market_value: 200,
+          total_unrealized_pnl: 50,
+          total_unrealized_pnl_percent: 33.33,
+          holdings_count: 1
+        }
+      ],
+      positions: [
+        portfolioPayload().positions[0],
+        {
+          holding_id: 12,
+          stock_code: 'AAPL',
+          stock_name: 'Apple',
+          shares: 1,
+          average_cost: 150,
+          latest_price: 200,
+          cost_basis: 150,
+          market_value: 200,
+          unrealized_pnl: 50,
+          unrealized_pnl_percent: 33.33,
+          allocation_percent: null,
+          currency: 'USD',
+          warning: null,
+          updated_at: '2026-07-06T01:00:00Z'
+        }
+      ]
+    }))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Portfolio contains multiple currencies: TWD, USD. Totals are grouped by currency and are not FX-converted.')
+      expect(wrapper.text()).toContain('Grouped by currency')
+      expect(wrapper.text()).toContain('TWD totals')
+      expect(wrapper.text()).toContain('USD totals')
+      expect(wrapper.text()).toContain('Allocation grouped by currency')
+      expect(wrapper.text()).toContain('US$ 200')
     })
   })
 

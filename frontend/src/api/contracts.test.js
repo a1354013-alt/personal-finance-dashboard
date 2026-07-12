@@ -243,6 +243,14 @@ describe('API contract normalizers', () => {
       holdings_count: '1',
       currency: 'twd',
       warnings: ['Latest price unavailable for: AAPL.'],
+      totals_by_currency: [{
+        currency: 'twd',
+        total_cost: '9005',
+        total_market_value: '10000',
+        total_unrealized_pnl: '995',
+        total_unrealized_pnl_percent: '11.05',
+        holdings_count: '1'
+      }],
       positions: [{
         holding_id: '11',
         stock_code: '2330.tw',
@@ -275,10 +283,54 @@ describe('API contract normalizers', () => {
       holdings_count: 1,
       currency: 'TWD'
     })
+    expect(portfolio.totals_by_currency[0]).toMatchObject({
+      currency: 'TWD',
+      total_cost: 9005,
+      total_market_value: 10000,
+      total_unrealized_pnl: 995,
+      total_unrealized_pnl_percent: 11.05,
+      holdings_count: 1
+    })
     expect(portfolio.positions[0]).toMatchObject({
       holding_id: 11,
       stock_code: '2330.TW',
       allocation_percent: 100
+    })
+  })
+
+  it('normalizes mixed-currency portfolio groups without forcing combined totals', () => {
+    const portfolio = normalizeStockPortfolio({
+      total_cost: null,
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      holdings_count: '2',
+      currency: null,
+      totalsByCurrency: [{
+        currency: 'usd',
+        totalCost: '150',
+        totalMarketValue: '200',
+        totalUnrealizedPnL: '50',
+        totalUnrealizedPnLPercent: '33.33',
+        holdingsCount: '1'
+      }]
+    })
+
+    expect(portfolio).toMatchObject({
+      total_cost: null,
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      holdings_count: 2,
+      currency: null
+    })
+    expect(portfolio.totals_by_currency[0]).toMatchObject({
+      currency: 'USD',
+      total_cost: 150,
+      total_market_value: 200,
+      total_unrealized_pnl: 50,
+      total_unrealized_pnl_percent: 33.33,
+      holdings_count: 1
     })
   })
 })

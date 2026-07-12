@@ -374,6 +374,11 @@ export default {
       costBasis: 'Cost Basis',
       unrealizedPnL: 'Unrealized P/L',
       allocationValue: '{value}%',
+      allocationUnavailable: 'Allocation grouped by currency',
+      groupedOnly: 'Grouped by currency',
+      groupedBadge: 'Grouped totals',
+      currencyGroupTitle: '{currency} totals',
+      groupHoldingsCount: '{count} holding(s)',
       pnlPercent: 'P/L {value}%',
       pricePending: 'Price Pending'
     },
