@@ -673,15 +673,46 @@ export function normalizePortfolioPosition(row) {
   }
 }
 
+export function normalizePortfolioCurrencyTotal(row) {
+  if (!row || typeof row !== 'object') return null
+  const currency = row.currency == null ? null : String(row.currency).trim().toUpperCase()
+  if (!currency) return null
+  return {
+    currency,
+    total_cost: toNumberOrZero(row.total_cost ?? row.totalCost),
+    total_market_value: toNumberOrNull(row.total_market_value ?? row.totalMarketValue),
+    total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
+    total_unrealized_pnl_percent: toNumberOrNull(row.total_unrealized_pnl_percent ?? row.totalUnrealizedPnLPercent),
+    priced_cost: toNumberOrZero(row.priced_cost ?? row.pricedCost),
+    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount)
+  }
+}
+
 export function normalizeStockPortfolio(payload) {
   if (!payload || typeof payload !== 'object') return null
+  const currencyTotals = Array.isArray(payload.currency_totals ?? payload.currencyTotals)
+    ? (payload.currency_totals ?? payload.currencyTotals).map(normalizePortfolioCurrencyTotal).filter(Boolean)
+    : []
+  const legacyCurrency = payload.currency == null ? null : String(payload.currency).trim().toUpperCase()
+  const legacyTotal = legacyCurrency
+    ? normalizePortfolioCurrencyTotal({
+        currency: legacyCurrency,
+        total_cost: payload.total_cost ?? payload.totalCost,
+        total_market_value: payload.total_market_value ?? payload.totalMarketValue,
+        total_unrealized_pnl: payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL,
+        total_unrealized_pnl_percent: payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent,
+        priced_cost: payload.total_market_value == null && payload.totalMarketValue == null ? 0 : (payload.total_cost ?? payload.totalCost),
+        holdings_count: payload.holdings_count ?? payload.holdingsCount
+      })
+    : null
   return {
     total_cost: toNumberOrZero(payload.total_cost ?? payload.totalCost),
     total_market_value: toNumberOrNull(payload.total_market_value ?? payload.totalMarketValue),
     total_unrealized_pnl: toNumberOrNull(payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL),
     total_unrealized_pnl_percent: toNumberOrNull(payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent),
     holdings_count: toNumberOrZero(payload.holdings_count ?? payload.holdingsCount),
-    currency: payload.currency == null ? null : String(payload.currency).trim().toUpperCase(),
+    currency: legacyCurrency,
+    currency_totals: currencyTotals.length ? currencyTotals : (legacyTotal ? [legacyTotal] : []),
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(toStringOrEmpty).filter(Boolean) : [],
     positions: Array.isArray(payload.positions) ? payload.positions.map(normalizePortfolioPosition).filter(Boolean) : []
   }

@@ -375,7 +375,8 @@ export default {
       unrealizedPnL: 'Unrealized P/L',
       allocationValue: '{value}%',
       pnlPercent: 'P/L {value}%',
-      pricePending: 'Price Pending'
+      pricePending: 'Price Pending',
+      mixedCurrencies: 'Multiple currencies'
     },
     watchlistGrid: 'Watchlist Grid',
     helperText: 'Queued syncs update status without blocking this UI.',

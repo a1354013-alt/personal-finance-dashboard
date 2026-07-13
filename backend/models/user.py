@@ -13,7 +13,7 @@ class UserORM(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

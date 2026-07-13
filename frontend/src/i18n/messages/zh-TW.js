@@ -375,7 +375,8 @@ export default {
       unrealizedPnL: '未實現損益',
       allocationValue: '{value}%',
       pnlPercent: '損益 {value}%',
-      pricePending: '待補價格'
+      pricePending: '待補價格',
+      mixedCurrencies: '多幣別'
     },
     watchlistGrid: '觀察清單',
     helperText: '加入佇列的同步工作會更新狀態，不會阻塞這個介面。',

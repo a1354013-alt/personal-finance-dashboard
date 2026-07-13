@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.6.0-rc2
+
+- Fixed stock portfolio summaries so TWD and USD holdings are grouped in `currency_totals` instead of being added into a fake single-currency total.
+- Fixed holding edits so changing `stock_code` without an explicit `currency` re-infers the currency from the normalized new symbol.
+- Defined duplicate-holding behavior as one aggregated holding per user and stock code, enforced by Alembic migration `0010_enforce_unique_stock_holdings`.
+- Removed redundant ORM primary-key index declarations that caused Alembic drift for `ix_stock_price_alerts_id` and `ix_users_id`.
+- Added runtime prerequisite checks for Python 3.11/3.12 and supported Node versions, and made release verification use `backend/.venv/Scripts/python.exe`.
+- Added `python -m alembic check`, `python -m pip check`, and seeded Playwright smoke coverage to release/CI verification.
+- Updated backend dependency pins for Requests and python-jose warning cleanup.
+- Updated application version metadata to `1.6.0-rc2`.
+
 ## v1.6.0-rc1
 
 - Added stock portfolio holdings with user-scoped CRUD APIs at `GET/POST/PUT/DELETE /api/stocks/holdings`.

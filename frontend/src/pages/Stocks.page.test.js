@@ -150,6 +150,17 @@ function portfolioPayload(overrides = {}) {
     total_unrealized_pnl_percent: 11.11,
     holdings_count: 1,
     currency: 'TWD',
+    currency_totals: [
+      {
+        currency: 'TWD',
+        total_cost: 9000,
+        total_market_value: 10000,
+        total_unrealized_pnl: 1000,
+        total_unrealized_pnl_percent: 11.11,
+        priced_cost: 9000,
+        holdings_count: 1
+      }
+    ],
     warnings: [],
     positions: [
       {
@@ -297,6 +308,69 @@ describe('Stocks page', () => {
     })
   })
 
+  it('renders separate portfolio summaries for each currency', async () => {
+    getStockHoldingsMock.mockResolvedValue([
+      holding(),
+      holding({ id: 12, stock_code: 'AAPL', shares: 2, average_cost: 150, currency: 'USD', note: 'US' })
+    ])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload({
+      total_cost: 0,
+      total_market_value: null,
+      total_unrealized_pnl: null,
+      total_unrealized_pnl_percent: null,
+      currency: null,
+      currency_totals: [
+        {
+          currency: 'TWD',
+          total_cost: 9000,
+          total_market_value: 10000,
+          total_unrealized_pnl: 1000,
+          total_unrealized_pnl_percent: 11.11,
+          priced_cost: 9000,
+          holdings_count: 1
+        },
+        {
+          currency: 'USD',
+          total_cost: 300,
+          total_market_value: 360,
+          total_unrealized_pnl: 60,
+          total_unrealized_pnl_percent: 20,
+          priced_cost: 300,
+          holdings_count: 1
+        }
+      ],
+      positions: [
+        portfolioPayload().positions[0],
+        {
+          holding_id: 12,
+          stock_code: 'AAPL',
+          stock_name: 'Apple',
+          shares: 2,
+          average_cost: 150,
+          latest_price: 180,
+          cost_basis: 300,
+          market_value: 360,
+          unrealized_pnl: 60,
+          unrealized_pnl_percent: 20,
+          allocation_percent: 100,
+          currency: 'USD',
+          warning: null,
+          updated_at: '2026-07-06T01:00:00Z'
+        }
+      ]
+    }))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Multiple currencies')
+      expect(wrapper.text()).toContain('TWD')
+      expect(wrapper.text()).toContain('NT$ 10,000')
+      expect(wrapper.text()).toContain('USD')
+      expect(wrapper.text()).toContain('US$ 360')
+    })
+  })
+
   it('creates a holding', async () => {
     const wrapper = mountStocksPage()
 
@@ -337,6 +411,7 @@ describe('Stocks page', () => {
         average_cost: 900,
         note: 'Core'
       })
+      expect(updateStockHoldingMock.mock.calls[0][1]).not.toHaveProperty('currency')
     })
 
     await wrapper.find('.portfolio-position-card .btn.btn-danger').trigger('click')
@@ -351,6 +426,17 @@ describe('Stocks page', () => {
       total_market_value: null,
       total_unrealized_pnl: null,
       total_unrealized_pnl_percent: null,
+      currency_totals: [
+        {
+          currency: 'TWD',
+          total_cost: 9000,
+          total_market_value: null,
+          total_unrealized_pnl: null,
+          total_unrealized_pnl_percent: null,
+          priced_cost: 0,
+          holdings_count: 1
+        }
+      ],
       warnings: ['Latest price unavailable for: 2330.TW. Price-dependent fields are null.'],
       positions: [
         {

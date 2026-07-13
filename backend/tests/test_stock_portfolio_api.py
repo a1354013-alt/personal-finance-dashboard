@@ -95,6 +95,26 @@ def test_create_list_update_delete_holding(client):
     assert client.get("/api/stocks/holdings", headers=headers).json() == []
 
 
+def test_reject_duplicate_holding_for_same_user_and_stock(client):
+    token = register_and_login(client, "portfolio-duplicate@example.com")
+    headers = auth_headers(token)
+
+    first = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "AAPL", "shares": 2, "average_cost": 150},
+    )
+    assert first.status_code == 201
+
+    duplicate = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "AAPL", "shares": 1, "average_cost": 160},
+    )
+    assert duplicate.status_code == 400
+    assert "already exists" in duplicate.json()["detail"]
+
+
 def test_list_current_user_holdings_only(client):
     token_a = register_and_login(client, "portfolio-user-a@example.com")
     token_b = register_and_login(client, "portfolio-user-b@example.com")
@@ -145,6 +165,71 @@ def test_cross_user_holding_access_blocked(client):
     assert client.delete(f"/api/stocks/holdings/{created['id']}", headers=auth_headers(token_b)).status_code == 404
 
 
+def test_update_holding_reinfers_currency_when_stock_code_changes(client):
+    token = register_and_login(client, "portfolio-edit-currency@example.com")
+    headers = auth_headers(token)
+
+    aapl = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "AAPL", "shares": 3, "average_cost": 150},
+    ).json()
+    to_taiwan = client.put(
+        f"/api/stocks/holdings/{aapl['id']}",
+        headers=headers,
+        json={"stock_code": "2330"},
+    )
+    assert to_taiwan.status_code == 200
+    assert to_taiwan.json()["stock_code"] == "2330.TW"
+    assert to_taiwan.json()["currency"] == "TWD"
+
+    to_us = client.put(
+        f"/api/stocks/holdings/{aapl['id']}",
+        headers=headers,
+        json={"stock_code": "AAPL"},
+    )
+    assert to_us.status_code == 200
+    assert to_us.json()["stock_code"] == "AAPL"
+    assert to_us.json()["currency"] == "USD"
+
+
+def test_update_holding_preserves_currency_without_stock_code_change(client):
+    token = register_and_login(client, "portfolio-edit-preserve-currency@example.com")
+    headers = auth_headers(token)
+
+    created = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "2330", "shares": 3, "average_cost": 900},
+    ).json()
+    updated = client.put(
+        f"/api/stocks/holdings/{created['id']}",
+        headers=headers,
+        json={"shares": 4, "average_cost": 880},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["currency"] == "TWD"
+
+
+def test_update_holding_respects_explicit_currency(client):
+    token = register_and_login(client, "portfolio-edit-explicit-currency@example.com")
+    headers = auth_headers(token)
+
+    created = client.post(
+        "/api/stocks/holdings",
+        headers=headers,
+        json={"stock_code": "AAPL", "shares": 3, "average_cost": 150},
+    ).json()
+    updated = client.put(
+        f"/api/stocks/holdings/{created['id']}",
+        headers=headers,
+        json={"stock_code": "2330", "currency": "USD"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["stock_code"] == "2330.TW"
+    assert updated.json()["currency"] == "USD"
+
+
 def test_portfolio_summary_with_one_holding(client):
     email = "portfolio-summary-one@example.com"
     token = register_and_login(client, email)
@@ -162,12 +247,23 @@ def test_portfolio_summary_with_one_holding(client):
     assert payload["total_unrealized_pnl_percent"] == 20
     assert payload["holdings_count"] == 1
     assert payload["currency"] == "USD"
+    assert payload["currency_totals"] == [
+        {
+            "currency": "USD",
+            "total_cost": 300,
+            "total_market_value": 360,
+            "total_unrealized_pnl": 60,
+            "total_unrealized_pnl_percent": 20,
+            "priced_cost": 300,
+            "holdings_count": 1,
+        }
+    ]
     assert payload["positions"][0]["stock_name"] == "Apple"
     assert payload["positions"][0]["allocation_percent"] == 100
 
 
-def test_portfolio_summary_with_multiple_holdings_and_allocations(client):
-    email = "portfolio-summary-many@example.com"
+def test_portfolio_summary_with_mixed_currency_totals_and_allocations(client):
+    email = "portfolio-summary-mixed-currency@example.com"
     token = register_and_login(client, email)
     headers = auth_headers(token)
 
@@ -180,13 +276,23 @@ def test_portfolio_summary_with_multiple_holdings_and_allocations(client):
     response = client.get("/api/stocks/portfolio", headers=headers)
     assert response.status_code == 200
     payload = response.json()
-    assert payload["total_cost"] == 1950
-    assert payload["total_market_value"] == 2200
-    assert payload["total_unrealized_pnl"] == 250
-    assert round(payload["total_unrealized_pnl_percent"], 2) == 12.82
+    assert payload["total_cost"] == 0
+    assert payload["total_market_value"] is None
+    assert payload["total_unrealized_pnl"] is None
+    assert payload["total_unrealized_pnl_percent"] is None
+    assert payload["currency"] is None
+    totals = {item["currency"]: item for item in payload["currency_totals"]}
+    assert totals["USD"]["total_cost"] == 150
+    assert totals["USD"]["total_market_value"] == 200
+    assert totals["USD"]["total_unrealized_pnl"] == 50
+    assert round(totals["USD"]["total_unrealized_pnl_percent"], 2) == 33.33
+    assert totals["TWD"]["total_cost"] == 1800
+    assert totals["TWD"]["total_market_value"] == 2000
+    assert totals["TWD"]["total_unrealized_pnl"] == 200
+    assert round(totals["TWD"]["total_unrealized_pnl_percent"], 2) == 11.11
     positions = {item["stock_code"]: item for item in payload["positions"]}
-    assert round(positions["AAPL"]["allocation_percent"], 2) == 9.09
-    assert round(positions["2330.TW"]["allocation_percent"], 2) == 90.91
+    assert positions["AAPL"]["allocation_percent"] == 100
+    assert positions["2330.TW"]["allocation_percent"] == 100
 
 
 def test_portfolio_summary_handles_missing_price_gracefully(client):
@@ -200,6 +306,17 @@ def test_portfolio_summary_handles_missing_price_gracefully(client):
     assert payload["total_cost"] == 600
     assert payload["total_market_value"] is None
     assert payload["total_unrealized_pnl"] is None
+    assert payload["currency_totals"] == [
+        {
+            "currency": "USD",
+            "total_cost": 600,
+            "total_market_value": None,
+            "total_unrealized_pnl": None,
+            "total_unrealized_pnl_percent": None,
+            "priced_cost": 0,
+            "holdings_count": 1,
+        }
+    ]
     assert payload["warnings"]
     assert payload["positions"][0]["latest_price"] is None
     assert payload["positions"][0]["market_value"] is None
@@ -219,3 +336,19 @@ def test_portfolio_summary_excludes_cross_user_holdings(client):
     assert response.status_code == 200
     assert response.json()["holdings_count"] == 1
     assert response.json()["total_cost"] == 100
+
+
+def test_seeded_demo_portfolio_has_twd_and_usd_summaries(client):
+    from seed_data import DEMO_EMAIL, DEMO_PASSWORD, seed
+
+    seed(reset=True, relative_dates=False)
+    login_response = client.post("/api/auth/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD})
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    response = client.get("/api/stocks/portfolio", headers=auth_headers(token))
+    assert response.status_code == 200
+    totals = {item["currency"]: item for item in response.json()["currency_totals"]}
+    assert set(totals) == {"TWD", "USD"}
+    assert totals["TWD"]["holdings_count"] == 2
+    assert totals["USD"]["holdings_count"] == 1

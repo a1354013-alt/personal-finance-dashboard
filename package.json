@@ -1,6 +1,6 @@
 {
   "name": "personal-finance-dashboard",
-  "version": "1.6.0-rc1",
+  "version": "1.6.0-rc2",
   "private": true,
   "scripts": {
     "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\verify-release.ps1",

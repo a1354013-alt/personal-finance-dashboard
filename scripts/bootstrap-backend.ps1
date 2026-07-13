@@ -8,6 +8,7 @@ $backendEnvExample = Join-Path $backendDir '.env.example'
 $backendEnv = Join-Path $backendDir '.env'
 $requirementsPath = Join-Path $backendDir 'requirements.txt'
 $requirementsStamp = Join-Path $venvDir '.requirements.sha256'
+$pythonVersionStamp = Join-Path $venvDir '.python-version'
 
 function Assert-Command {
   param([Parameter(Mandatory = $true)][string]$Name)
@@ -29,25 +30,77 @@ function Ensure-EnvFile {
   }
 }
 
-Assert-Command python
+function Get-CompatiblePython {
+  $candidates = @()
+  if (Get-Command py -ErrorAction SilentlyContinue) {
+    $pyRuntimes = & py -0p 2>$null
+    if ($pyRuntimes -match '-V:3\.12') {
+      $candidates += ,@('py', '-3.12')
+    }
+    if ($pyRuntimes -match '-V:3\.11') {
+      $candidates += ,@('py', '-3.11')
+    }
+  }
+  $candidates += ,@('python')
+
+  foreach ($candidate in $candidates) {
+    $command = $candidate[0]
+    $arguments = @()
+    if ($candidate.Count -gt 1) {
+      $arguments = $candidate[1..($candidate.Count - 1)]
+    }
+    if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
+      continue
+    }
+    $version = & $command @arguments -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $version -in @('3.11', '3.12')) {
+      $executable = & $command @arguments -c "import sys; print(sys.executable)" 2>$null
+      if ($LASTEXITCODE -eq 0 -and $executable) {
+        return @{ Path = $executable.Trim(); Version = $version.Trim() }
+      }
+    }
+  }
+
+  throw "Unsupported Python runtime. Install Python 3.11 or 3.12 before bootstrapping the backend."
+}
 
 Ensure-EnvFile -ExamplePath $backendEnvExample -TargetPath $backendEnv
 
+$compatiblePython = Get-CompatiblePython
+$pythonExe = $compatiblePython.Path
+$pythonVersion = $compatiblePython.Version
+
+if (Test-Path $venvPython) {
+  $venvVersion = & $venvPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+  if ($LASTEXITCODE -ne 0 -or $venvVersion.Trim() -notin @('3.11', '3.12')) {
+    $resolvedVenv = (Resolve-Path $venvDir).Path
+    $resolvedBackend = (Resolve-Path $backendDir).Path
+    if (-not $resolvedVenv.StartsWith($resolvedBackend, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to recreate unexpected virtual environment path: $resolvedVenv"
+    }
+    Write-Host "Recreating backend virtual environment because it uses unsupported Python $($venvVersion.Trim())."
+    Remove-Item -LiteralPath $resolvedVenv -Recurse -Force
+  }
+}
+
 if (-not (Test-Path $venvPython)) {
-  Write-Host 'Creating backend virtual environment...'
-  python -m venv $venvDir
+  Write-Host "Creating backend virtual environment with Python $pythonVersion..."
+  & $pythonExe -m venv $venvDir
 }
 
 $requirementsHash = (Get-FileHash $requirementsPath -Algorithm SHA256).Hash
+$stampInput = "$pythonVersion`:$requirementsHash"
 $installedHash = if (Test-Path $requirementsStamp) { Get-Content $requirementsStamp -Raw } else { '' }
+$installedPythonVersion = if (Test-Path $pythonVersionStamp) { Get-Content $pythonVersionStamp -Raw } else { '' }
 
-if ($requirementsHash -ne $installedHash.Trim()) {
+if (($stampInput -ne $installedHash.Trim()) -or ($pythonVersion -ne $installedPythonVersion.Trim())) {
   Write-Host 'Installing backend requirements...'
   & $venvPython -m pip install -r $requirementsPath
   if ($LASTEXITCODE -ne 0) {
     throw "Backend dependency installation failed with exit code $LASTEXITCODE."
   }
-  Set-Content -Path $requirementsStamp -Value $requirementsHash
+  Set-Content -Path $requirementsStamp -Value $stampInput
+  Set-Content -Path $pythonVersionStamp -Value $pythonVersion
 } else {
   Write-Host 'Backend requirements already installed.'
 }
