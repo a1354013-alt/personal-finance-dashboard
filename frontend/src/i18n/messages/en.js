@@ -376,7 +376,12 @@ export default {
       allocationValue: '{value}%',
       pnlPercent: 'P/L {value}%',
       pricePending: 'Price Pending',
-      mixedCurrencies: 'Multiple currencies'
+      mixedCurrencies: 'Multiple currencies',
+      partialSummary: 'Partial prices',
+      pricedMarketValue: 'Priced Market Value',
+      pricedHoldings: 'Priced Holdings',
+      missingPriceCount: 'Missing Prices',
+      unpricedCost: 'Unpriced Cost'
     },
     watchlistGrid: 'Watchlist Grid',
     helperText: 'Queued syncs update status without blocking this UI.',

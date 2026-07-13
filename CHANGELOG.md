@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.6.0-rc3
+
+- Isolated seeded Playwright E2E from development databases by forcing a validated SQLite database at `backend/playwright-e2e.db`, dedicated ports `8001`/`5174`, and `reuseExistingServer: false`.
+- Extended portfolio currency totals with partial-price metadata: `priced_holdings_count`, `missing_price_count`, `unpriced_cost`, and `is_partial`.
+- Updated the Stocks page to label partial same-currency values as priced values and show missing-price counts plus unpriced cost.
+- Fixed duplicate-holding update errors so attempts such as MSFT -> AAPL report the intended target symbol and preserve the original holding.
+- Hardened Windows and macOS/Linux startup scripts around supported Python/Node versions and actual virtual-environment Python stamping.
+- Added migration regression coverage for duplicate holding consolidation from revision `0009_add_stock_holdings` to `0010_enforce_unique_stock_holdings`.
+- Added Python 3.11/3.12 and Node 22 compatibility coverage in CI.
+- Removed the conflicting root `.env.example`; `backend/.env.example` is the authoritative backend environment template.
+- Updated application version metadata to `1.6.0-rc3`.
+
 ## v1.6.0-rc2
 
 - Fixed stock portfolio summaries so TWD and USD holdings are grouped in `currency_totals` instead of being added into a fake single-currency total.

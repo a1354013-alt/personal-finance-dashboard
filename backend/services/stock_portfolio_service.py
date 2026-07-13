@@ -21,6 +21,7 @@ from services.watchlist_service import latest_history_for_code, latest_price_for
 
 ZERO = Decimal("0")
 HUNDRED = Decimal("100")
+HOLDING_UNIQUE_CONSTRAINT = "_user_stock_holding_uc"
 
 
 def _normalize_holding_currency(stock_code: str, currency: str | None) -> str:
@@ -28,6 +29,23 @@ def _normalize_holding_currency(stock_code: str, currency: str | None) -> str:
         return currency.strip().upper()
     inferred = StockDataService.infer_currency(stock_code)
     return inferred or "USD"
+
+
+def _is_duplicate_holding_error(exc: IntegrityError) -> bool:
+    text = str(exc.orig).lower()
+    return (
+        HOLDING_UNIQUE_CONSTRAINT.lower() in text
+        or ("unique constraint failed" in text and "stock_holdings.user_id" in text and "stock_holdings.stock_code" in text)
+        or ("duplicate key" in text and "stock_holdings" in text and "user_id" in text and "stock_code" in text)
+    )
+
+
+def _raise_duplicate_holding_error(exc: IntegrityError, stock_code: str) -> None:
+    if not _is_duplicate_holding_error(exc):
+        raise exc
+    raise ValueError(
+        f"A holding for {stock_code} already exists. Update the existing holding instead of creating a duplicate."
+    ) from exc
 
 
 def _latest_close_for_code(db: Session, stock_code: str) -> Decimal | None:
@@ -70,9 +88,7 @@ def create_holding(db: Session, *, user_id: int, payload: StockHoldingCreate) ->
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise ValueError(
-            f"A holding for {normalized_code} already exists. Update the existing holding instead of creating a duplicate."
-        ) from exc
+        _raise_duplicate_holding_error(exc, normalized_code)
     db.refresh(row)
     return StockHoldingResponse.model_validate(row)
 
@@ -89,10 +105,12 @@ def update_holding(
         return None
 
     fields_set = payload.model_fields_set
+    target_stock_code = row.stock_code
 
     stock_code_changed = False
     if "stock_code" in fields_set and payload.stock_code is not None:
         normalized_code = StockDataService.normalize_stock_code(payload.stock_code)
+        target_stock_code = normalized_code
         stock_code_changed = normalized_code != row.stock_code
         row.stock_code = normalized_code
     if "shares" in fields_set and payload.shares is not None:
@@ -113,9 +131,7 @@ def update_holding(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise ValueError(
-            f"A holding for {row.stock_code} already exists. Update the existing holding instead of creating a duplicate."
-        ) from exc
+        _raise_duplicate_holding_error(exc, target_stock_code)
     db.refresh(row)
     return StockHoldingResponse.model_validate(row)
 
@@ -147,7 +163,10 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
             "total_cost": ZERO,
             "total_market_value": ZERO,
             "priced_cost": ZERO,
+            "unpriced_cost": ZERO,
             "holdings_count": 0,
+            "priced_holdings_count": 0,
+            "missing_price_count": 0,
         }
     )
     missing_price_codes: list[str] = []
@@ -167,7 +186,10 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
         if market_value is not None:
             totals_by_currency[currency]["total_market_value"] += market_value
             totals_by_currency[currency]["priced_cost"] += cost_basis
+            totals_by_currency[currency]["priced_holdings_count"] += 1
         else:
+            totals_by_currency[currency]["unpriced_cost"] += cost_basis
+            totals_by_currency[currency]["missing_price_count"] += 1
             missing_price_codes.append(row.stock_code)
 
         positions.append(
@@ -214,7 +236,11 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
                 total_unrealized_pnl=total_unrealized_pnl,
                 total_unrealized_pnl_percent=total_unrealized_pnl_percent,
                 priced_cost=priced_cost,
+                unpriced_cost=totals_by_currency[currency]["unpriced_cost"],
                 holdings_count=totals_by_currency[currency]["holdings_count"],
+                priced_holdings_count=totals_by_currency[currency]["priced_holdings_count"],
+                missing_price_count=totals_by_currency[currency]["missing_price_count"],
+                is_partial=totals_by_currency[currency]["missing_price_count"] > 0,
             )
         )
 

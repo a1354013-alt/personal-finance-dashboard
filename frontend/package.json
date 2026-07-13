@@ -1,6 +1,6 @@
 {
   "name": "personal-finance-dashboard-frontend",
-  "version": "1.6.0-rc2",
+  "version": "1.6.0-rc3",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,7 +16,8 @@
     "lint": "eslint . --ext .js,.vue",
     "test": "vitest run",
     "test:run": "vitest run",
-    "e2e:seeded": "playwright test"
+    "test:e2e-config": "node --test scripts/e2e-database.test.mjs",
+    "e2e:seeded": "node scripts/run-seeded-e2e.mjs"
   },
   "dependencies": {
     "axios": "1.18.1",

@@ -103,6 +103,22 @@ def test_seed_reset_creates_current_month_demo_data(client):
     assert indicator_payload["rsi14"] is not None
 
 
+def test_seed_without_reset_replaces_demo_rows_without_duplicate_occurrences():
+    seed(reset=True)
+    seed()
+
+    with SessionLocal() as db:
+        demo_user = db.query(UserORM).filter(UserORM.email == DEMO_EMAIL).one()
+        occurrences = (
+            db.query(RecurringTransactionOccurrenceORM)
+            .filter(RecurringTransactionOccurrenceORM.user_id == demo_user.id)
+            .all()
+        )
+
+        assert len(occurrences) == 2
+        assert len({(item.recurring_transaction_id, item.scheduled_date) for item in occurrences}) == 2
+
+
 def test_relative_seed_dates_are_not_double_shifted_or_future_dated():
     expenses, prices = build_demo_dates(relative_dates=True)
     today = date.today()

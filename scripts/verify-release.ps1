@@ -45,14 +45,15 @@ try {
   Pop-Location
 }
 
-Invoke-Step -Label 'bootstrap: frontend dependencies' -Command { & (Join-Path $PSScriptRoot 'bootstrap-frontend.ps1') }
 Push-Location $frontendDir
 try {
+  Invoke-Step -Label 'frontend: npm run check:node' -Command { npm run check:node }
   Invoke-Step -Label 'frontend: npm ci' -Command { npm ci }
   Invoke-Step -Label 'frontend: npm run lint' -Command { npm run lint }
   Invoke-Step -Label 'frontend: npm run test:run' -Command { npm run test:run }
   Invoke-Step -Label 'frontend: npm run build' -Command { npm run build }
   Invoke-Step -Label 'frontend: npm audit --audit-level=moderate' -Command { npm audit --audit-level=moderate }
+  Invoke-Step -Label 'frontend: npm run test:e2e-config' -Command { npm run test:e2e-config }
   Invoke-Step -Label 'frontend: npm run e2e:seeded' -Command { npm run e2e:seeded }
 } finally {
   Pop-Location

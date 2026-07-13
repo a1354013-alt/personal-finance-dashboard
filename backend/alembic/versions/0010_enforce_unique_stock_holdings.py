@@ -7,6 +7,7 @@ Create Date: 2026-07-13 00:00:00.000000
 
 from alembic import op
 import sqlalchemy as sa
+from decimal import Decimal, ROUND_HALF_UP
 
 
 revision = "0010_enforce_unique_stock_holdings"
@@ -40,9 +41,16 @@ def upgrade() -> None:
             {"user_id": group["user_id"], "stock_code": group["stock_code"]},
         ).mappings().all()
         keep_id = rows[0]["id"]
-        total_shares = sum(float(row["shares"]) for row in rows)
-        total_cost = sum(float(row["shares"]) * float(row["average_cost"]) for row in rows)
-        average_cost = total_cost / total_shares if total_shares else float(rows[0]["average_cost"])
+        # Historical duplicate rows are merged into the oldest row id. Currency, note,
+        # created_at, and updated_at come from that surviving row; shares are summed,
+        # and average_cost is the weighted cost rounded to the column's 4 decimals.
+        total_shares = sum(Decimal(str(row["shares"])) for row in rows)
+        total_cost = sum(Decimal(str(row["shares"])) * Decimal(str(row["average_cost"])) for row in rows)
+        average_cost = (
+            (total_cost / total_shares).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+            if total_shares
+            else Decimal(str(rows[0]["average_cost"]))
+        )
         duplicate_ids = [row["id"] for row in rows[1:]]
 
         connection.execute(
@@ -53,7 +61,7 @@ def upgrade() -> None:
                 WHERE id = :keep_id
                 """
             ),
-            {"shares": total_shares, "average_cost": average_cost, "keep_id": keep_id},
+            {"shares": str(total_shares), "average_cost": str(average_cost), "keep_id": keep_id},
         )
         connection.execute(
             sa.text("DELETE FROM stock_holdings WHERE id IN :duplicate_ids").bindparams(

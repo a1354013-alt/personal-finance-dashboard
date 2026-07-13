@@ -8,7 +8,7 @@ export default defineConfig({
   },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:5174',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
@@ -16,14 +16,14 @@ export default defineConfig({
   webServer: [
     {
       command: 'node scripts/start-backend-e2e.mjs',
-      url: 'http://127.0.0.1:8000/health',
-      reuseExistingServer: !process.env.CI,
+      url: 'http://127.0.0.1:8001/health',
+      reuseExistingServer: false,
       timeout: 120_000
     },
     {
-      command: 'npm run dev -- --host 127.0.0.1 --port 5173',
-      url: 'http://127.0.0.1:5173',
-      reuseExistingServer: !process.env.CI,
+      command: 'node scripts/start-frontend-e2e.mjs',
+      url: 'http://127.0.0.1:5174',
+      reuseExistingServer: false,
       timeout: 120_000
     }
   ],

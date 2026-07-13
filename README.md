@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.6.0-rc2 release.
+This repository is a portfolio/demo project prepared for the v1.6.0-rc3 release.
 
 Implemented demo surface:
 
@@ -53,7 +53,7 @@ Demo readiness already in place:
 
 ## Environment Setup
 
-The app runs with demo-safe defaults. To customize local settings, copy the local environment examples before running the app:
+The app runs with demo-safe defaults. `backend/.env.example` is the authoritative backend environment template. To customize local settings, copy the local environment examples before running the app:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
@@ -108,7 +108,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.6.0-rc2 release.
+Windows is the supported F5 path for this v1.6.0-rc3 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -122,7 +122,7 @@ The F5 compound launch runs:
 - backend virtual environment bootstrap when `backend\.venv` does not exist yet
 - local `.env` copy from `backend\.env.example` or `frontend\.env.example` when missing
 - backend requirements installation only when `backend\requirements.txt` changed, then `alembic upgrade head`
-- backend dependency stamps include the Python major/minor version
+- backend dependency stamps include the actual virtual-environment Python major/minor version
 - frontend dependency installation only when `frontend\package.json` or `frontend\package-lock.json` changed
 - browser launch after the frontend responds
 - backend at `http://127.0.0.1:8000`
@@ -340,6 +340,7 @@ The PowerShell verifier runs the full release validation sequence from the repos
 - frontend `npm run test:run`
 - frontend `npm run build`
 - frontend `npm audit --audit-level=moderate`
+- frontend `npm run test:e2e-config`
 - frontend `npm run e2e:seeded`
 
 Playwright seeded-demo smoke can also be run directly:
@@ -349,7 +350,7 @@ cd frontend
 npm run e2e:seeded
 ```
 
-The smoke test starts the backend and frontend, resets and seeds the demo SQLite database, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. It uses seeded cached data and does not depend on live yfinance or OpenAI calls.
+The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/playwright-e2e.db`, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path, and it must resolve to a `.db` file inside `backend/`. The test database is deleted on cleanup.
 
 ## Build
 
@@ -379,11 +380,11 @@ When extending an API response, prefer updating the response model or the matchi
 
 ## Portfolio Currency Behavior
 
-`GET /api/stocks/portfolio` keeps position-level values in each holding's stored currency and returns a `currency_totals` collection for summary math. Each currency total includes `currency`, `total_cost`, `total_market_value`, `total_unrealized_pnl`, `total_unrealized_pnl_percent`, `priced_cost`, and `holdings_count`.
+`GET /api/stocks/portfolio` keeps position-level values in each holding's stored currency and returns a `currency_totals` collection for summary math. Each currency total includes `currency`, `total_cost`, `total_market_value`, `total_unrealized_pnl`, `total_unrealized_pnl_percent`, `priced_cost`, `unpriced_cost`, `holdings_count`, `priced_holdings_count`, `missing_price_count`, and `is_partial`.
 
-Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`.
+Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
 
-Duplicate holding behavior is intentionally model A for v1.6.0-rc2: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Acquisition-lot semantics are not implemented yet.
+Duplicate holding behavior is intentionally model A for v1.6.0-rc3: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
 
 ## Monthly Report Export
 

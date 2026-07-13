@@ -158,7 +158,11 @@ function portfolioPayload(overrides = {}) {
         total_unrealized_pnl: 1000,
         total_unrealized_pnl_percent: 11.11,
         priced_cost: 9000,
-        holdings_count: 1
+        unpriced_cost: 0,
+        holdings_count: 1,
+        priced_holdings_count: 1,
+        missing_price_count: 0,
+        is_partial: false
       }
     ],
     warnings: [],
@@ -327,7 +331,11 @@ describe('Stocks page', () => {
           total_unrealized_pnl: 1000,
           total_unrealized_pnl_percent: 11.11,
           priced_cost: 9000,
-          holdings_count: 1
+          unpriced_cost: 0,
+          holdings_count: 1,
+          priced_holdings_count: 1,
+          missing_price_count: 0,
+          is_partial: false
         },
         {
           currency: 'USD',
@@ -336,7 +344,11 @@ describe('Stocks page', () => {
           total_unrealized_pnl: 60,
           total_unrealized_pnl_percent: 20,
           priced_cost: 300,
-          holdings_count: 1
+          unpriced_cost: 0,
+          holdings_count: 1,
+          priced_holdings_count: 1,
+          missing_price_count: 0,
+          is_partial: false
         }
       ],
       positions: [
@@ -368,6 +380,81 @@ describe('Stocks page', () => {
       expect(wrapper.text()).toContain('NT$ 10,000')
       expect(wrapper.text()).toContain('USD')
       expect(wrapper.text()).toContain('US$ 360')
+    })
+  })
+
+  it('labels partial same-currency portfolio values as priced values', async () => {
+    getStockHoldingsMock.mockResolvedValue([
+      holding({ id: 12, stock_code: 'AAPL', shares: 2, average_cost: 150, currency: 'USD', note: 'Priced' }),
+      holding({ id: 13, stock_code: 'MSFT', shares: 1, average_cost: 300, currency: 'USD', note: 'Missing price' })
+    ])
+    getStockPortfolioMock.mockResolvedValue(portfolioPayload({
+      total_cost: 600,
+      total_market_value: 360,
+      total_unrealized_pnl: 60,
+      total_unrealized_pnl_percent: 20,
+      currency: 'USD',
+      currency_totals: [
+        {
+          currency: 'USD',
+          total_cost: 600,
+          total_market_value: 360,
+          total_unrealized_pnl: 60,
+          total_unrealized_pnl_percent: 20,
+          priced_cost: 300,
+          unpriced_cost: 300,
+          holdings_count: 2,
+          priced_holdings_count: 1,
+          missing_price_count: 1,
+          is_partial: true
+        }
+      ],
+      warnings: ['Latest price unavailable for: MSFT. Price-dependent fields are null.'],
+      positions: [
+        {
+          holding_id: 12,
+          stock_code: 'AAPL',
+          stock_name: 'Apple',
+          shares: 2,
+          average_cost: 150,
+          latest_price: 180,
+          cost_basis: 300,
+          market_value: 360,
+          unrealized_pnl: 60,
+          unrealized_pnl_percent: 20,
+          allocation_percent: 100,
+          currency: 'USD',
+          warning: null,
+          updated_at: '2026-07-06T01:00:00Z'
+        },
+        {
+          holding_id: 13,
+          stock_code: 'MSFT',
+          stock_name: 'MSFT',
+          shares: 1,
+          average_cost: 300,
+          latest_price: null,
+          cost_basis: 300,
+          market_value: null,
+          unrealized_pnl: null,
+          unrealized_pnl_percent: null,
+          allocation_percent: null,
+          currency: 'USD',
+          warning: 'Latest price unavailable for MSFT.',
+          updated_at: '2026-07-06T01:00:00Z'
+        }
+      ]
+    }))
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Partial prices')
+      expect(wrapper.text()).toContain('Priced Market Value')
+      expect(wrapper.text()).toContain('Priced Holdings')
+      expect(wrapper.text()).toContain('1/2')
+      expect(wrapper.text()).toContain('Unpriced Cost')
+      expect(wrapper.text()).toContain('US$ 300')
     })
   })
 
@@ -434,7 +521,11 @@ describe('Stocks page', () => {
           total_unrealized_pnl: null,
           total_unrealized_pnl_percent: null,
           priced_cost: 0,
-          holdings_count: 1
+          unpriced_cost: 9000,
+          holdings_count: 1,
+          priced_holdings_count: 0,
+          missing_price_count: 1,
+          is_partial: true
         }
       ],
       warnings: ['Latest price unavailable for: 2330.TW. Price-dependent fields are null.'],

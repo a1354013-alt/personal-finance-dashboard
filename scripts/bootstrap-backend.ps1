@@ -68,7 +68,7 @@ Ensure-EnvFile -ExamplePath $backendEnvExample -TargetPath $backendEnv
 
 $compatiblePython = Get-CompatiblePython
 $pythonExe = $compatiblePython.Path
-$pythonVersion = $compatiblePython.Version
+$selectedPythonVersion = $compatiblePython.Version
 
 if (Test-Path $venvPython) {
   $venvVersion = & $venvPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
@@ -80,12 +80,19 @@ if (Test-Path $venvPython) {
     }
     Write-Host "Recreating backend virtual environment because it uses unsupported Python $($venvVersion.Trim())."
     Remove-Item -LiteralPath $resolvedVenv -Recurse -Force
+  } else {
+    Write-Host "Using existing backend virtual environment with Python $($venvVersion.Trim())."
   }
 }
 
 if (-not (Test-Path $venvPython)) {
-  Write-Host "Creating backend virtual environment with Python $pythonVersion..."
+  Write-Host "Creating backend virtual environment with Python $selectedPythonVersion..."
   & $pythonExe -m venv $venvDir
+}
+
+$pythonVersion = (& $venvPython -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+if ($pythonVersion -notin @('3.11', '3.12')) {
+  throw "Backend virtual environment uses unsupported Python $pythonVersion. Recreate backend\.venv with Python 3.11 or 3.12."
 }
 
 $requirementsHash = (Get-FileHash $requirementsPath -Algorithm SHA256).Hash

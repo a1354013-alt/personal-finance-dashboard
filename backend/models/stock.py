@@ -480,7 +480,11 @@ class PortfolioCurrencyTotalResponse(BaseModel):
     total_unrealized_pnl: Optional[Decimal] = None
     total_unrealized_pnl_percent: Optional[Decimal] = None
     priced_cost: Decimal
+    unpriced_cost: Decimal
     holdings_count: int
+    priced_holdings_count: int
+    missing_price_count: int
+    is_partial: bool
 
     @field_serializer(
         "total_cost",
@@ -488,6 +492,7 @@ class PortfolioCurrencyTotalResponse(BaseModel):
         "total_unrealized_pnl",
         "total_unrealized_pnl_percent",
         "priced_cost",
+        "unpriced_cost",
     )
     def serialize_currency_total_numbers(self, value: Decimal | None) -> float | None:
         if value is None:

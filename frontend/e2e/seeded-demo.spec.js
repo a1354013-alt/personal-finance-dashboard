@@ -23,6 +23,9 @@ test('seeded demo stocks workflow', async ({ page }) => {
   await page.getByRole('button', { name: 'Add Holding' }).click()
   await expect(page.getByText('Holding saved.')).toBeVisible()
   await expect(page.getByText('Latest price unavailable for MSFT.')).toBeVisible()
+  await expect(page.getByText('Partial prices')).toBeVisible()
+  await expect(page.getByText('Priced Market Value')).toBeVisible()
+  await expect(page.getByText('Unpriced Cost')).toBeVisible()
 
   const msftCard = page.locator('.portfolio-position-card').filter({ hasText: 'MSFT' })
   await msftCard.getByRole('button', { name: 'Edit' }).click()

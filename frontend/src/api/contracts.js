@@ -684,7 +684,11 @@ export function normalizePortfolioCurrencyTotal(row) {
     total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
     total_unrealized_pnl_percent: toNumberOrNull(row.total_unrealized_pnl_percent ?? row.totalUnrealizedPnLPercent),
     priced_cost: toNumberOrZero(row.priced_cost ?? row.pricedCost),
-    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount)
+    unpriced_cost: toNumberOrZero(row.unpriced_cost ?? row.unpricedCost),
+    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount),
+    priced_holdings_count: toNumberOrZero(row.priced_holdings_count ?? row.pricedHoldingsCount),
+    missing_price_count: toNumberOrZero(row.missing_price_count ?? row.missingPriceCount),
+    is_partial: Boolean(row.is_partial ?? row.isPartial)
   }
 }
 
@@ -702,6 +706,7 @@ export function normalizeStockPortfolio(payload) {
         total_unrealized_pnl: payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL,
         total_unrealized_pnl_percent: payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent,
         priced_cost: payload.total_market_value == null && payload.totalMarketValue == null ? 0 : (payload.total_cost ?? payload.totalCost),
+        unpriced_cost: 0,
         holdings_count: payload.holdings_count ?? payload.holdingsCount
       })
     : null

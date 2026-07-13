@@ -206,6 +206,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             db.commit()
             db.refresh(demo_user)
 
+        db.query(RecurringTransactionOccurrenceORM).filter(RecurringTransactionOccurrenceORM.user_id == demo_user.id).delete()
         db.query(ExpenseORM).filter(ExpenseORM.user_id == demo_user.id).delete()
         db.query(RecurringTransactionORM).filter(RecurringTransactionORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()

@@ -466,9 +466,9 @@ const portfolioPositions = computed(() => stockStore.portfolio?.positions || [])
 const portfolioCurrencyTotals = computed(() => stockStore.portfolio?.currency_totals || [])
 
 function buildCurrencySummaryItems(total) {
-  return [
+  const items = [
     {
-      label: t('stocks.portfolio.totalMarketValue'),
+      label: total.is_partial ? t('stocks.portfolio.pricedMarketValue') : t('stocks.portfolio.totalMarketValue'),
       value: total.total_market_value == null ? t('common.empty') : formatPrice(total.total_market_value, total.currency)
     },
     {
@@ -480,10 +480,27 @@ function buildCurrencySummaryItems(total) {
       value: total.total_unrealized_pnl == null ? t('common.empty') : formatSignedCurrency(total.total_unrealized_pnl, total.currency)
     },
     {
+      label: t('stocks.portfolio.pricedHoldings'),
+      value: `${total.priced_holdings_count || 0}/${total.holdings_count || 0}`
+    },
+    {
       label: t('stocks.portfolio.holdingsCount'),
       value: String(total.holdings_count || 0)
     }
   ]
+  if (total.is_partial) {
+    items.push(
+      {
+        label: t('stocks.portfolio.missingPriceCount'),
+        value: String(total.missing_price_count || 0)
+      },
+      {
+        label: t('stocks.portfolio.unpricedCost'),
+        value: formatPrice(total.unpriced_cost || 0, total.currency)
+      }
+    )
+  }
+  return items
 }
 
 const portfolioCurrencySections = computed(() => portfolioCurrencyTotals.value.map((total) => {
@@ -491,7 +508,9 @@ const portfolioCurrencySections = computed(() => portfolioCurrencyTotals.value.m
   return {
     currency: total.currency,
     badgeClass: total.total_unrealized_pnl == null ? 'badge-warning' : total.total_unrealized_pnl >= 0 ? 'badge-success' : 'badge-danger',
-    badgeLabel: percent == null ? t('stocks.portfolio.pricePending') : t('stocks.portfolio.pnlPercent', { value: percent.toFixed(2) }),
+    badgeLabel: total.is_partial
+      ? t('stocks.portfolio.partialSummary')
+      : percent == null ? t('stocks.portfolio.pricePending') : t('stocks.portfolio.pnlPercent', { value: percent.toFixed(2) }),
     items: buildCurrencySummaryItems(total)
   }
 }))
@@ -505,6 +524,7 @@ const portfolioPnLClass = computed(() => {
 
 const portfolioPnLLabel = computed(() => {
   if (portfolioCurrencyTotals.value.length > 1) return t('stocks.portfolio.mixedCurrencies')
+  if (portfolioCurrencyTotals.value[0]?.is_partial) return t('stocks.portfolio.partialSummary')
   const percent = portfolioCurrencyTotals.value[0]?.total_unrealized_pnl_percent
   if (percent == null) return t('stocks.portfolio.pricePending')
   return t('stocks.portfolio.pnlPercent', { value: percent.toFixed(2) })
