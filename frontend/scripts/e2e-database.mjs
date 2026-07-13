@@ -1,7 +1,9 @@
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, realpathSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
-export const DEFAULT_E2E_DATABASE_URL = 'sqlite:///./playwright-e2e.db'
+export const DEFAULT_E2E_DATABASE_URL = 'sqlite:///.e2e/playwright-e2e.db'
+const E2E_DATABASE_DIR = '.e2e'
+const E2E_DATABASE_FILENAME_PATTERN = /^playwright-e2e.*\.db$/
 
 function sqlitePathFromUrl(databaseUrl) {
   if (!databaseUrl.startsWith('sqlite:///')) {
@@ -12,6 +14,17 @@ function sqlitePathFromUrl(databaseUrl) {
     throw new Error('E2E_DATABASE_URL must point to a real SQLite file.')
   }
   return rawPath
+}
+
+function assertSafeDirectory(directoryPath) {
+  if (!existsSync(directoryPath)) {
+    mkdirSync(directoryPath, { recursive: true })
+  }
+
+  const stats = lstatSync(directoryPath)
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error('E2E database directory must be a real backend/.e2e directory.')
+  }
 }
 
 export function resolveSafeE2eDatabase({ backendDir, databaseUrl = process.env.E2E_DATABASE_URL } = {}) {
@@ -26,13 +39,32 @@ export function resolveSafeE2eDatabase({ backendDir, databaseUrl = process.env.E
     ? path.resolve(normalizedPath)
     : path.resolve(backendDir, normalizedPath)
   const resolvedBackendDir = path.resolve(backendDir)
-  const relative = path.relative(resolvedBackendDir, candidatePath)
+  const e2eDir = path.join(resolvedBackendDir, E2E_DATABASE_DIR)
+
+  assertSafeDirectory(e2eDir)
+
+  const relative = path.relative(e2eDir, candidatePath)
 
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error('E2E database must resolve inside the repository backend directory.')
+    throw new Error('E2E database must resolve inside the dedicated backend/.e2e directory.')
   }
-  if (!candidatePath.endsWith('.db')) {
-    throw new Error('E2E database file must use a .db extension.')
+  if (path.dirname(relative) !== '.') {
+    throw new Error('E2E database files must be direct children of backend/.e2e.')
+  }
+  if (!E2E_DATABASE_FILENAME_PATTERN.test(path.basename(candidatePath))) {
+    throw new Error('E2E database filename must match playwright-e2e*.db.')
+  }
+  if (existsSync(candidatePath) && lstatSync(candidatePath).isSymbolicLink()) {
+    throw new Error('E2E database file must not be a symbolic link.')
+  }
+
+  const realE2eDir = realpathSync(e2eDir)
+  const parentDir = path.dirname(candidatePath)
+  if (existsSync(parentDir)) {
+    const realParentDir = realpathSync(parentDir)
+    if (realParentDir !== realE2eDir) {
+      throw new Error('E2E database parent directory must not resolve outside backend/.e2e.')
+    }
   }
 
   return {

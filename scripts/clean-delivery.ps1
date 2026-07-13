@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $targets = @(
   'backend/finance.db',
+  'backend/.e2e',
   'backend/playwright-e2e.db',
   'backend/playwright-e2e.db-*',
   'backend/test_smoke.db',

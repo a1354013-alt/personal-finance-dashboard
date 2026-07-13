@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.6.0-rc3 release.
+This repository is a portfolio/demo project prepared for the v1.6.0-rc4 release.
 
 Implemented demo surface:
 
@@ -108,7 +108,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.6.0-rc3 release.
+Windows is the supported F5 path for this v1.6.0-rc4 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -335,7 +335,9 @@ The PowerShell verifier runs the full release validation sequence from the repos
 - backend `python -m pytest -q`
 - backend `python -m pip check`
 - backend `python seed_data.py --reset`
+- frontend `npm run check:node`
 - frontend `npm ci`
+- frontend `npm run e2e:install-browser`
 - frontend `npm run lint`
 - frontend `npm run test:run`
 - frontend `npm run build`
@@ -347,10 +349,12 @@ Playwright seeded-demo smoke can also be run directly:
 
 ```powershell
 cd frontend
+npm ci
+npm run e2e:install-browser
 npm run e2e:seeded
 ```
 
-The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/playwright-e2e.db`, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path, and it must resolve to a `.db` file inside `backend/`. The test database is deleted on cleanup.
+The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/.e2e/playwright-e2e.db`, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path. Overrides must resolve inside `backend/.e2e/`, use a filename matching `playwright-e2e*.db`, and cannot point at normal databases such as `finance.db`, `test_smoke.db`, `production.db`, `audit.db`, or arbitrary names like `custom.db`. The full release verifier installs Playwright Chromium with `npm run e2e:install-browser` after `npm ci`; this uses Playwright's cache when the matching browser is already present. The test database, journal, WAL, and SHM files are deleted on cleanup.
 
 ## Build
 
@@ -384,7 +388,7 @@ When extending an API response, prefer updating the response model or the matchi
 
 Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
 
-Duplicate holding behavior is intentionally model A for v1.6.0-rc3: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
+Duplicate holding behavior is intentionally model A for v1.6.0-rc4: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
 
 ## Monthly Report Export
 

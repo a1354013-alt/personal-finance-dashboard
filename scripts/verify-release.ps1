@@ -49,6 +49,7 @@ Push-Location $frontendDir
 try {
   Invoke-Step -Label 'frontend: npm run check:node' -Command { npm run check:node }
   Invoke-Step -Label 'frontend: npm ci' -Command { npm ci }
+  Invoke-Step -Label 'frontend: npm run e2e:install-browser' -Command { npm run e2e:install-browser }
   Invoke-Step -Label 'frontend: npm run lint' -Command { npm run lint }
   Invoke-Step -Label 'frontend: npm run test:run' -Command { npm run test:run }
   Invoke-Step -Label 'frontend: npm run build' -Command { npm run build }

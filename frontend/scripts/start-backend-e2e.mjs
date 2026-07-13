@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cleanupE2eDatabase, resolveSafeE2eDatabase } from './e2e-database.mjs'
+import { terminateProcessTree } from './e2e-process.mjs'
 
 const frontendDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const repoRoot = path.dirname(frontendDir)
@@ -59,9 +60,7 @@ let stopping = false
 const stop = () => {
   if (stopping) return
   stopping = true
-  if (!server.killed) {
-    server.kill()
-  }
+  terminateProcessTree(server)
   cleanupDatabase()
 }
 

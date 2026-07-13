@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.0-rc4
+
+- Hardened seeded Playwright E2E database isolation so resets are limited to `backend/.e2e/playwright-e2e*.db` and normal databases such as `finance.db`, `test_smoke.db`, `production.db`, and `audit.db` are rejected.
+- Added clean-machine Playwright Chromium installation to local release verification through `npm run e2e:install-browser`, while keeping CI on `npx playwright install --with-deps chromium`.
+- Strengthened E2E cleanup on Windows with process-tree termination and post-run checks for lingering `8001`/`5174` ports.
+- Updated release documentation for the dedicated E2E database namespace, allowed filename pattern, browser cache behavior, and direct local E2E commands.
+- Updated application version metadata to `1.6.0-rc4`.
+
 ## v1.6.0-rc3
 
 - Isolated seeded Playwright E2E from development databases by forcing a validated SQLite database at `backend/playwright-e2e.db`, dedicated ports `8001`/`5174`, and `reuseExistingServer: false`.

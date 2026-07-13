@@ -1,20 +1,26 @@
 import { spawn } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { terminateProcessTree } from './e2e-process.mjs'
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+const frontendDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
+const viteBin = path.join(frontendDir, 'node_modules', 'vite', 'bin', 'vite.js')
 
-const server = spawn(npmCommand, ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '5174'], {
+const server = spawn(process.execPath, [viteBin, '--host', '127.0.0.1', '--port', '5174'], {
   env: {
     ...process.env,
     VITE_API_PROXY_TARGET: 'http://127.0.0.1:8001'
   },
   stdio: 'inherit',
-  shell: process.platform === 'win32'
+  shell: false
 })
 
+let stopping = false
+
 const stop = () => {
-  if (!server.killed) {
-    server.kill()
-  }
+  if (stopping) return
+  stopping = true
+  terminateProcessTree(server)
 }
 
 process.on('SIGINT', stop)
