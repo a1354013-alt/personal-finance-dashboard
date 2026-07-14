@@ -16,12 +16,24 @@ function sqlitePathFromUrl(databaseUrl) {
   return rawPath
 }
 
+function lstatIfPresent(filePath) {
+  try {
+    return lstatSync(filePath)
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return null
+    }
+    throw error
+  }
+}
+
 function assertSafeDirectory(directoryPath) {
-  if (!existsSync(directoryPath)) {
+  let stats = lstatIfPresent(directoryPath)
+  if (!stats) {
     mkdirSync(directoryPath, { recursive: true })
+    stats = lstatSync(directoryPath)
   }
 
-  const stats = lstatSync(directoryPath)
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
     throw new Error('E2E database directory must be a real backend/.e2e directory.')
   }
@@ -54,8 +66,16 @@ export function resolveSafeE2eDatabase({ backendDir, databaseUrl = process.env.E
   if (!E2E_DATABASE_FILENAME_PATTERN.test(path.basename(candidatePath))) {
     throw new Error('E2E database filename must match playwright-e2e*.db.')
   }
-  if (existsSync(candidatePath) && lstatSync(candidatePath).isSymbolicLink()) {
+
+  const candidateStats = lstatIfPresent(candidatePath)
+  if (candidateStats?.isSymbolicLink()) {
     throw new Error('E2E database file must not be a symbolic link.')
+  }
+  if (candidateStats && !candidateStats.isFile()) {
+    throw new Error('E2E database path must be a regular SQLite file.')
+  }
+  if (candidateStats?.nlink > 1) {
+    throw new Error('E2E database file must not have multiple hard links.')
   }
 
   const realE2eDir = realpathSync(e2eDir)
