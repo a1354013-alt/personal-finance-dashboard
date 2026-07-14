@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.6.0-rc4 release.
+This repository is a portfolio/demo project prepared for the v1.6.0 release.
 
 Implemented demo surface:
 
@@ -108,7 +108,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.6.0-rc4 release.
+Windows is the supported F5 path for this v1.6.0 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -388,7 +388,7 @@ When extending an API response, prefer updating the response model or the matchi
 
 Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
 
-Duplicate holding behavior is intentionally model A for v1.6.0-rc4: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
+Duplicate holding behavior is intentionally model A for v1.6.0: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
 
 ## Monthly Report Export
 
