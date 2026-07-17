@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-APP_VERSION = "1.6.0-rc1"
+APP_VERSION = "1.6.0"
+SUPPORTED_PYTHON_VERSIONS = {(3, 11), (3, 12)}
 DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 DEVELOPMENT_SECRET_KEY = "dev-only-change-me-in-production"
 DEFAULT_RATE_LIMIT_PER_MINUTE = 100
@@ -24,3 +26,13 @@ def get_secret_key() -> str:
 
 def is_development_mode() -> bool:
     return os.getenv("ENV", "development").lower() != "production"
+
+
+def validate_python_runtime() -> None:
+    current = sys.version_info[:2]
+    if current not in SUPPORTED_PYTHON_VERSIONS:
+        supported = ", ".join(f"{major}.{minor}" for major, minor in sorted(SUPPORTED_PYTHON_VERSIONS))
+        raise RuntimeError(
+            f"Unsupported Python {current[0]}.{current[1]}. "
+            f"Use Python {supported} for the Personal Finance Dashboard backend."
+        )

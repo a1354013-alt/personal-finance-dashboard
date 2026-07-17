@@ -380,7 +380,13 @@ export default {
       currencyGroupTitle: '{currency} 總計',
       groupHoldingsCount: '{count} 筆持股',
       pnlPercent: '損益 {value}%',
-      pricePending: '待補價格'
+      pricePending: '待補價格',
+      mixedCurrencies: '多幣別',
+      partialSummary: '部分價格',
+      pricedMarketValue: '已定價市值',
+      pricedHoldings: '已定價持股',
+      missingPriceCount: '缺價筆數',
+      unpricedCost: '未定價成本'
     },
     watchlistGrid: '觀察清單',
     helperText: '加入佇列的同步工作會更新狀態，不會阻塞這個介面。',

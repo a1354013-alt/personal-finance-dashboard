@@ -36,6 +36,11 @@ Ensure-EnvFile -ExamplePath $frontendEnvExample -TargetPath $frontendEnv
 
 Push-Location $frontendDir
 try {
+  node .\scripts\check-node-version.mjs
+  if ($LASTEXITCODE -ne 0) {
+    throw "Frontend Node.js version check failed with exit code $LASTEXITCODE."
+  }
+
   $manifestHashInput = if (Test-Path $packageLock) { "$((Get-FileHash $packageLock -Algorithm SHA256).Hash):$((Get-FileHash $packageJson -Algorithm SHA256).Hash)" } else { (Get-FileHash $packageJson -Algorithm SHA256).Hash }
   $installedHash = if (Test-Path $dependenciesStamp) { Get-Content $dependenciesStamp -Raw } else { '' }
 

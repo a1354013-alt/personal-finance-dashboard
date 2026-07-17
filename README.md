@@ -6,7 +6,7 @@ The current release is intended for local demo use: it should start from VS Code
 
 ## Project Status
 
-This repository is a portfolio/demo project prepared for the v1.6.0-rc1 release.
+This repository is a portfolio/demo project prepared for the v1.6.0 release.
 
 Implemented demo surface:
 
@@ -17,7 +17,7 @@ Implemented demo surface:
 - Transaction editing and recurring transaction planning/automation
 - Budget management and budget health summaries
 - Stock watchlist
-- Portfolio holdings with unrealized P/L
+- Portfolio holdings with currency-safe unrealized P/L
 - Taiwan stock technical indicators and in-app price alerts
 - Monthly reports
 - AI-assisted finance summary
@@ -53,7 +53,7 @@ Demo readiness already in place:
 
 ## Environment Setup
 
-The app runs with demo-safe defaults. To customize local settings, copy the local environment examples before running the app:
+The app runs with demo-safe defaults. `backend/.env.example` is the authoritative backend environment template. To customize local settings, copy the local environment examples before running the app:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
@@ -68,6 +68,13 @@ cp frontend/.env.example frontend/.env
 ```
 
 Use a real `SECRET_KEY` and external API keys only in private local files or deployment secrets.
+
+Supported local runtimes:
+
+- Backend: Python 3.11 or 3.12
+- Frontend: Node 20.19.x or Node 22.12.x+
+
+Bootstrap and release scripts fail early when these versions are not met. Backend bootstrap stamps the Python major/minor version with the dependency hash so a virtual environment created with a different interpreter is reinstalled or rejected.
 
 Useful default URLs:
 
@@ -101,7 +108,7 @@ Frontend npm commands can be run either from `frontend/` directly or from the re
 
 ## VS Code F5 Startup
 
-Windows is the supported F5 path for this v1.6.0-rc1 release.
+Windows is the supported F5 path for this v1.6.0 release.
 
 1. Open the repository root in VS Code.
 2. Install the VS Code Python and JavaScript debugging extensions if prompted.
@@ -115,6 +122,7 @@ The F5 compound launch runs:
 - backend virtual environment bootstrap when `backend\.venv` does not exist yet
 - local `.env` copy from `backend\.env.example` or `frontend\.env.example` when missing
 - backend requirements installation only when `backend\requirements.txt` changed, then `alembic upgrade head`
+- backend dependency stamps include the actual virtual-environment Python major/minor version
 - frontend dependency installation only when `frontend\package.json` or `frontend\package-lock.json` changed
 - browser launch after the frontend responds
 - backend at `http://127.0.0.1:8000`
@@ -323,13 +331,30 @@ The PowerShell verifier runs the full release validation sequence from the repos
 
 - backend `python -m compileall .`
 - backend `python -m alembic upgrade head`
+- backend `python -m alembic check`
 - backend `python -m pytest -q`
+- backend `python -m pip check`
 - backend `python seed_data.py --reset`
+- frontend `npm run check:node`
 - frontend `npm ci`
+- frontend `npm run e2e:install-browser`
 - frontend `npm run lint`
 - frontend `npm run test:run`
 - frontend `npm run build`
 - frontend `npm audit --audit-level=moderate`
+- frontend `npm run test:e2e-config`
+- frontend `npm run e2e:seeded`
+
+Playwright seeded-demo smoke can also be run directly:
+
+```powershell
+cd frontend
+npm ci
+npm run e2e:install-browser
+npm run e2e:seeded
+```
+
+The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/.e2e/playwright-e2e.db`, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path. Overrides must resolve inside `backend/.e2e/`, use a filename matching `playwright-e2e*.db`, and cannot point at normal databases such as `finance.db`, `test_smoke.db`, `production.db`, `audit.db`, or arbitrary names like `custom.db`. The full release verifier installs Playwright Chromium with `npm run e2e:install-browser` after `npm ci`; this uses Playwright's cache when the matching browser is already present. The test database, journal, WAL, and SHM files are deleted on cleanup.
 
 ## Build
 
@@ -356,6 +381,14 @@ The project intentionally keeps naming strategy stable at each layer instead of 
 - Frontend contract normalizers in [frontend/src/api/contracts.js](frontend/src/api/contracts.js) are the boundary that accepts mixed API field styles and returns stable UI shapes
 
 When extending an API response, prefer updating the response model or the matching normalizer rather than renaming every field across the stack in one pass.
+
+## Portfolio Currency Behavior
+
+`GET /api/stocks/portfolio` keeps position-level values in each holding's stored currency and returns a `currency_totals` collection for summary math. Each currency total includes `currency`, `total_cost`, `total_market_value`, `total_unrealized_pnl`, `total_unrealized_pnl_percent`, `priced_cost`, `unpriced_cost`, `holdings_count`, `priced_holdings_count`, `missing_price_count`, and `is_partial`.
+
+Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
+
+Duplicate holding behavior is intentionally model A for v1.6.0: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
 
 ## Monthly Report Export
 
@@ -429,7 +462,8 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Playwright E2E smoke coverage is not included yet; the next recommended step is adding a seeded demo smoke without destabilizing the release gate.
+- Portfolio summaries do not perform live FX conversion; TWD and USD totals are shown separately.
+- Multiple acquisition lots are not modeled yet; each user has one aggregated holding per stock code.
 - Portfolio unrealized P/L depends on whichever latest cached price is available for each holding; when price data is missing, price-dependent fields are intentionally returned as `null` with warnings.
 - Portfolio totals are grouped by holding currency. FX conversion is not implemented yet, so mixed-currency portfolios are not combined into one top-level total.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
@@ -440,6 +474,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 - Missing Python packages: run `backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt`.
 - Missing frontend packages: run `npm ci` in `frontend`.
+- Unsupported runtime: use Python 3.11/3.12 and Node 20.19.x or 22.12.x+.
 - Alembic or SQLite state looks stale: from `backend`, run `.\.venv\Scripts\python.exe -m alembic upgrade head`.
 - Port already in use: stop the existing process on ports `8000` or `5173`, or change the launch/script port arguments.
 - OpenAI key missing: AI endpoints degrade to deterministic fallback text unless a real provider and key are configured.
@@ -451,14 +486,17 @@ GitHub Actions runs:
 
 - backend import smoke
 - backend Alembic migration smoke
+- backend Alembic drift check
 - backend `python -m compileall .`
 - backend `python -m pytest -q`
+- backend `python -m pip check`
 - backend `python seed_data.py --reset`
 - frontend `npm ci`
 - frontend lint
 - frontend tests
 - frontend build
 - frontend `npm audit --audit-level=moderate`
+- dedicated Playwright seeded-demo smoke with failure artifacts
 
 Workflow file:
 

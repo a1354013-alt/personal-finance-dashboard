@@ -82,7 +82,7 @@ class StockPriceHistoryORM(Base):
 class StockPriceAlertORM(Base):
     __tablename__ = "stock_price_alerts"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     watchlist_item_id = Column(Integer, ForeignKey("watchlist.id"), nullable=False, index=True)
     symbol = Column(String(20), nullable=False, index=True)
@@ -123,6 +123,8 @@ class StockHoldingORM(Base):
     )
 
     user = relationship("UserORM")
+
+    __table_args__ = (UniqueConstraint("user_id", "stock_code", name="_user_stock_holding_uc"),)
 
 
 class WatchlistCreate(BaseModel):
@@ -470,6 +472,32 @@ class PortfolioPositionResponse(BaseModel):
             return None
         return float(value)
 
+class PortfolioCurrencyTotalResponse(BaseModel):
+    currency: str
+    total_cost: Decimal
+    total_market_value: Optional[Decimal] = None
+    total_unrealized_pnl: Optional[Decimal] = None
+    total_unrealized_pnl_percent: Optional[Decimal] = None
+    priced_cost: Decimal
+    unpriced_cost: Decimal
+    holdings_count: int
+    priced_holdings_count: int
+    missing_price_count: int
+    is_partial: bool
+
+    @field_serializer(
+        "total_cost",
+        "total_market_value",
+        "total_unrealized_pnl",
+        "total_unrealized_pnl_percent",
+        "priced_cost",
+        "unpriced_cost",
+    )
+    def serialize_currency_total_numbers(self, value: Decimal | None) -> float | None:
+        if value is None:
+            return None
+        return float(value)
+
 
 class PortfolioCurrencyGroupResponse(BaseModel):
     currency: str
@@ -498,6 +526,7 @@ class StockPortfolioResponse(BaseModel):
     total_unrealized_pnl_percent: Optional[Decimal] = None
     holdings_count: int
     currency: Optional[str] = None
+    currency_totals: list[PortfolioCurrencyTotalResponse] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     totals_by_currency: list[PortfolioCurrencyGroupResponse] = Field(default_factory=list)
     positions: list[PortfolioPositionResponse] = Field(default_factory=list)

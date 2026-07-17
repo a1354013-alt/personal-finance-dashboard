@@ -673,10 +673,31 @@ export function normalizePortfolioPosition(row) {
   }
 }
 
+export function normalizePortfolioCurrencyTotal(row) {
+  if (!row || typeof row !== 'object') return null
+  const currency = row.currency == null ? null : String(row.currency).trim().toUpperCase()
+  if (!currency) return null
+  return {
+    currency,
+    total_cost: toNumberOrZero(row.total_cost ?? row.totalCost),
+    total_market_value: toNumberOrNull(row.total_market_value ?? row.totalMarketValue),
+    total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
+    total_unrealized_pnl_percent: toNumberOrNull(row.total_unrealized_pnl_percent ?? row.totalUnrealizedPnLPercent),
+    priced_cost: toNumberOrZero(row.priced_cost ?? row.pricedCost),
+    unpriced_cost: toNumberOrZero(row.unpriced_cost ?? row.unpricedCost),
+    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount),
+    priced_holdings_count: toNumberOrZero(row.priced_holdings_count ?? row.pricedHoldingsCount),
+    missing_price_count: toNumberOrZero(row.missing_price_count ?? row.missingPriceCount),
+    is_partial: Boolean(row.is_partial ?? row.isPartial)
+  }
+}
+
 export function normalizePortfolioCurrencyGroup(row) {
   if (!row || typeof row !== 'object') return null
+  const currency = row.currency == null ? null : String(row.currency).trim().toUpperCase()
+  if (!currency) return null
   return {
-    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
+    currency,
     total_cost: toNumberOrNull(row.total_cost ?? row.totalCost),
     total_market_value: toNumberOrNull(row.total_market_value ?? row.totalMarketValue),
     total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
@@ -687,17 +708,35 @@ export function normalizePortfolioCurrencyGroup(row) {
 
 export function normalizeStockPortfolio(payload) {
   if (!payload || typeof payload !== 'object') return null
+  const currencyTotals = Array.isArray(payload.currency_totals ?? payload.currencyTotals)
+    ? (payload.currency_totals ?? payload.currencyTotals).map(normalizePortfolioCurrencyTotal).filter(Boolean)
+    : []
+  const legacyCurrency = payload.currency == null ? null : String(payload.currency).trim().toUpperCase()
+  const legacyTotal = legacyCurrency
+    ? normalizePortfolioCurrencyTotal({
+        currency: legacyCurrency,
+        total_cost: payload.total_cost ?? payload.totalCost,
+        total_market_value: payload.total_market_value ?? payload.totalMarketValue,
+        total_unrealized_pnl: payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL,
+        total_unrealized_pnl_percent: payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent,
+        priced_cost: payload.total_market_value == null && payload.totalMarketValue == null ? 0 : (payload.total_cost ?? payload.totalCost),
+        unpriced_cost: 0,
+        holdings_count: payload.holdings_count ?? payload.holdingsCount
+      })
+    : null
+  const totalsByCurrency = Array.isArray(payload.totals_by_currency ?? payload.totalsByCurrency)
+    ? (payload.totals_by_currency ?? payload.totalsByCurrency).map(normalizePortfolioCurrencyGroup).filter(Boolean)
+    : currencyTotals.map((total) => normalizePortfolioCurrencyGroup(total)).filter(Boolean)
   return {
     total_cost: toNumberOrNull(payload.total_cost ?? payload.totalCost),
     total_market_value: toNumberOrNull(payload.total_market_value ?? payload.totalMarketValue),
     total_unrealized_pnl: toNumberOrNull(payload.total_unrealized_pnl ?? payload.totalUnrealizedPnL),
     total_unrealized_pnl_percent: toNumberOrNull(payload.total_unrealized_pnl_percent ?? payload.totalUnrealizedPnLPercent),
     holdings_count: toNumberOrZero(payload.holdings_count ?? payload.holdingsCount),
-    currency: payload.currency == null ? null : String(payload.currency).trim().toUpperCase(),
+    currency: legacyCurrency,
+    currency_totals: currencyTotals.length ? currencyTotals : (legacyTotal ? [legacyTotal] : []),
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(toStringOrEmpty).filter(Boolean) : [],
-    totals_by_currency: Array.isArray(payload.totals_by_currency ?? payload.totalsByCurrency)
-      ? (payload.totals_by_currency ?? payload.totalsByCurrency).map(normalizePortfolioCurrencyGroup).filter(Boolean)
-      : [],
+    totals_by_currency: totalsByCurrency,
     positions: Array.isArray(payload.positions) ? payload.positions.map(normalizePortfolioPosition).filter(Boolean) : []
   }
 }

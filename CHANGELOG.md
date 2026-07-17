@@ -2,11 +2,20 @@
 
 ## v1.6.0
 
-- Promoted `v1.6.0-rc1` to the final `v1.6.0` release.
+- Fixed dangling symbolic-link handling in seeded Playwright E2E database validation so SQLite cannot create an external target through `backend/.e2e/playwright-e2e*.db`.
+- Hardened seeded Playwright E2E database isolation so resets are limited to `backend/.e2e/playwright-e2e*.db` and normal databases such as `finance.db`, `test_smoke.db`, `production.db`, and `audit.db` are rejected.
+- Added clean-machine Playwright Chromium installation to local release verification through `npm run e2e:install-browser`, while keeping CI on `npx playwright install --with-deps chromium`.
+- Strengthened E2E cleanup on Windows with process-tree termination and post-run checks for lingering `8001`/`5174` ports.
+- Promoted `v1.6.0-rc3` to the final `v1.6.0` release.
 - Hardened stock portfolio totals so mixed-currency holdings are grouped by currency instead of being combined into one misleading top-level number without FX conversion.
 - Added explicit portfolio warnings and grouped currency totals to the Stocks API and Stocks page when a portfolio contains multiple currencies.
+- Extended grouped portfolio totals with partial-price metadata: `priced_holdings_count`, `missing_price_count`, `unpriced_cost`, and `is_partial`.
 - Hardened holding updates so changing `stock_code` re-infers the holding currency from the normalized symbol when the client does not explicitly provide a currency.
-- Added backend and frontend regression coverage for mixed-currency portfolio summaries, grouped totals rendering, allocation safety, and stock-code currency re-inference.
+- Fixed duplicate-holding update errors so attempts such as `MSFT -> AAPL` report the intended target symbol and preserve the original holding.
+- Added backend and frontend regression coverage for mixed-currency portfolio summaries, grouped totals rendering, allocation safety, stock-code currency re-inference, and partial-price portfolio states.
+- Added migration regression coverage for duplicate holding consolidation from revision `0009_add_stock_holdings` to `0010_enforce_unique_stock_holdings`.
+- Updated release documentation for the dedicated E2E database namespace, allowed filename pattern, browser cache behavior, and direct local E2E commands.
+- Updated application version metadata to `1.6.0`.
 
 ## v1.6.0-rc1
 

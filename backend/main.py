@@ -11,12 +11,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.jobs import get_job_runner
-from config import APP_VERSION, DEFAULT_RATE_LIMIT_PER_MINUTE, get_cors_origins
+from config import APP_VERSION, DEFAULT_RATE_LIMIT_PER_MINUTE, get_cors_origins, validate_python_runtime
 from db.database import init_db
 from logging_config import bind_request_id, configure_logging, get_request_id_from_request
 from routers import ai, auth, budgets, dashboard, expenses, imports, recurring_transactions, reports, stocks
 from services.auth import validate_secret_key_configuration
 
+validate_python_runtime()
 configure_logging()
 logger = logging.getLogger(__name__)
 

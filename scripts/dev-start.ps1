@@ -69,7 +69,6 @@ function Wait-HttpReady {
 }
 
 Write-Host 'Checking prerequisites...'
-Assert-Command python
 Assert-Command node
 Assert-Command npm
 

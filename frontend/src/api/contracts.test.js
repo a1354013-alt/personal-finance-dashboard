@@ -242,6 +242,19 @@ describe('API contract normalizers', () => {
       total_unrealized_pnl_percent: '11.05',
       holdings_count: '1',
       currency: 'twd',
+      currency_totals: [{
+        currency: 'twd',
+        total_cost: '9005',
+        total_market_value: '10000',
+        total_unrealized_pnl: '995',
+        total_unrealized_pnl_percent: '11.05',
+        priced_cost: '9005',
+        unpriced_cost: '0',
+        holdings_count: '1',
+        priced_holdings_count: '1',
+        missing_price_count: '0',
+        is_partial: false
+      }],
       warnings: ['Latest price unavailable for: AAPL.'],
       totals_by_currency: [{
         currency: 'twd',
@@ -282,6 +295,19 @@ describe('API contract normalizers', () => {
       total_unrealized_pnl_percent: 11.05,
       holdings_count: 1,
       currency: 'TWD'
+    })
+    expect(portfolio.currency_totals[0]).toMatchObject({
+      currency: 'TWD',
+      total_cost: 9005,
+      total_market_value: 10000,
+      total_unrealized_pnl: 995,
+      total_unrealized_pnl_percent: 11.05,
+      priced_cost: 9005,
+      unpriced_cost: 0,
+      holdings_count: 1,
+      priced_holdings_count: 1,
+      missing_price_count: 0,
+      is_partial: false
     })
     expect(portfolio.totals_by_currency[0]).toMatchObject({
       currency: 'TWD',

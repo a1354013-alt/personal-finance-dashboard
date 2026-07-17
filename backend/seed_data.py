@@ -4,6 +4,7 @@ import argparse
 from datetime import date, datetime, timezone
 from calendar import monthrange
 
+from config import validate_python_runtime
 from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
@@ -205,6 +206,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             db.commit()
             db.refresh(demo_user)
 
+        db.query(RecurringTransactionOccurrenceORM).filter(RecurringTransactionOccurrenceORM.user_id == demo_user.id).delete()
         db.query(ExpenseORM).filter(ExpenseORM.user_id == demo_user.id).delete()
         db.query(RecurringTransactionORM).filter(RecurringTransactionORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
@@ -322,6 +324,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
 
 
 if __name__ == "__main__":
+    validate_python_runtime()
     parser = argparse.ArgumentParser(description="Seed demo data for Personal Finance Dashboard.")
     parser.add_argument("--reset", action="store_true", help="Delete the SQLite database first and recreate it.")
     parser.add_argument(
