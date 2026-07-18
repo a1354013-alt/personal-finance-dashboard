@@ -970,8 +970,7 @@ onMounted(() => {
 }
 
 .portfolio-summary-item,
-.portfolio-metric-item,
-.portfolio-group-card {
+.portfolio-metric-item {
   padding: 14px;
   border-radius: 14px;
   background: #f5f8fb;
