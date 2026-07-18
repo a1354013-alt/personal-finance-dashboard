@@ -692,20 +692,6 @@ export function normalizePortfolioCurrencyTotal(row) {
   }
 }
 
-export function normalizePortfolioCurrencyGroup(row) {
-  if (!row || typeof row !== 'object') return null
-  const currency = row.currency == null ? null : String(row.currency).trim().toUpperCase()
-  if (!currency) return null
-  return {
-    currency,
-    total_cost: toNumberOrNull(row.total_cost ?? row.totalCost),
-    total_market_value: toNumberOrNull(row.total_market_value ?? row.totalMarketValue),
-    total_unrealized_pnl: toNumberOrNull(row.total_unrealized_pnl ?? row.totalUnrealizedPnL),
-    total_unrealized_pnl_percent: toNumberOrNull(row.total_unrealized_pnl_percent ?? row.totalUnrealizedPnLPercent),
-    holdings_count: toNumberOrZero(row.holdings_count ?? row.holdingsCount)
-  }
-}
-
 export function normalizeStockPortfolio(payload) {
   if (!payload || typeof payload !== 'object') return null
   const currencyTotals = Array.isArray(payload.currency_totals ?? payload.currencyTotals)
@@ -724,9 +710,6 @@ export function normalizeStockPortfolio(payload) {
         holdings_count: payload.holdings_count ?? payload.holdingsCount
       })
     : null
-  const totalsByCurrency = Array.isArray(payload.totals_by_currency ?? payload.totalsByCurrency)
-    ? (payload.totals_by_currency ?? payload.totalsByCurrency).map(normalizePortfolioCurrencyGroup).filter(Boolean)
-    : currencyTotals.map((total) => normalizePortfolioCurrencyGroup(total)).filter(Boolean)
   return {
     total_cost: toNumberOrNull(payload.total_cost ?? payload.totalCost),
     total_market_value: toNumberOrNull(payload.total_market_value ?? payload.totalMarketValue),
@@ -736,7 +719,6 @@ export function normalizeStockPortfolio(payload) {
     currency: legacyCurrency,
     currency_totals: currencyTotals.length ? currencyTotals : (legacyTotal ? [legacyTotal] : []),
     warnings: Array.isArray(payload.warnings) ? payload.warnings.map(toStringOrEmpty).filter(Boolean) : [],
-    totals_by_currency: totalsByCurrency,
     positions: Array.isArray(payload.positions) ? payload.positions.map(normalizePortfolioPosition).filter(Boolean) : []
   }
 }

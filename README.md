@@ -386,7 +386,7 @@ When extending an API response, prefer updating the response model or the matchi
 
 `GET /api/stocks/portfolio` keeps position-level values in each holding's stored currency and returns a `currency_totals` collection for summary math. Each currency total includes `currency`, `total_cost`, `total_market_value`, `total_unrealized_pnl`, `total_unrealized_pnl_percent`, `priced_cost`, `unpriced_cost`, `holdings_count`, `priced_holdings_count`, `missing_price_count`, and `is_partial`.
 
-Mixed TWD/USD portfolios are not converted or added together in this release candidate. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
+Mixed TWD/USD portfolios are not converted or added together in this release. The legacy top-level total fields are populated only for single-currency portfolios; mixed-currency responses use `currency: null` and separate `currency_totals`. When a currency has both priced and unpriced holdings, `total_cost` remains the full cost basis, while `total_market_value`, P/L, and P/L percent are priced-only values marked by `is_partial: true`.
 
 Duplicate holding behavior is intentionally model A for v1.6.0: one aggregated holding per user and stock code, enforced by the database unique constraint `_user_stock_holding_uc`. Migration `0010_enforce_unique_stock_holdings` merges historical duplicates into the oldest row id, preserves that row's note, currency, and timestamps, sums shares, and recalculates weighted average cost to the column's 4-decimal precision. Acquisition-lot semantics are not implemented yet.
 
@@ -462,10 +462,9 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Portfolio summaries do not perform live FX conversion; TWD and USD totals are shown separately.
 - Multiple acquisition lots are not modeled yet; each user has one aggregated holding per stock code.
 - Portfolio unrealized P/L depends on whichever latest cached price is available for each holding; when price data is missing, price-dependent fields are intentionally returned as `null` with warnings.
-- Portfolio totals are grouped by holding currency. FX conversion is not implemented yet, so mixed-currency portfolios are not combined into one top-level total.
+- Portfolio totals are grouped by holding currency. FX conversion is not implemented yet, so mixed-currency portfolios are shown as separate currency totals and are not combined into one top-level number.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.
 - `zh-CN` and `ja` keep key parity for the new portfolio strings, but the wording is still largely English and should be localized in a follow-up polish pass.
 - PDF report labels are currently mostly English to avoid Chinese font environment issues.

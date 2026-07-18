@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from models.stock import (
     PortfolioCurrencyTotalResponse,
-    PortfolioCurrencyGroupResponse,
     PortfolioPositionResponse,
     StockHoldingCreate,
     StockHoldingORM,
@@ -159,7 +158,7 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
     names_by_code = _watchlist_name_by_code(db, user_id)
     warnings: list[str] = []
     positions: list[PortfolioPositionResponse] = []
-    totals_by_currency = defaultdict(
+    currency_totals_map = defaultdict(
         lambda: {
             "total_cost": ZERO,
             "total_market_value": ZERO,
@@ -177,20 +176,20 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
         shares = Decimal(row.shares)
         average_cost = Decimal(row.average_cost)
         cost_basis = shares * average_cost
-        totals_by_currency[currency]["total_cost"] += cost_basis
-        totals_by_currency[currency]["holdings_count"] += 1
+        currency_totals_map[currency]["total_cost"] += cost_basis
+        currency_totals_map[currency]["holdings_count"] += 1
         latest_price = _latest_close_for_code(db, row.stock_code)
         market_value = shares * latest_price if latest_price is not None else None
         unrealized_pnl = (market_value - cost_basis) if market_value is not None else None
         unrealized_pnl_percent = ((unrealized_pnl / cost_basis) * HUNDRED) if unrealized_pnl is not None and cost_basis else None
 
         if market_value is not None:
-            totals_by_currency[currency]["total_market_value"] += market_value
-            totals_by_currency[currency]["priced_cost"] += cost_basis
-            totals_by_currency[currency]["priced_holdings_count"] += 1
+            currency_totals_map[currency]["total_market_value"] += market_value
+            currency_totals_map[currency]["priced_cost"] += cost_basis
+            currency_totals_map[currency]["priced_holdings_count"] += 1
         else:
-            totals_by_currency[currency]["unpriced_cost"] += cost_basis
-            totals_by_currency[currency]["missing_price_count"] += 1
+            currency_totals_map[currency]["unpriced_cost"] += cost_basis
+            currency_totals_map[currency]["missing_price_count"] += 1
             missing_price_codes.append(row.stock_code)
 
         positions.append(
@@ -218,15 +217,14 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
         )
 
     currency_totals: list[PortfolioCurrencyTotalResponse] = []
-    grouped_totals: list[PortfolioCurrencyGroupResponse] = []
-    for currency in sorted(totals_by_currency):
-        total_cost = Decimal(totals_by_currency[currency]["total_cost"])
-        total_market_value = Decimal(totals_by_currency[currency]["total_market_value"])
-        priced_cost = Decimal(totals_by_currency[currency]["priced_cost"])
-        unpriced_cost = Decimal(totals_by_currency[currency]["unpriced_cost"])
-        holdings_count = int(totals_by_currency[currency]["holdings_count"])
-        priced_holdings_count = int(totals_by_currency[currency]["priced_holdings_count"])
-        missing_price_count = int(totals_by_currency[currency]["missing_price_count"])
+    for currency in sorted(currency_totals_map):
+        total_cost = Decimal(currency_totals_map[currency]["total_cost"])
+        total_market_value = Decimal(currency_totals_map[currency]["total_market_value"])
+        priced_cost = Decimal(currency_totals_map[currency]["priced_cost"])
+        unpriced_cost = Decimal(currency_totals_map[currency]["unpriced_cost"])
+        holdings_count = int(currency_totals_map[currency]["holdings_count"])
+        priced_holdings_count = int(currency_totals_map[currency]["priced_holdings_count"])
+        missing_price_count = int(currency_totals_map[currency]["missing_price_count"])
         has_priced_holdings = priced_cost > ZERO or total_market_value > ZERO
         total_unrealized_pnl = total_market_value - priced_cost if has_priced_holdings else None
         total_unrealized_pnl_percent = (
@@ -249,16 +247,6 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
                 is_partial=missing_price_count > 0,
             )
         )
-        grouped_totals.append(
-            PortfolioCurrencyGroupResponse(
-                currency=currency,
-                total_cost=total_cost,
-                total_market_value=total_market_value if has_priced_holdings else None,
-                total_unrealized_pnl=total_unrealized_pnl,
-                total_unrealized_pnl_percent=total_unrealized_pnl_percent,
-                holdings_count=holdings_count,
-            )
-        )
 
     is_multi_currency = len(currency_totals) > 1
     if is_multi_currency:
@@ -267,12 +255,12 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
             + ", ".join(item.currency for item in currency_totals)
             + ". Totals are grouped by currency and are not FX-converted."
         )
-    else:
-        market_value_by_currency = {item.currency: item.total_market_value for item in currency_totals}
-        for position in positions:
-            currency_market_value = market_value_by_currency.get(position.currency)
-            if position.market_value is not None and currency_market_value is not None and currency_market_value > ZERO:
-                position.allocation_percent = (position.market_value / currency_market_value) * HUNDRED
+
+    market_value_by_currency = {item.currency: item.total_market_value for item in currency_totals}
+    for position in positions:
+        currency_market_value = market_value_by_currency.get(position.currency)
+        if position.market_value is not None and currency_market_value is not None and currency_market_value > ZERO:
+            position.allocation_percent = (position.market_value / currency_market_value) * HUNDRED
 
     single_currency_total = currency_totals[0] if len(currency_totals) == 1 else None
 
@@ -285,6 +273,5 @@ def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioRespo
         currency=single_currency_total.currency if single_currency_total else None,
         currency_totals=currency_totals,
         warnings=warnings,
-        totals_by_currency=grouped_totals,
         positions=positions,
     )

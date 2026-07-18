@@ -166,16 +166,6 @@ function portfolioPayload(overrides = {}) {
       }
     ],
     warnings: [],
-    totals_by_currency: [
-      {
-        currency: 'TWD',
-        total_cost: 9000,
-        total_market_value: 10000,
-        total_unrealized_pnl: 1000,
-        total_unrealized_pnl_percent: 11.11,
-        holdings_count: 1
-      }
-    ],
     positions: [
       {
         holding_id: 11,
@@ -362,24 +352,6 @@ describe('Stocks page', () => {
           is_partial: false
         }
       ],
-      totals_by_currency: [
-        {
-          currency: 'TWD',
-          total_cost: 9000,
-          total_market_value: 10000,
-          total_unrealized_pnl: 1000,
-          total_unrealized_pnl_percent: 11.11,
-          holdings_count: 1
-        },
-        {
-          currency: 'USD',
-          total_cost: 150,
-          total_market_value: 200,
-          total_unrealized_pnl: 50,
-          total_unrealized_pnl_percent: 33.33,
-          holdings_count: 1
-        }
-      ],
       positions: [
         portfolioPayload().positions[0],
         {
@@ -393,7 +365,7 @@ describe('Stocks page', () => {
           market_value: 200,
           unrealized_pnl: 50,
           unrealized_pnl_percent: 33.33,
-          allocation_percent: null,
+          allocation_percent: 100,
           currency: 'USD',
           warning: null,
           updated_at: '2026-07-06T01:00:00Z'
@@ -408,7 +380,8 @@ describe('Stocks page', () => {
       expect(wrapper.text()).toContain('Multiple currencies')
       expect(wrapper.text()).toContain('TWD')
       expect(wrapper.text()).toContain('USD')
-      expect(wrapper.text()).toContain('Allocation grouped by currency')
+      expect(wrapper.text()).toContain('TWD allocation 100.00%')
+      expect(wrapper.text()).toContain('USD allocation 100.00%')
       expect(wrapper.text()).toContain('US$ 200')
       expect(wrapper.text()).toContain('NT$ 10,000')
     })

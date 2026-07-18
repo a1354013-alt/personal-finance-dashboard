@@ -2,20 +2,34 @@
 
 ## v1.6.0
 
-- Fixed dangling symbolic-link handling in seeded Playwright E2E database validation so SQLite cannot create an external target through `backend/.e2e/playwright-e2e*.db`.
-- Hardened seeded Playwright E2E database isolation so resets are limited to `backend/.e2e/playwright-e2e*.db` and normal databases such as `finance.db`, `test_smoke.db`, `production.db`, and `audit.db` are rejected.
-- Added clean-machine Playwright Chromium installation to local release verification through `npm run e2e:install-browser`, while keeping CI on `npx playwright install --with-deps chromium`.
-- Strengthened E2E cleanup on Windows with process-tree termination and post-run checks for lingering `8001`/`5174` ports.
 - Promoted `v1.6.0-rc3` to the final `v1.6.0` release.
-- Hardened stock portfolio totals so mixed-currency holdings are grouped by currency instead of being combined into one misleading top-level number without FX conversion.
-- Added explicit portfolio warnings and grouped currency totals to the Stocks API and Stocks page when a portfolio contains multiple currencies.
-- Extended grouped portfolio totals with partial-price metadata: `priced_holdings_count`, `missing_price_count`, `unpriced_cost`, and `is_partial`.
-- Hardened holding updates so changing `stock_code` re-infers the holding currency from the normalized symbol when the client does not explicitly provide a currency.
-- Fixed duplicate-holding update errors so attempts such as `MSFT -> AAPL` report the intended target symbol and preserve the original holding.
-- Added backend and frontend regression coverage for mixed-currency portfolio summaries, grouped totals rendering, allocation safety, stock-code currency re-inference, and partial-price portfolio states.
-- Added migration regression coverage for duplicate holding consolidation from revision `0009_add_stock_holdings` to `0010_enforce_unique_stock_holdings`.
+- Finalized the v1.6 portfolio release-hardening fixes so mixed-currency holdings stay grouped by currency, single-currency totals remain intact, and holding currency re-inference follows normalized symbol changes when the client omits `currency`.
+- Kept the startup, migration, E2E safety, and release verification hardening from the late release candidates without changing the public `1.6.0` version metadata in source.
 - Updated release documentation for the dedicated E2E database namespace, allowed filename pattern, browser cache behavior, and direct local E2E commands.
 - Updated application version metadata to `1.6.0`.
+
+## v1.6.0-rc3
+
+- Isolated seeded Playwright E2E from development databases by forcing a validated SQLite database at `backend/playwright-e2e.db`, dedicated ports `8001`/`5174`, and `reuseExistingServer: false`.
+- Extended portfolio currency totals with partial-price metadata: `priced_holdings_count`, `missing_price_count`, `unpriced_cost`, and `is_partial`.
+- Updated the Stocks page to label partial same-currency values as priced values and show missing-price counts plus unpriced cost.
+- Fixed duplicate-holding update errors so attempts such as MSFT -> AAPL report the intended target symbol and preserve the original holding.
+- Hardened Windows and macOS/Linux startup scripts around supported Python/Node versions and actual virtual-environment Python stamping.
+- Added migration regression coverage for duplicate holding consolidation from revision `0009_add_stock_holdings` to `0010_enforce_unique_stock_holdings`.
+- Added Python 3.11/3.12 and Node 22 compatibility coverage in CI.
+- Removed the conflicting root `.env.example`; `backend/.env.example` is the authoritative backend environment template.
+- Updated application version metadata to `1.6.0-rc3`.
+
+## v1.6.0-rc2
+
+- Fixed stock portfolio summaries so TWD and USD holdings are grouped in `currency_totals` instead of being added into a fake single-currency total.
+- Fixed holding edits so changing `stock_code` without an explicit `currency` re-infers the currency from the normalized new symbol.
+- Defined duplicate-holding behavior as one aggregated holding per user and stock code, enforced by Alembic migration `0010_enforce_unique_stock_holdings`.
+- Removed redundant ORM primary-key index declarations that caused Alembic drift for `ix_stock_price_alerts_id` and `ix_users_id`.
+- Added runtime prerequisite checks for Python 3.11/3.12 and supported Node versions, and made release verification use `backend/.venv/Scripts/python.exe`.
+- Added `python -m alembic check`, `python -m pip check`, and seeded Playwright smoke coverage to release/CI verification.
+- Updated backend dependency pins for Requests and python-jose warning cleanup.
+- Updated application version metadata to `1.6.0-rc2`.
 
 ## v1.6.0-rc1
 

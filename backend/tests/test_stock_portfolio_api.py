@@ -294,16 +294,6 @@ def test_portfolio_summary_with_one_holding(client):
             "is_partial": False,
         }
     ]
-    assert payload["totals_by_currency"] == [
-        {
-            "currency": "USD",
-            "total_cost": 300,
-            "total_market_value": 360,
-            "total_unrealized_pnl": 60,
-            "total_unrealized_pnl_percent": 20,
-            "holdings_count": 1,
-        }
-    ]
     assert payload["positions"][0]["stock_name"] == "Apple"
     assert payload["positions"][0]["allocation_percent"] == 100
 
@@ -365,12 +355,9 @@ def test_portfolio_summary_groups_mixed_currency_totals_without_combining_them(c
     assert totals["TWD"]["priced_cost"] == 1800
     assert totals["USD"]["missing_price_count"] == 0
     assert totals["TWD"]["missing_price_count"] == 0
-    groups = {item["currency"]: item for item in payload["totals_by_currency"]}
-    assert groups["USD"]["holdings_count"] == 1
-    assert groups["TWD"]["holdings_count"] == 1
     positions = {item["stock_code"]: item for item in payload["positions"]}
-    assert positions["AAPL"]["allocation_percent"] is None
-    assert positions["2330.TW"]["allocation_percent"] is None
+    assert positions["AAPL"]["allocation_percent"] == 100
+    assert positions["2330.TW"]["allocation_percent"] == 100
 
 
 def test_portfolio_summary_handles_missing_price_gracefully(client):
@@ -430,8 +417,37 @@ def test_portfolio_summary_marks_single_currency_partial_price_totals(client):
     assert total["total_market_value"] == 360
     assert total["total_unrealized_pnl"] == 60
     positions = {item["stock_code"]: item for item in payload["positions"]}
+    assert positions["AAPL"]["allocation_percent"] == 100
     assert positions["MSFT"]["latest_price"] is None
     assert positions["MSFT"]["market_value"] is None
+    assert positions["MSFT"]["allocation_percent"] is None
+
+
+def test_portfolio_summary_uses_same_currency_denominator_for_partial_mixed_portfolios(client):
+    email = "portfolio-partial-mixed-currency@example.com"
+    token = register_and_login(client, email)
+    headers = auth_headers(token)
+
+    user_id = lookup_user_id(email)
+    seed_price("2330.TW", 1000, user_id=user_id, currency="TWD", name="TSMC")
+    seed_price("AAPL", 200, user_id=user_id, name="Apple")
+    client.post("/api/stocks/holdings", headers=headers, json={"stock_code": "2330", "shares": 2, "average_cost": 900})
+    client.post("/api/stocks/holdings", headers=headers, json={"stock_code": "0050", "shares": 1, "average_cost": 150})
+    client.post("/api/stocks/holdings", headers=headers, json={"stock_code": "AAPL", "shares": 1, "average_cost": 150})
+
+    response = client.get("/api/stocks/portfolio", headers=headers)
+    assert response.status_code == 200
+    payload = response.json()
+    totals = {item["currency"]: item for item in payload["currency_totals"]}
+    assert totals["TWD"]["is_partial"] is True
+    assert totals["TWD"]["total_market_value"] == 2000
+    assert totals["TWD"]["priced_holdings_count"] == 1
+    assert totals["TWD"]["missing_price_count"] == 1
+
+    positions = {item["stock_code"]: item for item in payload["positions"]}
+    assert positions["2330.TW"]["allocation_percent"] == 100
+    assert positions["0050.TW"]["allocation_percent"] is None
+    assert positions["AAPL"]["allocation_percent"] == 100
 
 
 def test_portfolio_summary_excludes_cross_user_holdings(client):
@@ -459,7 +475,11 @@ def test_seeded_demo_portfolio_has_twd_and_usd_summaries(client):
 
     response = client.get("/api/stocks/portfolio", headers=auth_headers(token))
     assert response.status_code == 200
-    totals = {item["currency"]: item for item in response.json()["currency_totals"]}
+    payload = response.json()
+    totals = {item["currency"]: item for item in payload["currency_totals"]}
+    assert payload["currency"] is None
+    assert payload["total_market_value"] is None
+    assert any("Portfolio contains multiple currencies: TWD, USD." in warning for warning in payload["warnings"])
     assert set(totals) == {"TWD", "USD"}
     assert totals["TWD"]["holdings_count"] == 2
     assert totals["USD"]["holdings_count"] == 1

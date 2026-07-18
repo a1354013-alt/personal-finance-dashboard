@@ -460,8 +460,6 @@ const selectedCurrency = computed(() => stockStore.selectedWatchlistItem?.curren
 const portfolioCurrencyTotals = computed(() => stockStore.portfolio?.currency_totals || [])
 const portfolioWarnings = computed(() => stockStore.portfolio?.warnings || [])
 const portfolioPositions = computed(() => stockStore.portfolio?.positions || [])
-const portfolioCurrencyGroups = computed(() => stockStore.portfolio?.totals_by_currency || [])
-const isMultiCurrencyPortfolio = computed(() => portfolioCurrencyTotals.value.length > 1 || portfolioCurrencyGroups.value.length > 1)
 
 function buildCurrencySummaryItems(total) {
   const items = [
@@ -640,11 +638,11 @@ function buildPositionMetrics(position) {
 }
 
 function allocationBadgeText(position) {
-  if (isMultiCurrencyPortfolio.value) {
-    return t('stocks.portfolio.allocationUnavailable')
-  }
   if (position.allocation_percent != null) {
-    return t('stocks.portfolio.allocationValue', { value: position.allocation_percent.toFixed(2) })
+    return t('stocks.portfolio.allocationValue', {
+      currency: position.currency,
+      value: position.allocation_percent.toFixed(2)
+    })
   }
   if (position.market_value == null) {
     return t('stocks.portfolio.pricePending')
@@ -969,12 +967,6 @@ onMounted(() => {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-}
-
-.portfolio-groups-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .portfolio-summary-item,
