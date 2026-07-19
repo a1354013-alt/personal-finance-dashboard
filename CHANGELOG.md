@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.7.0-rc1
+
+- Added a user-scoped stock trade ledger with `OPENING_BALANCE`, `BUY`, and `SELL` entries plus Alembic migration `0011_add_stock_trade_ledger`.
+- Backfilled one opening-balance trade per legacy holding while keeping `stock_holdings` as a derived projection rebuilt from FIFO replay.
+- Added FIFO realized P/L handling, trade summary APIs, and compatibility guards that block direct holding edits after regular buy/sell activity begins.
+- Added focused stock-trade frontend components for trade entry, trade history, and realized P/L by currency.
+- Refreshed the demo seed with deterministic TWD and USD trade activity, profitable and losing sells, fees, taxes, and remaining open positions.
+- Updated application version metadata to `1.7.0-rc1`.
+
 ## v1.6.0
 
 - Promoted `v1.6.0-rc3` to the final `v1.6.0` release.

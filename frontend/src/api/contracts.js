@@ -692,6 +692,51 @@ export function normalizePortfolioCurrencyTotal(row) {
   }
 }
 
+export function normalizeStockTrade(row) {
+  if (!row || typeof row !== 'object') return null
+  const id = toNumberOrNull(row.id)
+  if (id == null) return null
+  return {
+    id,
+    stock_code: String(row.stock_code || '').toUpperCase(),
+    trade_type: ['OPENING_BALANCE', 'BUY', 'SELL'].includes(row.trade_type) ? row.trade_type : 'BUY',
+    trade_date: row.trade_date ?? row.tradeDate ?? null,
+    shares: toNumberOrNull(row.shares),
+    price: toNumberOrNull(row.price),
+    fee: toNumberOrZero(row.fee),
+    tax: toNumberOrZero(row.tax),
+    currency: row.currency == null ? null : String(row.currency).trim().toUpperCase(),
+    note: toTrimmedStringOrEmpty(row.note),
+    source: toTrimmedStringOrEmpty(row.source),
+    source_holding_id: toNumberOrNull(row.source_holding_id ?? row.sourceHoldingId),
+    created_at: row.created_at ?? row.createdAt ?? null,
+    updated_at: row.updated_at ?? row.updatedAt ?? null
+  }
+}
+
+export function normalizeStockTradeSummary(payload) {
+  if (!payload || typeof payload !== 'object') return { items: [] }
+  const items = Array.isArray(payload.items)
+    ? payload.items.map((row) => {
+      const currency = row?.currency == null ? null : String(row.currency).trim().toUpperCase()
+      if (!currency) return null
+      return {
+        currency,
+        buy_count: toNumberOrZero(row.buy_count ?? row.buyCount),
+        sell_count: toNumberOrZero(row.sell_count ?? row.sellCount),
+        bought_shares: toNumberOrZero(row.bought_shares ?? row.boughtShares),
+        sold_shares: toNumberOrZero(row.sold_shares ?? row.soldShares),
+        gross_proceeds: toNumberOrZero(row.gross_proceeds ?? row.grossProceeds),
+        matched_cost_basis: toNumberOrZero(row.matched_cost_basis ?? row.matchedCostBasis),
+        fees: toNumberOrZero(row.fees),
+        taxes: toNumberOrZero(row.taxes),
+        realized_pnl: toNumberOrZero(row.realized_pnl ?? row.realizedPnL)
+      }
+    }).filter(Boolean)
+    : []
+  return { items }
+}
+
 export function normalizeStockPortfolio(payload) {
   if (!payload || typeof payload !== 'object') return null
   const currencyTotals = Array.isArray(payload.currency_totals ?? payload.currencyTotals)

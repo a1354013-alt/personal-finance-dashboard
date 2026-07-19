@@ -42,6 +42,17 @@ def fetch_holdings(database_path: Path) -> list[tuple]:
         ).fetchall()
 
 
+def fetch_trades(database_path: Path) -> list[tuple]:
+    with sqlite3.connect(database_path) as conn:
+        return conn.execute(
+            """
+            SELECT user_id, stock_code, trade_type, trade_date, shares, price, currency, note, source_holding_id
+            FROM stock_trades
+            ORDER BY user_id, stock_code, trade_date, id
+            """
+        ).fetchall()
+
+
 def test_0010_merges_duplicate_holdings_and_enforces_unique_constraint(tmp_path):
     database_path = tmp_path / "migration.db"
     run_alembic(database_path, "upgrade", "0009_add_stock_holdings")
@@ -95,3 +106,54 @@ def test_0010_merges_duplicate_holdings_and_enforces_unique_constraint(tmp_path)
     run_alembic(database_path, "downgrade", "0009_add_stock_holdings")
     run_alembic(database_path, "upgrade", "0010_enforce_unique_stock_holdings")
     assert len(fetch_holdings(database_path)) == 1
+
+
+def test_0011_backfills_opening_balance_trades_and_survives_reupgrade(tmp_path):
+    database_path = tmp_path / "migration-0011.db"
+    run_alembic(database_path, "upgrade", "0010_enforce_unique_stock_holdings")
+
+    execute_sql(
+        database_path,
+        "INSERT INTO users (id, email, password_hash, created_at) VALUES (1, 'a@example.com', 'hash', '2026-07-13 00:00:00')",
+    )
+    execute_sql(
+        database_path,
+        "INSERT INTO users (id, email, password_hash, created_at) VALUES (2, 'b@example.com', 'hash', '2026-07-13 00:00:00')",
+    )
+    execute_sql(
+        database_path,
+        """
+        INSERT INTO stock_holdings
+          (id, user_id, stock_code, shares, average_cost, currency, note, created_at, updated_at)
+        VALUES
+          (11, 1, '2330.TW', '5.000000', '800.0000', 'TWD', 'core tw', '2026-07-13 00:00:00', '2026-07-13 00:00:00'),
+          (12, 1, 'AAPL', '2.000000', '150.0000', 'USD', 'core us', '2026-07-13 00:05:00', '2026-07-13 00:05:00'),
+          (13, 2, 'AAPL', '7.000000', '120.0000', 'USD', 'other user', '2026-07-13 00:10:00', '2026-07-13 00:10:00')
+        """,
+    )
+
+    run_alembic(database_path, "upgrade", "0011_add_stock_trade_ledger")
+
+    trades = fetch_trades(database_path)
+    assert trades == [
+        (1, "2330.TW", "OPENING_BALANCE", "2026-07-13", 5, 800, "TWD", "core tw", 11),
+        (1, "AAPL", "OPENING_BALANCE", "2026-07-13", 2, 150, "USD", "core us", 12),
+        (2, "AAPL", "OPENING_BALANCE", "2026-07-13", 7, 120, "USD", "other user", 13),
+    ]
+
+    run_alembic(database_path, "downgrade", "0010_enforce_unique_stock_holdings")
+    with sqlite3.connect(database_path) as conn:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert "stock_trades" not in tables
+    assert len(fetch_holdings(database_path)) == 3
+
+    run_alembic(database_path, "upgrade", "0011_add_stock_trade_ledger")
+    trades = fetch_trades(database_path)
+    assert len(trades) == 3
+    assert [row[8] for row in trades] == [11, 12, 13]
+
+
+def test_0011_handles_empty_holdings_table(tmp_path):
+    database_path = tmp_path / "migration-0011-empty.db"
+    run_alembic(database_path, "upgrade", "0011_add_stock_trade_ledger")
+    assert fetch_trades(database_path) == []

@@ -23,6 +23,7 @@ EXPECTED_TABLES = {
     "recurring_transactions",
     "recurring_transaction_occurrences",
     "watchlist",
+    "stock_trades",
     "stock_holdings",
     "stock_prices",
     "stock_price_history",

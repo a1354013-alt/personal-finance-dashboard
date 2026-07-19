@@ -10,6 +10,11 @@ const getFilterMetadataMock = vi.fn()
 const getStockDashboardMock = vi.fn()
 const getStockHoldingsMock = vi.fn()
 const getStockPortfolioMock = vi.fn()
+const getStockTradesMock = vi.fn()
+const getStockTradeSummaryMock = vi.fn()
+const createStockTradeMock = vi.fn()
+const updateStockTradeMock = vi.fn()
+const deleteStockTradeMock = vi.fn()
 const createStockHoldingMock = vi.fn()
 const updateStockHoldingMock = vi.fn()
 const deleteStockHoldingMock = vi.fn()
@@ -28,6 +33,11 @@ vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
   getStockHoldings: (...args) => getStockHoldingsMock(...args),
   getStockPortfolio: (...args) => getStockPortfolioMock(...args),
+  getStockTrades: (...args) => getStockTradesMock(...args),
+  getStockTradeSummary: (...args) => getStockTradeSummaryMock(...args),
+  createStockTrade: (...args) => createStockTradeMock(...args),
+  updateStockTrade: (...args) => updateStockTradeMock(...args),
+  deleteStockTrade: (...args) => deleteStockTradeMock(...args),
   createStockHolding: (...args) => createStockHoldingMock(...args),
   updateStockHolding: (...args) => updateStockHoldingMock(...args),
   deleteStockHolding: (...args) => deleteStockHoldingMock(...args),
@@ -196,6 +206,11 @@ describe('Stocks page', () => {
     getStockDashboardMock.mockReset()
     getStockHoldingsMock.mockReset()
     getStockPortfolioMock.mockReset()
+    getStockTradesMock.mockReset()
+    getStockTradeSummaryMock.mockReset()
+    createStockTradeMock.mockReset()
+    updateStockTradeMock.mockReset()
+    deleteStockTradeMock.mockReset()
     createStockHoldingMock.mockReset()
     updateStockHoldingMock.mockReset()
     deleteStockHoldingMock.mockReset()
@@ -229,6 +244,31 @@ describe('Stocks page', () => {
       warnings: [],
       positions: []
     })
+    getStockTradesMock.mockResolvedValue([])
+    getStockTradeSummaryMock.mockResolvedValue({ items: [] })
+    createStockTradeMock.mockResolvedValue({
+      id: 21,
+      stock_code: 'AAPL',
+      trade_type: 'BUY',
+      trade_date: '2026-07-19',
+      shares: 1,
+      price: 180,
+      fee: 1,
+      tax: 0,
+      currency: 'USD'
+    })
+    updateStockTradeMock.mockResolvedValue({
+      id: 21,
+      stock_code: 'AAPL',
+      trade_type: 'SELL',
+      trade_date: '2026-07-19',
+      shares: 1,
+      price: 190,
+      fee: 1,
+      tax: 0,
+      currency: 'USD'
+    })
+    deleteStockTradeMock.mockResolvedValue({})
     createStockHoldingMock.mockResolvedValue(holding())
     updateStockHoldingMock.mockResolvedValue(holding({ shares: 12 }))
     deleteStockHoldingMock.mockResolvedValue({})
@@ -384,6 +424,48 @@ describe('Stocks page', () => {
       expect(wrapper.text()).toContain('USD allocation 100.00%')
       expect(wrapper.text()).toContain('US$ 200')
       expect(wrapper.text()).toContain('NT$ 10,000')
+    })
+  })
+
+  it('renders realized pnl summary and trade history', async () => {
+    getStockTradeSummaryMock.mockResolvedValue({
+      items: [
+        {
+          currency: 'USD',
+          buy_count: 1,
+          sell_count: 1,
+          bought_shares: 3,
+          sold_shares: 1,
+          gross_proceeds: 180,
+          matched_cost_basis: 120,
+          fees: 3,
+          taxes: 1,
+          realized_pnl: 56
+        }
+      ]
+    })
+    getStockTradesMock.mockResolvedValue([
+      {
+        id: 21,
+        stock_code: 'AAPL',
+        trade_type: 'BUY',
+        trade_date: '2026-07-19',
+        shares: 1,
+        price: 180,
+        fee: 1,
+        tax: 0,
+        currency: 'USD',
+        note: 'demo buy'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('Realized P/L by Currency')
+      expect(wrapper.text()).toContain('Matched Cost Basis')
+      expect(wrapper.text()).toContain('Trade History')
+      expect(wrapper.text()).toContain('demo buy')
     })
   })
 
@@ -565,7 +647,7 @@ describe('Stocks page', () => {
     const wrapper = mountStocksPage()
 
     await wrapper.find('#stock-code').setValue('0050')
-    await wrapper.findAll('form.form-row')[1].trigger('submit')
+    wrapper.find('#stock-code').element.form?.dispatchEvent(new Event('submit'))
 
     await vi.waitFor(() => {
       expect(addToWatchlistMock).toHaveBeenCalledWith('0050')

@@ -17,6 +17,7 @@ from models.stock import (
     WatchlistORM,
 )
 from services.stock_data_service import StockDataService
+from services.stock_trade_service import create_or_update_opening_balance, delete_legacy_holding, update_legacy_holding
 from services.watchlist_service import latest_history_for_code, latest_price_for_code
 
 ZERO = Decimal("0")
@@ -74,23 +75,11 @@ def list_holdings(db: Session, *, user_id: int) -> list[StockHoldingResponse]:
 
 
 def create_holding(db: Session, *, user_id: int, payload: StockHoldingCreate) -> StockHoldingResponse:
-    normalized_code = StockDataService.normalize_stock_code(payload.stock_code)
-    row = StockHoldingORM(
-        user_id=user_id,
-        stock_code=normalized_code,
-        shares=payload.shares,
-        average_cost=payload.average_cost,
-        currency=_normalize_holding_currency(normalized_code, payload.currency),
-        note=payload.note,
-    )
-    db.add(row)
     try:
-        db.commit()
+        return create_or_update_opening_balance(db, user_id=user_id, payload=payload)
     except IntegrityError as exc:
         db.rollback()
-        _raise_duplicate_holding_error(exc, normalized_code)
-    db.refresh(row)
-    return StockHoldingResponse.model_validate(row)
+        _raise_duplicate_holding_error(exc, StockDataService.normalize_stock_code(payload.stock_code))
 
 
 def update_holding(
@@ -100,49 +89,16 @@ def update_holding(
     holding_id: int,
     payload: StockHoldingUpdate,
 ) -> StockHoldingResponse | None:
-    row = db.query(StockHoldingORM).filter(StockHoldingORM.id == holding_id, StockHoldingORM.user_id == user_id).first()
-    if not row:
-        return None
-
-    fields_set = payload.model_fields_set
-    target_stock_code = row.stock_code
-
-    stock_code_changed = False
-    if "stock_code" in fields_set and payload.stock_code is not None:
-        normalized_code = StockDataService.normalize_stock_code(payload.stock_code)
-        target_stock_code = normalized_code
-        stock_code_changed = normalized_code != row.stock_code
-        row.stock_code = normalized_code
-    if "shares" in fields_set and payload.shares is not None:
-        row.shares = payload.shares
-    if "average_cost" in fields_set and payload.average_cost is not None:
-        row.average_cost = payload.average_cost
-    if "currency" in fields_set:
-        row.currency = _normalize_holding_currency(row.stock_code, payload.currency)
-    elif stock_code_changed:
-        row.currency = _normalize_holding_currency(row.stock_code, None)
-    if "note" in fields_set:
-        row.note = payload.note
-
-    if not row.currency:
-        row.currency = _normalize_holding_currency(row.stock_code, None)
-
     try:
-        db.commit()
+        return update_legacy_holding(db, user_id=user_id, holding_id=holding_id, payload=payload)
     except IntegrityError as exc:
         db.rollback()
+        target_stock_code = StockDataService.normalize_stock_code(payload.stock_code) if payload.stock_code else ""
         _raise_duplicate_holding_error(exc, target_stock_code)
-    db.refresh(row)
-    return StockHoldingResponse.model_validate(row)
 
 
 def delete_holding(db: Session, *, user_id: int, holding_id: int) -> bool:
-    row = db.query(StockHoldingORM).filter(StockHoldingORM.id == holding_id, StockHoldingORM.user_id == user_id).first()
-    if not row:
-        return False
-    db.delete(row)
-    db.commit()
-    return True
+    return delete_legacy_holding(db, user_id=user_id, holding_id=holding_id)
 
 
 def build_portfolio_summary(db: Session, *, user_id: int) -> StockPortfolioResponse:
