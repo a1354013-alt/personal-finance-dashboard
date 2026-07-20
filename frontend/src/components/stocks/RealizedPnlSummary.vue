@@ -2,13 +2,13 @@
   <section class="card trade-summary-card">
     <div class="section-header">
       <div>
-        <h2>Realized P/L by Currency</h2>
-        <p class="helper-text">Realized profit and loss stays grouped by native trade currency.</p>
+        <h2>{{ t('stocks.trades.summaryTitle') }}</h2>
+        <p class="helper-text">{{ t('stocks.trades.summarySubtitle') }}</p>
       </div>
     </div>
 
     <div v-if="error" class="error-msg">{{ error }}</div>
-    <div v-else-if="!items.length" class="empty-state">No realized trade activity yet.</div>
+    <div v-else-if="!items.length" class="empty-state">{{ t('stocks.trades.summaryEmpty') }}</div>
     <div v-else class="trade-summary-grid">
       <article v-for="item in items" :key="item.currency" class="trade-summary-panel">
         <div class="tile-head">
@@ -44,7 +44,7 @@ const props = defineProps({
   }
 })
 
-const { locale } = useI18n()
+const { t, locale } = useI18n()
 
 const items = computed(() => Array.isArray(props.summary?.items) ? props.summary.items : [])
 
@@ -59,14 +59,16 @@ function formatSignedCurrency(value, currency) {
 
 function buildStats(item) {
   return [
-    { label: 'Buy Count', value: String(item.buy_count || 0) },
-    { label: 'Sell Count', value: String(item.sell_count || 0) },
-    { label: 'Bought Shares', value: String(item.bought_shares || 0) },
-    { label: 'Sold Shares', value: String(item.sold_shares || 0) },
-    { label: 'Gross Proceeds', value: formatPrice(item.gross_proceeds, item.currency) },
-    { label: 'Matched Cost Basis', value: formatPrice(item.matched_cost_basis, item.currency) },
-    { label: 'Fees', value: formatPrice(item.fees, item.currency) },
-    { label: 'Taxes', value: formatPrice(item.taxes, item.currency) }
+    { label: t('stocks.trades.summary.buyCount'), value: String(item.buy_count || 0) },
+    { label: t('stocks.trades.summary.sellCount'), value: String(item.sell_count || 0) },
+    { label: t('stocks.trades.summary.openingBalanceCount'), value: String(item.opening_balance_count || 0) },
+    { label: t('stocks.trades.summary.openingBalanceShares'), value: String(item.opening_balance_shares || 0) },
+    { label: t('stocks.trades.summary.boughtShares'), value: String(item.bought_shares || 0) },
+    { label: t('stocks.trades.summary.soldShares'), value: String(item.sold_shares || 0) },
+    { label: t('stocks.trades.summary.grossProceeds'), value: formatPrice(item.gross_proceeds, item.currency) },
+    { label: t('stocks.trades.summary.matchedCostBasis'), value: formatPrice(item.matched_cost_basis, item.currency) },
+    { label: t('stocks.trades.summary.fees'), value: formatPrice(item.fees, item.currency) },
+    { label: t('stocks.trades.summary.taxes'), value: formatPrice(item.taxes, item.currency) }
   ]
 }
 </script>

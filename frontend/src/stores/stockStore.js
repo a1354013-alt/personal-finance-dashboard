@@ -42,7 +42,9 @@ export const useStockStore = defineStore('stock', () => {
   const tradesLoading = ref(false)
   const tradesSaving = ref(false)
   const tradesDeletingIds = ref([])
-  const tradesError = ref(null)
+  const tradeListError = ref(null)
+  const tradeSummaryError = ref(null)
+  const tradeMutationError = ref(null)
   const holdingsLoading = ref(false)
   const holdingsSaving = ref(false)
   const holdingsDeletingIds = ref([])
@@ -103,14 +105,14 @@ export const useStockStore = defineStore('stock', () => {
 
   async function fetchTrades(filters = {}) {
     tradesLoading.value = true
-    tradesError.value = null
+    tradeListError.value = null
     try {
       const response = await stockApi.getStockTrades(filters)
       trades.value = Array.isArray(response) ? response.map(normalizeStockTrade).filter(Boolean) : []
       return trades.value
     } catch (error) {
       trades.value = []
-      tradesError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      tradeListError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       tradesLoading.value = false
@@ -118,14 +120,14 @@ export const useStockStore = defineStore('stock', () => {
   }
 
   async function fetchTradeSummary(filters = {}) {
-    tradesError.value = null
+    tradeSummaryError.value = null
     try {
       const response = await stockApi.getStockTradeSummary(filters)
       tradeSummary.value = normalizeStockTradeSummary(response)
       return tradeSummary.value
     } catch (error) {
       tradeSummary.value = { items: [] }
-      tradesError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      tradeSummaryError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     }
   }
@@ -156,14 +158,14 @@ export const useStockStore = defineStore('stock', () => {
 
   async function createTrade(payload, filters = {}) {
     tradesSaving.value = true
-    tradesError.value = null
+    tradeMutationError.value = null
     try {
       const response = await stockApi.createStockTrade(payload)
       const normalized = normalizeStockTrade(response)
       await refreshTradeWorkspace(filters)
       return normalized || response
     } catch (error) {
-      tradesError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       tradesSaving.value = false
@@ -172,14 +174,14 @@ export const useStockStore = defineStore('stock', () => {
 
   async function updateTrade(tradeId, payload, filters = {}) {
     tradesSaving.value = true
-    tradesError.value = null
+    tradeMutationError.value = null
     try {
       const response = await stockApi.updateStockTrade(tradeId, payload)
       const normalized = normalizeStockTrade(response)
       await refreshTradeWorkspace(filters)
       return normalized || response
     } catch (error) {
-      tradesError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       tradesSaving.value = false
@@ -196,13 +198,13 @@ export const useStockStore = defineStore('stock', () => {
       return null
     }
     tradesDeletingIds.value.push(numericId)
-    tradesError.value = null
+    tradeMutationError.value = null
     try {
       await stockApi.deleteStockTrade(numericId)
       await refreshTradeWorkspace(filters)
       return true
     } catch (error) {
-      tradesError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
       throw error
     } finally {
       tradesDeletingIds.value = tradesDeletingIds.value.filter((id) => id !== numericId)
@@ -617,7 +619,9 @@ export const useStockStore = defineStore('stock', () => {
     tradesLoading,
     tradesSaving,
     tradesDeletingIds,
-    tradesError,
+    tradeListError,
+    tradeSummaryError,
+    tradeMutationError,
     holdingsLoading,
     holdingsSaving,
     holdingsDeletingIds,

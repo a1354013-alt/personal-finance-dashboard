@@ -2,53 +2,48 @@
   <section class="card trade-history-card">
     <div class="section-header">
       <div>
-        <h2>Trade History</h2>
-        <p class="helper-text">Newest first, with filters for symbol, type, and trade date range.</p>
+        <h2>{{ t('stocks.trades.historyTitle') }}</h2>
+        <p class="helper-text">{{ t('stocks.trades.historySubtitle') }}</p>
       </div>
     </div>
 
     <div class="form-row trade-filter-row">
       <div class="form-group">
-        <label for="trade-filter-stock-code">Stock Code</label>
-        <input
-          id="trade-filter-stock-code"
-          :value="filters.stock_code"
-          type="text"
-          placeholder="AAPL"
-          @input="emitFilter('stock_code', $event.target.value)"
-        />
+        <label for="trade-filter-stock-code">{{ t('stocks.trades.stockCode') }}</label>
+        <input id="trade-filter-stock-code" v-model.trim="draftFilters.stock_code" type="text" placeholder="AAPL" />
       </div>
       <div class="form-group">
-        <label for="trade-filter-type">Trade Type</label>
-        <select id="trade-filter-type" :value="filters.trade_type" @change="emitFilter('trade_type', $event.target.value)">
-          <option value="">All</option>
-          <option value="OPENING_BALANCE">OPENING_BALANCE</option>
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
+        <label for="trade-filter-type">{{ t('stocks.trades.tradeType') }}</label>
+        <select id="trade-filter-type" v-model="draftFilters.trade_type">
+          <option value="">{{ t('common.all') }}</option>
+          <option value="OPENING_BALANCE">{{ t('stocks.trades.types.OPENING_BALANCE') }}</option>
+          <option value="BUY">{{ t('stocks.trades.types.BUY') }}</option>
+          <option value="SELL">{{ t('stocks.trades.types.SELL') }}</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="trade-filter-date-from">Date From</label>
-        <input id="trade-filter-date-from" :value="filters.date_from" type="date" @input="emitFilter('date_from', $event.target.value)" />
+        <label for="trade-filter-date-from">{{ t('stocks.trades.dateFrom') }}</label>
+        <input id="trade-filter-date-from" v-model="draftFilters.date_from" type="date" />
       </div>
       <div class="form-group">
-        <label for="trade-filter-date-to">Date To</label>
-        <input id="trade-filter-date-to" :value="filters.date_to" type="date" @input="emitFilter('date_to', $event.target.value)" />
+        <label for="trade-filter-date-to">{{ t('stocks.trades.dateTo') }}</label>
+        <input id="trade-filter-date-to" v-model="draftFilters.date_to" type="date" />
       </div>
       <div class="holding-form-actions">
-        <button type="button" class="btn btn-secondary" @click="$emit('refresh')">Refresh</button>
+        <button type="button" class="btn btn-primary" @click="applyFilters">{{ t('stocks.trades.applyFilters') }}</button>
+        <button type="button" class="btn btn-secondary" @click="$emit('refresh')">{{ t('common.refresh') }}</button>
       </div>
     </div>
 
     <div v-if="error" class="error-msg">{{ error }}</div>
-    <div v-else-if="loading" class="loading-text">Loading trades…</div>
-    <div v-else-if="!trades.length" class="empty-state">No trades match the current filters.</div>
+    <div v-else-if="loading" class="loading-text">{{ t('stocks.trades.loading') }}</div>
+    <div v-else-if="!trades.length" class="empty-state">{{ t('stocks.trades.empty') }}</div>
     <div v-else class="trade-history-list">
       <article v-for="trade in trades" :key="trade.id" class="watchlist-tile">
         <div class="tile-head">
           <div>
             <strong>{{ trade.stock_code }}</strong>
-            <div class="tile-name">{{ trade.trade_type }}</div>
+            <div class="tile-name">{{ t(`stocks.trades.types.${trade.trade_type}`) }}</div>
           </div>
           <span class="badge" :class="trade.trade_type === 'SELL' ? 'badge-danger' : 'badge-success'">
             {{ trade.trade_date }}
@@ -56,26 +51,26 @@
         </div>
         <div class="portfolio-metrics-grid">
           <article class="portfolio-metric-item">
-            <span>Shares</span>
+            <span>{{ t('stocks.trades.shares') }}</span>
             <strong>{{ trade.shares }}</strong>
           </article>
           <article class="portfolio-metric-item">
-            <span>Price</span>
+            <span>{{ t('stocks.trades.price') }}</span>
             <strong>{{ formatPrice(trade.price, trade.currency) }}</strong>
           </article>
           <article class="portfolio-metric-item">
-            <span>Fee</span>
+            <span>{{ t('stocks.trades.fee') }}</span>
             <strong>{{ formatPrice(trade.fee, trade.currency) }}</strong>
           </article>
           <article class="portfolio-metric-item">
-            <span>Tax</span>
+            <span>{{ t('stocks.trades.tax') }}</span>
             <strong>{{ formatPrice(trade.tax, trade.currency) }}</strong>
           </article>
         </div>
         <div v-if="trade.note" class="tile-meta">{{ trade.note }}</div>
         <div class="tile-actions">
-          <button class="btn btn-secondary" @click="$emit('edit', trade)">Edit</button>
-          <button class="btn btn-danger" :disabled="isDeleting(trade.id)" @click="$emit('delete', trade)">Delete</button>
+          <button class="btn btn-secondary" @click="$emit('edit', trade)">{{ t('common.edit') }}</button>
+          <button class="btn btn-danger" :disabled="isDeleting(trade.id)" @click="$emit('delete', trade)">{{ t('common.delete') }}</button>
         </div>
       </article>
     </div>
@@ -83,6 +78,7 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
@@ -109,11 +105,20 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:filters', 'refresh', 'edit', 'delete'])
-const { locale } = useI18n()
+const emit = defineEmits(['apply:filters', 'refresh', 'edit', 'delete'])
+const { t, locale } = useI18n()
+const draftFilters = ref({ ...props.filters })
 
-function emitFilter(name, value) {
-  emit('update:filters', { ...props.filters, [name]: value })
+watch(
+  () => props.filters,
+  (value) => {
+    draftFilters.value = { ...value }
+  },
+  { deep: true }
+)
+
+function applyFilters() {
+  emit('apply:filters', { ...draftFilters.value })
 }
 
 function isDeleting(id) {

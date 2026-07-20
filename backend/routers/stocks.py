@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.jobs.job_runner import JOB_TYPE_SYNC_STOCK_MARKET_DATA
@@ -22,6 +22,7 @@ from models.stock import (
     StockTradeCreate,
     StockTradeResponse,
     StockTradeSummaryResponse,
+    StockTradeType,
     StockTradeUpdate,
     StockPriceAlertCheckResponse,
     StockPriceAlertCreate,
@@ -71,6 +72,11 @@ from services.watchlist_service import (
 )
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
+
+
+def _validate_trade_date_range(date_from: date | None, date_to: date | None) -> None:
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="date_from must be on or before date_to.")
 
 
 def _queue_price_sync_job(
@@ -178,21 +184,20 @@ def get_stock_portfolio(
 @router.get("/trades", response_model=list[StockTradeResponse])
 def get_stock_trades(
     stock_code: str | None = None,
-    trade_type: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
+    trade_type: StockTradeType | None = None,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
-    parsed_date_from = None if not date_from else date.fromisoformat(date_from)
-    parsed_date_to = None if not date_to else date.fromisoformat(date_to)
+    _validate_trade_date_range(date_from, date_to)
     return list_trades(
         db,
         user_id=current_user.id,
         stock_code=stock_code,
         trade_type=trade_type,
-        date_from=parsed_date_from,
-        date_to=parsed_date_to,
+        date_from=date_from,
+        date_to=date_to,
     )
 
 
@@ -241,22 +246,21 @@ def delete_stock_trade(
 @router.get("/trades/summary", response_model=StockTradeSummaryResponse)
 def get_stock_trade_summary(
     stock_code: str | None = None,
-    trade_type: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
+    trade_type: StockTradeType | None = None,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
-    parsed_date_from = None if not date_from else date.fromisoformat(date_from)
-    parsed_date_to = None if not date_to else date.fromisoformat(date_to)
+    _validate_trade_date_range(date_from, date_to)
     try:
         return summarize_trades(
             db,
             user_id=current_user.id,
             stock_code=stock_code,
             trade_type=trade_type,
-            date_from=parsed_date_from,
-            date_to=parsed_date_to,
+            date_from=date_from,
+            date_to=date_to,
         )
     except StockTradeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

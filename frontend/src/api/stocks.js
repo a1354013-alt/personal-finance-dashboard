@@ -1,5 +1,11 @@
 import api from './index'
 
+function compactParams(params = {}) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== '' && value != null)
+  )
+}
+
 export function getWatchlist() {
   return api.get('/stocks/watchlist')
 }
@@ -25,7 +31,7 @@ export function getStockPortfolio() {
 }
 
 export function getStockTrades(params = {}) {
-  return api.get('/stocks/trades', { params })
+  return api.get('/stocks/trades', { params: compactParams(params) })
 }
 
 export function createStockTrade(payload) {
@@ -41,7 +47,7 @@ export function deleteStockTrade(tradeId) {
 }
 
 export function getStockTradeSummary(params = {}) {
-  return api.get('/stocks/trades/summary', { params })
+  return api.get('/stocks/trades/summary', { params: compactParams(params) })
 }
 
 export function addToWatchlist(stockCode) {

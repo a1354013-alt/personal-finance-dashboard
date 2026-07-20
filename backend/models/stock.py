@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -157,6 +157,14 @@ class StockTradeORM(Base):
     user = relationship("UserORM")
 
     __table_args__ = (
+        CheckConstraint("shares > 0", name="ck_stock_trades_shares_positive"),
+        CheckConstraint("price >= 0", name="ck_stock_trades_price_nonnegative"),
+        CheckConstraint("fee >= 0", name="ck_stock_trades_fee_nonnegative"),
+        CheckConstraint("tax >= 0", name="ck_stock_trades_tax_nonnegative"),
+        CheckConstraint(
+            "trade_type IN ('OPENING_BALANCE', 'BUY', 'SELL')",
+            name="ck_stock_trades_trade_type_allowed",
+        ),
         Index("ix_stock_trades_user_stock_date_type", "user_id", "stock_code", "trade_date", "trade_type"),
     )
 
@@ -488,8 +496,7 @@ class StockTradeBase(BaseModel):
 
 
 class StockTradeCreate(StockTradeBase):
-    source: Optional[str] = None
-    source_holding_id: Optional[int] = None
+    pass
 
 
 class StockTradeUpdate(BaseModel):
@@ -588,6 +595,8 @@ class StockTradeResponse(BaseModel):
 
 class StockTradeSummaryItem(BaseModel):
     currency: str
+    opening_balance_count: int = 0
+    opening_balance_shares: Decimal = Decimal("0")
     buy_count: int
     sell_count: int
     bought_shares: Decimal
@@ -600,6 +609,7 @@ class StockTradeSummaryItem(BaseModel):
 
     @field_serializer(
         "bought_shares",
+        "opening_balance_shares",
         "sold_shares",
         "gross_proceeds",
         "matched_cost_basis",

@@ -37,6 +37,9 @@ class StockTradeConflictError(StockTradeError):
 
 @dataclass
 class ReplaySellResult:
+    trade_id: int
+    stock_code: str
+    trade_date: DateType
     currency: str
     sold_shares: Decimal
     gross_proceeds: Decimal
@@ -94,13 +97,16 @@ def _replay_trades(trades: list[StockTradeORM]) -> ReplayOutcome:
     realized_sales: list[ReplaySellResult] = []
     opening_note: str | None = None
     currency = trades[0].currency
+    mixed_currencies = {str(trade.currency or "").upper() for trade in trades}
+    if len(mixed_currencies) != 1:
+        stock_code = trades[0].stock_code
+        raise StockTradeConflictError(f"Trade ledger for {stock_code} contains mixed currencies and cannot be replayed.")
 
     for trade in trades:
         shares = _quantize_shares(Decimal(trade.shares))
         price = _quantize_money(Decimal(trade.price))
         fee = _quantize_money(Decimal(trade.fee or ZERO))
         tax = _quantize_money(Decimal(trade.tax or ZERO))
-        currency = trade.currency or currency
         if trade.trade_type == "OPENING_BALANCE" and opening_note is None:
             opening_note = trade.note
 
@@ -139,6 +145,9 @@ def _replay_trades(trades: list[StockTradeORM]) -> ReplayOutcome:
         matched_cost_basis = _quantize_money(matched_cost_basis)
         realized_sales.append(
             ReplaySellResult(
+                trade_id=trade.id,
+                stock_code=trade.stock_code,
+                trade_date=trade.trade_date,
                 currency=currency,
                 sold_shares=shares,
                 gross_proceeds=gross_proceeds,
@@ -219,9 +228,82 @@ def list_trades(
     return [StockTradeResponse.model_validate(row) for row in rows]
 
 
+def _currency_conflict_exists(
+    db: Session,
+    *,
+    user_id: int,
+    stock_code: str,
+    currency: str,
+    exclude_trade_id: int | None = None,
+) -> bool:
+    query = db.query(StockTradeORM).filter(
+        StockTradeORM.user_id == user_id,
+        StockTradeORM.stock_code == stock_code,
+        StockTradeORM.currency != currency,
+    )
+    if exclude_trade_id is not None:
+        query = query.filter(StockTradeORM.id != exclude_trade_id)
+    return query.first() is not None
+
+
+def _opening_balance_conflict_exists(
+    db: Session,
+    *,
+    user_id: int,
+    stock_code: str,
+    exclude_trade_id: int | None = None,
+) -> bool:
+    query = db.query(StockTradeORM).filter(
+        StockTradeORM.user_id == user_id,
+        StockTradeORM.stock_code == stock_code,
+        StockTradeORM.trade_type == "OPENING_BALANCE",
+    )
+    if exclude_trade_id is not None:
+        query = query.filter(StockTradeORM.id != exclude_trade_id)
+    return query.first() is not None
+
+
+def _symbol_has_trade_history(
+    db: Session,
+    *,
+    user_id: int,
+    stock_code: str,
+    exclude_trade_id: int | None = None,
+) -> bool:
+    normalized_code = StockDataService.normalize_stock_code(stock_code)
+    query = db.query(StockTradeORM).filter(
+        StockTradeORM.user_id == user_id,
+        StockTradeORM.stock_code == normalized_code,
+    )
+    if exclude_trade_id is not None:
+        query = query.filter(StockTradeORM.id != exclude_trade_id)
+    return query.first() is not None
+
+
+def _ensure_symbol_trade_invariants(
+    db: Session,
+    *,
+    user_id: int,
+    stock_code: str,
+    currency: str,
+    trade_type: str,
+    exclude_trade_id: int | None = None,
+) -> None:
+    if _currency_conflict_exists(db, user_id=user_id, stock_code=stock_code, currency=currency, exclude_trade_id=exclude_trade_id):
+        raise StockTradeConflictError(f"Trade ledger for {stock_code} already uses a different currency.")
+    if trade_type == "OPENING_BALANCE" and _opening_balance_conflict_exists(
+        db,
+        user_id=user_id,
+        stock_code=stock_code,
+        exclude_trade_id=exclude_trade_id,
+    ):
+        raise StockTradeConflictError(f"Trade ledger for {stock_code} already has an opening balance.")
+
+
 def _apply_trade_payload(row: StockTradeORM, payload: StockTradeCreate | StockTradeUpdate) -> tuple[str, str]:
     original_code = row.stock_code
     fields_set = payload.model_fields_set if isinstance(payload, StockTradeUpdate) else None
+    original_currency = row.currency
 
     def wants(name: str) -> bool:
         return fields_set is None or name in fields_set
@@ -242,11 +324,12 @@ def _apply_trade_payload(row: StockTradeORM, payload: StockTradeCreate | StockTr
         row.tax = _quantize_money(payload.tax)
     if wants("currency"):
         row.currency = _normalize_currency(row.stock_code, payload.currency)
+    elif row.stock_code != original_code:
+        row.currency = _normalize_currency(row.stock_code, None)
+    else:
+        row.currency = original_currency
     if wants("note"):
         row.note = payload.note
-    if isinstance(payload, StockTradeCreate):
-        row.source = payload.source
-        row.source_holding_id = payload.source_holding_id
     row.updated_at = datetime.now(timezone.utc)
     return original_code, row.stock_code
 
@@ -261,23 +344,40 @@ def _commit_trade_change(db: Session, *, user_id: int, affected_codes: set[str])
         raise
 
 
-def create_trade(db: Session, *, user_id: int, payload: StockTradeCreate) -> StockTradeResponse:
+def _create_trade_row(
+    db: Session,
+    *,
+    user_id: int,
+    payload: StockTradeCreate,
+    source: str | None = None,
+    source_holding_id: int | None = None,
+) -> StockTradeORM:
+    normalized_code = StockDataService.normalize_stock_code(payload.stock_code)
+    currency = _normalize_currency(normalized_code, payload.currency)
+    _ensure_symbol_trade_invariants(db, user_id=user_id, stock_code=normalized_code, currency=currency, trade_type=payload.trade_type)
     row = StockTradeORM(
         user_id=user_id,
-        stock_code=StockDataService.normalize_stock_code(payload.stock_code),
+        stock_code=normalized_code,
         trade_type=payload.trade_type,
         trade_date=payload.trade_date,
         shares=_quantize_shares(payload.shares),
         price=_quantize_money(payload.price),
         fee=_quantize_money(payload.fee),
         tax=_quantize_money(payload.tax),
-        currency=_normalize_currency(payload.stock_code, payload.currency),
+        currency=currency,
         note=payload.note,
-        source=payload.source,
-        source_holding_id=payload.source_holding_id,
+        source=source,
+        source_holding_id=source_holding_id,
     )
     db.add(row)
     db.flush()
+    return row
+
+
+def create_trade(db: Session, *, user_id: int, payload: StockTradeCreate) -> StockTradeResponse:
+    if payload.trade_type == "OPENING_BALANCE":
+        raise StockTradeConflictError("Opening balances must be created through the holdings endpoint.")
+    row = _create_trade_row(db, user_id=user_id, payload=payload)
     _commit_trade_change(db, user_id=user_id, affected_codes={row.stock_code})
     db.refresh(row)
     return StockTradeResponse.model_validate(row)
@@ -288,6 +388,14 @@ def update_trade(db: Session, *, user_id: int, trade_id: int, payload: StockTrad
     if row is None:
         return None
     original_code, new_code = _apply_trade_payload(row, payload)
+    _ensure_symbol_trade_invariants(
+        db,
+        user_id=user_id,
+        stock_code=new_code,
+        currency=row.currency,
+        trade_type=row.trade_type,
+        exclude_trade_id=row.id,
+    )
     db.flush()
     _commit_trade_change(db, user_id=user_id, affected_codes={original_code, new_code})
     db.refresh(row)
@@ -338,11 +446,15 @@ def create_or_update_opening_balance(
     payload: StockHoldingCreate,
 ) -> StockHoldingResponse:
     normalized_code = StockDataService.normalize_stock_code(payload.stock_code)
-    if _symbol_has_non_opening_trades(db, user_id=user_id, stock_code=normalized_code):
-        raise StockTradeConflictError(COMPATIBILITY_CONFLICT_MESSAGE)
     opening = _get_opening_trade(db, user_id=user_id, stock_code=normalized_code)
+    if opening is not None:
+        raise StockTradeConflictError(
+            f"A holding for {normalized_code} already exists. Update the existing holding instead of creating a duplicate."
+        )
+    if _symbol_has_trade_history(db, user_id=user_id, stock_code=normalized_code):
+        raise StockTradeConflictError(COMPATIBILITY_CONFLICT_MESSAGE)
     if opening is None:
-        created = create_trade(
+        row = _create_trade_row(
             db,
             user_id=user_id,
             payload=StockTradeCreate(
@@ -355,14 +467,19 @@ def create_or_update_opening_balance(
                 tax=ZERO,
                 currency=payload.currency,
                 note=payload.note,
-                source="legacy_holding",
             ),
+            source="legacy_holding",
         )
+        _commit_trade_change(db, user_id=user_id, affected_codes={row.stock_code})
+        created = StockTradeResponse.model_validate(row)
         row = (
             db.query(StockHoldingORM)
             .filter(StockHoldingORM.user_id == user_id, StockHoldingORM.stock_code == created.stock_code)
             .one()
         )
+        db.query(StockTradeORM).filter(StockTradeORM.id == created.id).update({"source_holding_id": row.id})
+        db.commit()
+        db.refresh(row)
         return StockHoldingResponse.model_validate(row)
     raise StockTradeError(
         f"A holding for {normalized_code} already exists. Update the existing holding instead of creating a duplicate."
@@ -388,6 +505,8 @@ def update_legacy_holding(
         raise StockTradeError("Legacy opening balance trade not found for this holding.")
 
     next_code = StockDataService.normalize_stock_code(payload.stock_code) if payload.stock_code is not None else holding.stock_code
+    if next_code != holding.stock_code and _symbol_has_trade_history(db, user_id=user_id, stock_code=next_code, exclude_trade_id=opening.id):
+        raise StockTradeConflictError(f"Cannot rename holding to {next_code} because that symbol already has trade history.")
     duplicate_opening = _get_opening_trade(db, user_id=user_id, stock_code=next_code)
     if duplicate_opening is not None and duplicate_opening.id != opening.id:
         raise StockTradeError(
@@ -405,6 +524,7 @@ def update_legacy_holding(
     normalized_currency = _normalize_currency(next_code, next_currency)
     timestamp = datetime.now(timezone.utc)
 
+    original_code = holding.stock_code
     opening.stock_code = next_code
     opening.shares = _quantize_shares(next_shares)
     opening.price = _quantize_money(next_average_cost)
@@ -414,19 +534,20 @@ def update_legacy_holding(
     opening.note = next_note
     opening.updated_at = timestamp
 
-    holding.stock_code = next_code
-    holding.shares = _quantize_shares(next_shares)
-    holding.average_cost = _quantize_money(next_average_cost)
-    holding.currency = normalized_currency
-    holding.note = next_note
-    holding.updated_at = timestamp
     try:
+        db.flush()
+        rebuild_stock_holding_projection(db, user_id, original_code)
+        rebuild_stock_holding_projection(db, user_id, next_code)
         db.commit()
     except Exception:
         db.rollback()
         raise
-    db.refresh(holding)
-    return StockHoldingResponse.model_validate(holding)
+    projected = (
+        db.query(StockHoldingORM)
+        .filter(StockHoldingORM.user_id == user_id, StockHoldingORM.stock_code == next_code)
+        .one()
+    )
+    return StockHoldingResponse.model_validate(projected)
 
 
 def delete_legacy_holding(db: Session, *, user_id: int, holding_id: int) -> bool:
@@ -440,7 +561,11 @@ def delete_legacy_holding(db: Session, *, user_id: int, holding_id: int) -> bool
     )
     if opening is None:
         return False
-    return delete_trade(db, user_id=user_id, trade_id=opening.id)
+    affected_code = opening.stock_code
+    db.delete(opening)
+    db.flush()
+    _commit_trade_change(db, user_id=user_id, affected_codes={affected_code})
+    return True
 
 
 def summarize_trades(
@@ -452,24 +577,41 @@ def summarize_trades(
     date_from: DateType | None = None,
     date_to: DateType | None = None,
 ) -> StockTradeSummaryResponse:
-    query = db.query(StockTradeORM).filter(StockTradeORM.user_id == user_id)
+    selected_query = db.query(StockTradeORM).filter(StockTradeORM.user_id == user_id)
+    replay_query = db.query(StockTradeORM).filter(StockTradeORM.user_id == user_id)
     if stock_code:
-        query = query.filter(StockTradeORM.stock_code == StockDataService.normalize_stock_code(stock_code))
+        normalized_code = StockDataService.normalize_stock_code(stock_code)
+        selected_query = selected_query.filter(StockTradeORM.stock_code == normalized_code)
+        replay_query = replay_query.filter(StockTradeORM.stock_code == normalized_code)
     if trade_type:
-        query = query.filter(StockTradeORM.trade_type == trade_type)
+        selected_query = selected_query.filter(StockTradeORM.trade_type == trade_type)
     if date_from:
-        query = query.filter(StockTradeORM.trade_date >= date_from)
+        selected_query = selected_query.filter(StockTradeORM.trade_date >= date_from)
     if date_to:
-        query = query.filter(StockTradeORM.trade_date <= date_to)
-    trades = query.order_by(StockTradeORM.stock_code.asc(), StockTradeORM.trade_date.asc(), StockTradeORM.created_at.asc(), StockTradeORM.id.asc()).all()
+        selected_query = selected_query.filter(StockTradeORM.trade_date <= date_to)
+        replay_query = replay_query.filter(StockTradeORM.trade_date <= date_to)
+    selected_trades = selected_query.order_by(
+        StockTradeORM.stock_code.asc(),
+        StockTradeORM.trade_date.asc(),
+        StockTradeORM.created_at.asc(),
+        StockTradeORM.id.asc(),
+    ).all()
+    selected_trade_ids = {trade.id for trade in selected_trades}
     grouped: dict[str, list[StockTradeORM]] = defaultdict(list)
-    for trade in trades:
+    for trade in replay_query.order_by(
+        StockTradeORM.stock_code.asc(),
+        StockTradeORM.trade_date.asc(),
+        StockTradeORM.created_at.asc(),
+        StockTradeORM.id.asc(),
+    ).all():
         grouped[trade.stock_code].append(trade)
 
     totals = defaultdict(
         lambda: {
             "buy_count": 0,
             "sell_count": 0,
+            "opening_balance_count": 0,
+            "opening_balance_shares": ZERO,
             "bought_shares": ZERO,
             "sold_shares": ZERO,
             "gross_proceeds": ZERO,
@@ -483,20 +625,26 @@ def summarize_trades(
     for symbol_trades in grouped.values():
         outcome = _replay_trades(symbol_trades)
         currency = outcome.currency
-        for trade in symbol_trades:
+        for trade in selected_trades:
+            if trade.stock_code != outcome.stock_code:
+                continue
             shares = _quantize_shares(Decimal(trade.shares))
             fee = _quantize_money(Decimal(trade.fee or ZERO))
             tax = _quantize_money(Decimal(trade.tax or ZERO))
             totals[currency]["fees"] += fee
             totals[currency]["taxes"] += tax
-            if trade.trade_type in {"OPENING_BALANCE", "BUY"}:
-                if trade.trade_type == "BUY":
-                    totals[currency]["buy_count"] += 1
+            if trade.trade_type == "OPENING_BALANCE":
+                totals[currency]["opening_balance_count"] += 1
+                totals[currency]["opening_balance_shares"] += shares
+            elif trade.trade_type == "BUY":
+                totals[currency]["buy_count"] += 1
                 totals[currency]["bought_shares"] += shares
             elif trade.trade_type == "SELL":
                 totals[currency]["sell_count"] += 1
                 totals[currency]["sold_shares"] += shares
         for sale in outcome.realized_sales:
+            if sale.trade_id not in selected_trade_ids:
+                continue
             totals[currency]["gross_proceeds"] += sale.gross_proceeds
             totals[currency]["matched_cost_basis"] += sale.matched_cost_basis
             totals[currency]["realized_pnl"] += sale.realized_pnl
@@ -504,6 +652,8 @@ def summarize_trades(
     items = [
         StockTradeSummaryItem(
             currency=currency,
+            opening_balance_count=int(values["opening_balance_count"]),
+            opening_balance_shares=_quantize_shares(values["opening_balance_shares"]),
             buy_count=int(values["buy_count"]),
             sell_count=int(values["sell_count"]),
             bought_shares=_quantize_shares(values["bought_shares"]),

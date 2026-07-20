@@ -101,13 +101,13 @@
 
     <RealizedPnlSummary
       :summary="stockStore.tradeSummary"
-      :error="stockStore.tradesError"
+      :error="stockStore.tradeSummaryError"
     />
 
     <StockTradeForm
       :model-value="tradeForm"
       :saving="stockStore.tradesSaving"
-      :error="stockStore.tradesError || actionError"
+      :error="stockStore.tradeMutationError || actionError"
       :editing-trade-id="editingTradeId"
       @submit="handleSaveTrade"
       @cancel="resetTradeForm"
@@ -117,9 +117,9 @@
       :trades="stockStore.trades"
       :filters="tradeFilters"
       :loading="stockStore.tradesLoading"
-      :error="stockStore.tradesError"
+      :error="stockStore.tradeListError"
       :deleting-ids="stockStore.tradesDeletingIds"
-      @update:filters="handleTradeFilterChange"
+      @apply:filters="handleTradeFilterChange"
       @refresh="refreshTradeWorkspace"
       @edit="startEditingTrade"
       @delete="handleDeleteTrade"
@@ -763,10 +763,10 @@ async function handleSaveTrade(payload) {
   try {
     if (editingTradeId.value) {
       await stockStore.updateTrade(editingTradeId.value, payload, tradeFilters.value)
-      actionMessage.value = 'Trade updated.'
+      actionMessage.value = t('stocks.trades.updated')
     } else {
       await stockStore.createTrade(payload, tradeFilters.value)
-      actionMessage.value = 'Trade created.'
+      actionMessage.value = t('stocks.trades.created')
     }
     resetTradeForm()
   } catch (error) {
@@ -775,6 +775,9 @@ async function handleSaveTrade(payload) {
 }
 
 async function handleDeleteTrade(trade) {
+  if (!window.confirm(t('stocks.trades.deleteConfirmation', { stockCode: trade.stock_code, date: trade.trade_date }))) {
+    return
+  }
   actionMessage.value = ''
   actionError.value = ''
   try {
@@ -782,7 +785,7 @@ async function handleDeleteTrade(trade) {
     if (editingTradeId.value === Number(trade.id)) {
       resetTradeForm()
     }
-    actionMessage.value = 'Trade deleted.'
+    actionMessage.value = t('stocks.trades.deleted')
   } catch (error) {
     actionError.value = error.message || t('common.unknownError')
   }

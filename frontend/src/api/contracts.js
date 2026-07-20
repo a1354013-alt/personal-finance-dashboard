@@ -722,6 +722,8 @@ export function normalizeStockTradeSummary(payload) {
       if (!currency) return null
       return {
         currency,
+        opening_balance_count: toNumberOrZero(row.opening_balance_count ?? row.openingBalanceCount),
+        opening_balance_shares: toNumberOrZero(row.opening_balance_shares ?? row.openingBalanceShares),
         buy_count: toNumberOrZero(row.buy_count ?? row.buyCount),
         sell_count: toNumberOrZero(row.sell_count ?? row.sellCount),
         bought_shares: toNumberOrZero(row.bought_shares ?? row.boughtShares),
