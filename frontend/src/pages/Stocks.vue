@@ -661,10 +661,11 @@ function startEditingHolding(holdingId) {
 }
 
 function startEditingTrade(trade) {
+  if (trade.trade_type === 'OPENING_BALANCE') return
   editingTradeId.value = trade.id
   tradeForm.value = {
     stock_code: trade.stock_code,
-    trade_type: trade.trade_type === 'OPENING_BALANCE' ? 'BUY' : trade.trade_type,
+    trade_type: trade.trade_type,
     trade_date: trade.trade_date,
     shares: trade.shares,
     price: trade.price,
@@ -775,6 +776,7 @@ async function handleSaveTrade(payload) {
 }
 
 async function handleDeleteTrade(trade) {
+  if (trade.trade_type === 'OPENING_BALANCE') return
   if (!window.confirm(t('stocks.trades.deleteConfirmation', { stockCode: trade.stock_code, date: trade.trade_date }))) {
     return
   }

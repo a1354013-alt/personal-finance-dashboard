@@ -356,6 +356,7 @@ def test_opening_balance_public_creation_and_duplicate_update_rejected(client):
     token = register_and_login(client, "trade-ledger-opening-rules@example.com")
     headers = auth_headers(token)
     create_opening_holding(client, headers, "AAPL", 2, 100)
+    conflict_message = "Opening balances are managed through the holdings endpoint."
 
     public_opening = client.post(
         "/api/stocks/trades",
@@ -363,6 +364,7 @@ def test_opening_balance_public_creation_and_duplicate_update_rejected(client):
         json={"stock_code": "AAPL", "trade_type": "OPENING_BALANCE", "trade_date": "2026-01-01", "shares": 1, "price": 100, "source": "client"},
     )
     assert public_opening.status_code == 409
+    assert public_opening.json()["detail"] == conflict_message
     trades = client.get("/api/stocks/trades", headers=headers).json()
     assert "source" in trades[0]
     assert trades[0]["source"] == "legacy_holding"
@@ -370,8 +372,73 @@ def test_opening_balance_public_creation_and_duplicate_update_rejected(client):
     buy = create_trade(client, headers, "AAPL", "BUY", "2026-01-02", 1, 110)
     duplicate = client.put(f"/api/stocks/trades/{buy['id']}", headers=headers, json={"trade_type": "OPENING_BALANCE"})
     assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == conflict_message
     holdings = client.get("/api/stocks/holdings", headers=headers).json()
     assert holdings[0]["shares"] == 3
+
+
+def test_opening_balance_trade_endpoint_mutations_are_read_only(client):
+    token = register_and_login(client, "trade-ledger-opening-readonly@example.com")
+    headers = auth_headers(token)
+    holding = create_opening_holding(client, headers, "AAPL", 2, 100)
+    opening = client.get("/api/stocks/trades", headers=headers).json()[0]
+    assert opening["trade_type"] == "OPENING_BALANCE"
+    assert opening["source"] == "legacy_holding"
+    conflict_message = "Opening balances are managed through the holdings endpoint."
+
+    buy_attempt = client.put(f"/api/stocks/trades/{opening['id']}", headers=headers, json={"trade_type": "BUY"})
+    sell_attempt = client.put(f"/api/stocks/trades/{opening['id']}", headers=headers, json={"trade_type": "SELL"})
+    shares_attempt = client.put(f"/api/stocks/trades/{opening['id']}", headers=headers, json={"shares": 4})
+    code_attempt = client.put(f"/api/stocks/trades/{opening['id']}", headers=headers, json={"stock_code": "MSFT"})
+    delete_attempt = client.delete(f"/api/stocks/trades/{opening['id']}", headers=headers)
+
+    for response in (buy_attempt, sell_attempt, shares_attempt, code_attempt, delete_attempt):
+        assert response.status_code == 409
+        assert response.json()["detail"] == conflict_message
+
+    trades = client.get("/api/stocks/trades", headers=headers).json()
+    assert len(trades) == 1
+    assert trades[0]["id"] == opening["id"]
+    assert trades[0]["stock_code"] == "AAPL"
+    assert trades[0]["shares"] == 2
+    assert trades[0]["price"] == 100
+    assert trades[0]["source"] == "legacy_holding"
+    assert trades[0]["source_holding_id"] == holding["id"]
+    holdings = client.get("/api/stocks/holdings", headers=headers).json()
+    assert holdings == [holding]
+
+    update_holding = client.put(f"/api/stocks/holdings/{holding['id']}", headers=headers, json={"shares": 5})
+    assert update_holding.status_code == 200
+    assert update_holding.json()["shares"] == 5
+    delete_holding = client.delete(f"/api/stocks/holdings/{holding['id']}", headers=headers)
+    assert delete_holding.status_code == 204
+    assert client.get("/api/stocks/trades", headers=headers).json() == []
+    assert client.get("/api/stocks/holdings", headers=headers).json() == []
+
+
+def test_sell_to_opening_balance_is_rejected_and_buy_sell_still_mutate(client):
+    token = register_and_login(client, "trade-ledger-sell-opening-reject@example.com")
+    headers = auth_headers(token)
+    buy = create_trade(client, headers, "AAPL", "BUY", "2026-01-01", 5, 100)
+    sell = create_trade(client, headers, "AAPL", "SELL", "2026-01-02", 1, 120)
+    conflict_message = "Opening balances are managed through the holdings endpoint."
+
+    sell_to_opening = client.put(f"/api/stocks/trades/{sell['id']}", headers=headers, json={"trade_type": "OPENING_BALANCE"})
+    assert sell_to_opening.status_code == 409
+    assert sell_to_opening.json()["detail"] == conflict_message
+
+    update_buy = client.put(f"/api/stocks/trades/{buy['id']}", headers=headers, json={"shares": 6})
+    assert update_buy.status_code == 200
+    update_sell = client.put(f"/api/stocks/trades/{sell['id']}", headers=headers, json={"shares": 2})
+    assert update_sell.status_code == 200
+    holdings = client.get("/api/stocks/holdings", headers=headers).json()
+    assert holdings[0]["shares"] == 4
+
+    delete_sell = client.delete(f"/api/stocks/trades/{sell['id']}", headers=headers)
+    assert delete_sell.status_code == 204
+    delete_buy = client.delete(f"/api/stocks/trades/{buy['id']}", headers=headers)
+    assert delete_buy.status_code == 204
+    assert client.get("/api/stocks/holdings", headers=headers).json() == []
 
 
 def test_legacy_holding_update_delete_rebuild_projection(client):

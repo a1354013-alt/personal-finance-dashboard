@@ -469,6 +469,122 @@ describe('Stocks page', () => {
     })
   })
 
+  it('shows opening balance history rows as managed and keeps buy/sell actions available', async () => {
+    getStockTradesMock.mockResolvedValue([
+      {
+        id: 20,
+        stock_code: 'AAPL',
+        trade_type: 'OPENING_BALANCE',
+        trade_date: '2026-07-18',
+        shares: 2,
+        price: 150,
+        fee: 0,
+        tax: 0,
+        currency: 'USD',
+        note: 'legacy opening'
+      },
+      {
+        id: 21,
+        stock_code: 'AAPL',
+        trade_type: 'BUY',
+        trade_date: '2026-07-19',
+        shares: 1,
+        price: 180,
+        fee: 1,
+        tax: 0,
+        currency: 'USD',
+        note: 'demo buy'
+      },
+      {
+        id: 22,
+        stock_code: 'AAPL',
+        trade_type: 'SELL',
+        trade_date: '2026-07-20',
+        shares: 1,
+        price: 190,
+        fee: 1,
+        tax: 0,
+        currency: 'USD',
+        note: 'demo sell'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('legacy opening')
+      expect(wrapper.text()).toContain('Managed through Holdings')
+    })
+
+    const openingCard = wrapper.findAll('.watchlist-tile').find((card) => card.text().includes('legacy opening'))
+    const buyCard = wrapper.findAll('.watchlist-tile').find((card) => card.text().includes('demo buy'))
+    const sellCard = wrapper.findAll('.watchlist-tile').find((card) => card.text().includes('demo sell'))
+
+    expect(openingCard.text()).not.toContain('Edit')
+    expect(openingCard.text()).not.toContain('Delete')
+    expect(buyCard.text()).toContain('Edit')
+    expect(buyCard.text()).toContain('Delete')
+    expect(sellCard.text()).toContain('Edit')
+    expect(sellCard.text()).toContain('Delete')
+  })
+
+  it('confirms buy and sell trade deletion', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    getStockTradesMock.mockResolvedValue([
+      {
+        id: 21,
+        stock_code: 'AAPL',
+        trade_type: 'BUY',
+        trade_date: '2026-07-19',
+        shares: 1,
+        price: 180,
+        fee: 1,
+        tax: 0,
+        currency: 'USD',
+        note: 'demo buy'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('demo buy')
+    })
+    const buyCard = wrapper.findAll('.watchlist-tile').find((card) => card.text().includes('demo buy'))
+    await buyCard.find('.btn.btn-danger').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('recalculate all later FIFO results'))
+      expect(deleteStockTradeMock).toHaveBeenCalledWith(21)
+    })
+    confirmSpy.mockRestore()
+  })
+
+  it('keeps trade list visible when summary loading fails', async () => {
+    getStockTradeSummaryMock.mockRejectedValue(new Error('summary failed'))
+    getStockTradesMock.mockResolvedValue([
+      {
+        id: 21,
+        stock_code: 'AAPL',
+        trade_type: 'BUY',
+        trade_date: '2026-07-19',
+        shares: 1,
+        price: 180,
+        fee: 1,
+        tax: 0,
+        currency: 'USD',
+        note: 'visible buy'
+      }
+    ])
+
+    const wrapper = mountStocksPage()
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('summary failed')
+      expect(wrapper.text()).toContain('visible buy')
+    })
+  })
+
   it('labels partial same-currency portfolio values as priced values', async () => {
     getStockHoldingsMock.mockResolvedValue([
       holding({ id: 12, stock_code: 'AAPL', shares: 2, average_cost: 150, currency: 'USD', note: 'Priced' }),

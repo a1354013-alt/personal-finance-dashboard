@@ -25,6 +25,7 @@ ZERO = Decimal("0")
 SHARE_PRECISION = Decimal("0.000001")
 MONEY_PRECISION = Decimal("0.0001")
 COMPATIBILITY_CONFLICT_MESSAGE = "This position is managed through its trade ledger."
+OPENING_BALANCE_MANAGED_MESSAGE = "Opening balances are managed through the holdings endpoint."
 
 
 class StockTradeError(ValueError):
@@ -376,7 +377,7 @@ def _create_trade_row(
 
 def create_trade(db: Session, *, user_id: int, payload: StockTradeCreate) -> StockTradeResponse:
     if payload.trade_type == "OPENING_BALANCE":
-        raise StockTradeConflictError("Opening balances must be created through the holdings endpoint.")
+        raise StockTradeConflictError(OPENING_BALANCE_MANAGED_MESSAGE)
     row = _create_trade_row(db, user_id=user_id, payload=payload)
     _commit_trade_change(db, user_id=user_id, affected_codes={row.stock_code})
     db.refresh(row)
@@ -387,6 +388,8 @@ def update_trade(db: Session, *, user_id: int, trade_id: int, payload: StockTrad
     row = db.query(StockTradeORM).filter(StockTradeORM.id == trade_id, StockTradeORM.user_id == user_id).first()
     if row is None:
         return None
+    if row.trade_type == "OPENING_BALANCE" or payload.trade_type == "OPENING_BALANCE":
+        raise StockTradeConflictError(OPENING_BALANCE_MANAGED_MESSAGE)
     original_code, new_code = _apply_trade_payload(row, payload)
     _ensure_symbol_trade_invariants(
         db,
@@ -406,6 +409,8 @@ def delete_trade(db: Session, *, user_id: int, trade_id: int) -> bool:
     row = db.query(StockTradeORM).filter(StockTradeORM.id == trade_id, StockTradeORM.user_id == user_id).first()
     if row is None:
         return False
+    if row.trade_type == "OPENING_BALANCE":
+        raise StockTradeConflictError(OPENING_BALANCE_MANAGED_MESSAGE)
     affected_code = row.stock_code
     db.delete(row)
     db.flush()

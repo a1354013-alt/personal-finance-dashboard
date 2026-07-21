@@ -69,8 +69,11 @@
         </div>
         <div v-if="trade.note" class="tile-meta">{{ trade.note }}</div>
         <div class="tile-actions">
-          <button class="btn btn-secondary" @click="$emit('edit', trade)">{{ t('common.edit') }}</button>
-          <button class="btn btn-danger" :disabled="isDeleting(trade.id)" @click="$emit('delete', trade)">{{ t('common.delete') }}</button>
+          <span v-if="isOpeningBalance(trade)" class="badge badge-warning">{{ t('stocks.trades.managedThroughHoldings') }}</span>
+          <template v-else>
+            <button class="btn btn-secondary" @click="emitEdit(trade)">{{ t('common.edit') }}</button>
+            <button class="btn btn-danger" :disabled="isDeleting(trade.id)" @click="emitDelete(trade)">{{ t('common.delete') }}</button>
+          </template>
         </div>
       </article>
     </div>
@@ -123,6 +126,22 @@ function applyFilters() {
 
 function isDeleting(id) {
   return props.deletingIds.includes(Number(id))
+}
+
+function isOpeningBalance(trade) {
+  return trade?.trade_type === 'OPENING_BALANCE'
+}
+
+function emitEdit(trade) {
+  if (!isOpeningBalance(trade)) {
+    emit('edit', trade)
+  }
+}
+
+function emitDelete(trade) {
+  if (!isOpeningBalance(trade)) {
+    emit('delete', trade)
+  }
 }
 
 function formatPrice(value, currency) {

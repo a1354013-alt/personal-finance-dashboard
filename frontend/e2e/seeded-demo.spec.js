@@ -17,6 +17,10 @@ test('seeded demo stocks workflow', async ({ page }) => {
   await expect(page.locator('.portfolio-currency-section').filter({ hasText: 'USD' })).toContainText('US$')
   await expect(page.getByRole('heading', { name: 'Trade History' })).toBeVisible()
   await expect(page.locator('.watchlist-tile').filter({ hasText: 'Profitable US sale' })).toBeVisible()
+  const openingBalanceCard = page.locator('.watchlist-tile').filter({ hasText: 'Taiwan opening balance' })
+  await expect(openingBalanceCard).toContainText('Managed through Holdings')
+  await expect(openingBalanceCard.getByRole('button', { name: 'Edit' })).toHaveCount(0)
+  await expect(openingBalanceCard.getByRole('button', { name: 'Delete' })).toHaveCount(0)
   await expect(page.locator('.trade-summary-panel').filter({ hasText: 'TWD' })).toContainText('NT$')
   await expect(page.locator('.trade-summary-panel').filter({ hasText: 'USD' })).toContainText('US$')
 

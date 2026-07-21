@@ -412,6 +412,7 @@ export default {
       created: '交易已建立。',
       updated: '交易已更新。',
       deleted: '交易已刪除。',
+      managedThroughHoldings: '隢??蝞∠?',
       deleteConfirmation: '要刪除 {date} 的 {stockCode} 交易嗎？刪除或編輯較早交易可能會重算後續所有 FIFO 結果。',
       types: {
         OPENING_BALANCE: '期初餘額',

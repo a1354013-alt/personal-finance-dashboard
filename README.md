@@ -401,6 +401,7 @@ Trade ledger rules for `v1.7.0-rc1`:
 - Trade summary filters select which rows are aggregated, but FIFO replay uses the complete required ledger context. `date_from` does not remove earlier inventory lots needed by an in-range sell; `date_to` limits replay to trades on or before the end date.
 - Summary `opening_balance_count` and `opening_balance_shares` describe selected `OPENING_BALANCE` rows. `buy_count` and `bought_shares` count selected `BUY` trades only, while `sell_count`, `sold_shares`, and realized P/L fields describe selected `SELL` trades only.
 - Public trade creation accepts `BUY` and `SELL`; opening positions are established through the legacy holdings endpoint, which manages a single internal `OPENING_BALANCE` trade.
+- `OPENING_BALANCE` rows are read-only in the Trade Ledger API and UI. Use the Holdings endpoint to edit or delete an opening position; `BUY` and `SELL` rows remain editable and deletable subject to FIFO validation.
 - Direct holding create/edit/delete remains as a legacy compatibility path that manages only the opening-balance trade. Once `BUY` or `SELL` history exists for a symbol, direct holding edits return a conflict and the position must be managed through the trade ledger.
 - Renaming a legacy holding is allowed only when the target symbol has no existing trade history, including fully closed histories.
 - `stock_holdings` continues to drive portfolio positions, but it is always rebuilt from the trade ledger in the same transaction as each trade mutation.
