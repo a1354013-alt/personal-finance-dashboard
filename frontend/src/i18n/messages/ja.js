@@ -412,7 +412,7 @@ export default {
       created: 'Trade created.',
       updated: 'Trade updated.',
       deleted: 'Trade deleted.',
-      managedThroughHoldings: 'Managed through Holdings',
+      managedThroughHoldings: '保有銘柄で管理',
       deleteConfirmation: 'Delete the {stockCode} trade dated {date}? Deleting or editing an older trade may recalculate all later FIFO results.',
       types: {
         OPENING_BALANCE: 'Opening Balance',
