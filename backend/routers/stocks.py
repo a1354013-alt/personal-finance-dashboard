@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.jobs.job_runner import JOB_TYPE_SYNC_STOCK_MARKET_DATA
@@ -17,6 +19,11 @@ from models.stock import (
     StockFilterResult,
     StockIndicatorsResponse,
     StockPortfolioResponse,
+    StockTradeCreate,
+    StockTradeResponse,
+    StockTradeSummaryResponse,
+    StockTradeType,
+    StockTradeUpdate,
     StockPriceAlertCheckResponse,
     StockPriceAlertCreate,
     StockPriceAlertResponse,
@@ -43,6 +50,15 @@ from services.stock_alert_service import (
 from services.stock_ai_analysis_service import build_stock_ai_analysis
 from services.stock_indicator_service import build_stock_indicators
 from services.stock_portfolio_service import build_portfolio_summary, create_holding, delete_holding, list_holdings, update_holding
+from services.stock_trade_service import (
+    StockTradeConflictError,
+    StockTradeError,
+    create_trade,
+    delete_trade,
+    list_trades,
+    summarize_trades,
+    update_trade,
+)
 from services.stocks_ai_explanation_service import build_stock_ai_explanation
 from services.stocks_fundamentals_screening_service import build_filter_metadata, build_filter_results
 from services.watchlist_service import (
@@ -56,6 +72,11 @@ from services.watchlist_service import (
 )
 
 router = APIRouter(prefix="/api/stocks", tags=["Stocks"])
+
+
+def _validate_trade_date_range(date_from: date | None, date_to: date | None) -> None:
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="date_from must be on or before date_to.")
 
 
 def _queue_price_sync_job(
@@ -114,6 +135,8 @@ def create_stock_holding(
 ):
     try:
         return create_holding(db, user_id=current_user.id, payload=payload)
+    except StockTradeConflictError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -127,6 +150,8 @@ def update_stock_holding(
 ):
     try:
         updated = update_holding(db, user_id=current_user.id, holding_id=holding_id, payload=payload)
+    except StockTradeConflictError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if not updated:
@@ -140,7 +165,10 @@ def delete_stock_holding(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user),
 ):
-    ok = delete_holding(db, user_id=current_user.id, holding_id=holding_id)
+    try:
+        ok = delete_holding(db, user_id=current_user.id, holding_id=holding_id)
+    except StockTradeConflictError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock holding not found.")
 
@@ -151,6 +179,91 @@ def get_stock_portfolio(
     current_user: UserORM = Depends(get_current_user),
 ):
     return build_portfolio_summary(db, user_id=current_user.id)
+
+
+@router.get("/trades", response_model=list[StockTradeResponse])
+def get_stock_trades(
+    stock_code: str | None = None,
+    trade_type: StockTradeType | None = None,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    _validate_trade_date_range(date_from, date_to)
+    return list_trades(
+        db,
+        user_id=current_user.id,
+        stock_code=stock_code,
+        trade_type=trade_type,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@router.post("/trades", response_model=StockTradeResponse, status_code=status.HTTP_201_CREATED)
+def create_stock_trade(
+    payload: StockTradeCreate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    try:
+        return create_trade(db, user_id=current_user.id, payload=payload)
+    except StockTradeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.put("/trades/{trade_id}", response_model=StockTradeResponse)
+def update_stock_trade(
+    trade_id: int,
+    payload: StockTradeUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    try:
+        updated = update_trade(db, user_id=current_user.id, trade_id=trade_id, payload=payload)
+    except StockTradeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock trade not found.")
+    return updated
+
+
+@router.delete("/trades/{trade_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_stock_trade(
+    trade_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    try:
+        ok = delete_trade(db, user_id=current_user.id, trade_id=trade_id)
+    except StockTradeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock trade not found.")
+
+
+@router.get("/trades/summary", response_model=StockTradeSummaryResponse)
+def get_stock_trade_summary(
+    stock_code: str | None = None,
+    trade_type: StockTradeType | None = None,
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user),
+):
+    _validate_trade_date_range(date_from, date_to)
+    try:
+        return summarize_trades(
+            db,
+            user_id=current_user.id,
+            stock_code=stock_code,
+            trade_type=trade_type,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except StockTradeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @router.post("/watchlist", response_model=WatchlistItemResponse, status_code=status.HTTP_201_CREATED)

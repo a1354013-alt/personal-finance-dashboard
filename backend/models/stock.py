@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
-from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -125,6 +125,48 @@ class StockHoldingORM(Base):
     user = relationship("UserORM")
 
     __table_args__ = (UniqueConstraint("user_id", "stock_code", name="_user_stock_holding_uc"),)
+
+
+StockTradeType = Literal["OPENING_BALANCE", "BUY", "SELL"]
+
+
+class StockTradeORM(Base):
+    __tablename__ = "stock_trades"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stock_code = Column(String(20), nullable=False, index=True)
+    trade_type = Column(String(20), nullable=False, index=True)
+    trade_date = Column(Date, nullable=False, index=True)
+    shares = Column(Numeric(18, 6), nullable=False)
+    price = Column(Numeric(18, 4), nullable=False)
+    fee = Column(Numeric(18, 4), nullable=False, default=Decimal("0"))
+    tax = Column(Numeric(18, 4), nullable=False, default=Decimal("0"))
+    currency = Column(String(10), nullable=False, default="USD")
+    note = Column(Text, nullable=True)
+    source = Column(String(50), nullable=True)
+    source_holding_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user = relationship("UserORM")
+
+    __table_args__ = (
+        CheckConstraint("shares > 0", name="ck_stock_trades_shares_positive"),
+        CheckConstraint("price >= 0", name="ck_stock_trades_price_nonnegative"),
+        CheckConstraint("fee >= 0", name="ck_stock_trades_fee_nonnegative"),
+        CheckConstraint("tax >= 0", name="ck_stock_trades_tax_nonnegative"),
+        CheckConstraint(
+            "trade_type IN ('OPENING_BALANCE', 'BUY', 'SELL')",
+            name="ck_stock_trades_trade_type_allowed",
+        ),
+        Index("ix_stock_trades_user_stock_date_type", "user_id", "stock_code", "trade_date", "trade_type"),
+    )
 
 
 class WatchlistCreate(BaseModel):
@@ -399,6 +441,118 @@ class StockHoldingUpdate(BaseModel):
         return note or None
 
 
+class StockTradeBase(BaseModel):
+    stock_code: str
+    trade_type: StockTradeType
+    trade_date: DateType
+    shares: Decimal
+    price: Decimal
+    fee: Decimal = Decimal("0")
+    tax: Decimal = Decimal("0")
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
+    @field_validator("stock_code")
+    @classmethod
+    def validate_trade_stock_code(cls, value: str) -> str:
+        stock_code = value.strip().upper()
+        if not stock_code:
+            raise ValueError("Stock code is required.")
+        if len(stock_code) > 20:
+            raise ValueError("Stock code must be 20 characters or fewer.")
+        return stock_code
+
+    @field_validator("shares")
+    @classmethod
+    def validate_trade_shares(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("Shares must be greater than 0.")
+        return value
+
+    @field_validator("price", "fee", "tax")
+    @classmethod
+    def validate_trade_money(cls, value: Decimal) -> Decimal:
+        if value < 0:
+            raise ValueError("Price, fee, and tax must be 0 or greater.")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_trade_currency(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        currency = value.strip().upper()
+        if not currency:
+            return None
+        return currency[:10]
+
+    @field_validator("note")
+    @classmethod
+    def validate_trade_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        note = value.strip()
+        return note or None
+
+
+class StockTradeCreate(StockTradeBase):
+    pass
+
+
+class StockTradeUpdate(BaseModel):
+    stock_code: Optional[str] = None
+    trade_type: Optional[StockTradeType] = None
+    trade_date: Optional[DateType] = None
+    shares: Optional[Decimal] = None
+    price: Optional[Decimal] = None
+    fee: Optional[Decimal] = None
+    tax: Optional[Decimal] = None
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
+    @field_validator("stock_code")
+    @classmethod
+    def validate_optional_trade_stock_code(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stock_code = value.strip().upper()
+        if not stock_code:
+            raise ValueError("Stock code is required.")
+        if len(stock_code) > 20:
+            raise ValueError("Stock code must be 20 characters or fewer.")
+        return stock_code
+
+    @field_validator("shares")
+    @classmethod
+    def validate_optional_trade_shares(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value <= 0:
+            raise ValueError("Shares must be greater than 0.")
+        return value
+
+    @field_validator("price", "fee", "tax")
+    @classmethod
+    def validate_optional_trade_money(cls, value: Decimal | None) -> Decimal | None:
+        if value is not None and value < 0:
+            raise ValueError("Price, fee, and tax must be 0 or greater.")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_optional_trade_currency(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        currency = value.strip().upper()
+        return currency[:10] if currency else None
+
+    @field_validator("note")
+    @classmethod
+    def validate_optional_trade_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        note = value.strip()
+        return note or None
+
+
 class StockHoldingResponse(BaseModel):
     id: int
     stock_code: str
@@ -414,6 +568,61 @@ class StockHoldingResponse(BaseModel):
     @field_serializer("shares", "average_cost")
     def serialize_holding_numbers(self, value: Decimal) -> float:
         return float(value)
+
+
+class StockTradeResponse(BaseModel):
+    id: int
+    stock_code: str
+    trade_type: StockTradeType
+    trade_date: DateType
+    shares: Decimal
+    price: Decimal
+    fee: Decimal
+    tax: Decimal
+    currency: str
+    note: Optional[str] = None
+    source: Optional[str] = None
+    source_holding_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("shares", "price", "fee", "tax")
+    def serialize_trade_numbers(self, value: Decimal) -> float:
+        return float(value)
+
+
+class StockTradeSummaryItem(BaseModel):
+    currency: str
+    opening_balance_count: int = 0
+    opening_balance_shares: Decimal = Decimal("0")
+    buy_count: int
+    sell_count: int
+    bought_shares: Decimal
+    sold_shares: Decimal
+    gross_proceeds: Decimal
+    matched_cost_basis: Decimal
+    fees: Decimal
+    taxes: Decimal
+    realized_pnl: Decimal
+
+    @field_serializer(
+        "bought_shares",
+        "opening_balance_shares",
+        "sold_shares",
+        "gross_proceeds",
+        "matched_cost_basis",
+        "fees",
+        "taxes",
+        "realized_pnl",
+    )
+    def serialize_trade_summary_numbers(self, value: Decimal) -> float:
+        return float(value)
+
+
+class StockTradeSummaryResponse(BaseModel):
+    items: list[StockTradeSummaryItem] = Field(default_factory=list)
 
 
 class StockPriceAlertCheckResponse(BaseModel):

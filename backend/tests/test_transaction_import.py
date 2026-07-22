@@ -94,6 +94,39 @@ def test_preview_csv_accepts_payment_date_transaction_day_and_income_expense_ali
     assert transaction_day_response.json()["rows"][0]["normalized"]["type"] == "income"
 
 
+def test_preview_csv_accepts_traditional_and_simplified_chinese_headers(client):
+    token = register_and_login(client, "import-readable-zh-headers@example.com")
+    traditional_content = make_csv_bytes(
+        "消費日期,支出金額,現金流,類別,說明,付款方式\n"
+        "2026-07-05,45,消費,交通,捷運,信用卡\n"
+    )
+    simplified_content = make_csv_bytes(
+        "消费日期,收入金额,现金流,类别,说明,支付方式\n"
+        "2026-07-06,5000,入账,工资,奖金,银行转账\n"
+    )
+
+    traditional_response = preview_import(client, token, file_name="traditional.csv", content=traditional_content)
+    simplified_response = preview_import(client, token, file_name="simplified.csv", content=simplified_content)
+
+    assert traditional_response.status_code == 201
+    traditional_row = traditional_response.json()["rows"][0]["normalized"]
+    assert traditional_row["transaction_date"] == "2026-07-05"
+    assert traditional_row["amount"] == 45
+    assert traditional_row["type"] == "expense"
+    assert traditional_row["category"] == "交通"
+    assert traditional_row["description"] == "捷運"
+    assert traditional_row["payment_method"] == "信用卡"
+
+    assert simplified_response.status_code == 201
+    simplified_row = simplified_response.json()["rows"][0]["normalized"]
+    assert simplified_row["transaction_date"] == "2026-07-06"
+    assert simplified_row["amount"] == 5000
+    assert simplified_row["type"] == "income"
+    assert simplified_row["category"] == "工资"
+    assert simplified_row["description"] == "奖金"
+    assert simplified_row["payment_method"] == "银行转账"
+
+
 def test_preview_valid_xlsx(client):
     token = register_and_login(client, "import-xlsx@example.com")
     content = make_xlsx_bytes(

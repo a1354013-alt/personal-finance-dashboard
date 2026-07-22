@@ -1,6 +1,6 @@
 {
   "name": "personal-finance-dashboard-frontend",
-  "version": "1.6.0",
+  "version": "1.7.0-rc1",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,7 +15,7 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.vue",
     "test": "vitest run",
-    "test:run": "vitest run",
+    "test:run": "vitest run --maxWorkers=1",
     "test:e2e-config": "node --test scripts/e2e-database.test.mjs",
     "e2e:install-browser": "playwright install chromium",
     "e2e:seeded": "node scripts/run-seeded-e2e.mjs"

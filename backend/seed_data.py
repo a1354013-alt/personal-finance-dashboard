@@ -9,10 +9,11 @@ from db.database import SessionLocal, init_db, reset_sqlite_db
 from models.budget import BudgetORM
 from models.expense import ExpenseORM
 from models.recurring_transaction import RecurringTransactionOccurrenceORM, RecurringTransactionORM
-from models.stock import StockHoldingORM, StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, WatchlistORM
+from models.stock import StockHoldingORM, StockPriceAlertORM, StockPriceHistoryORM, StockPriceORM, StockTradeORM, WatchlistORM
 from models.user import UserORM
 from services.auth import get_password_hash
 from services.recurring_transaction_service import derive_next_run_date, recalculate_next_run_date
+from services.stock_trade_service import rebuild_stock_holding_projection
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "demo1234"
@@ -55,10 +56,15 @@ MOCK_WATCHLIST = [
     {"stock_code": "AAPL", "name": "Apple"},
 ]
 
-MOCK_HOLDINGS = [
-    {"stock_code": "2330.TW", "shares": 12.0, "average_cost": 780.0, "currency": "TWD", "note": "Taiwan core position"},
-    {"stock_code": "2317.TW", "shares": 20.0, "average_cost": 175.0, "currency": "TWD", "note": "Negative P/L example"},
-    {"stock_code": "AAPL", "shares": 6.0, "average_cost": 160.0, "currency": "USD", "note": "US growth example"},
+MOCK_TRADES = [
+    {"stock_code": "2330.TW", "trade_type": "OPENING_BALANCE", "trade_date": date(2026, 3, 1), "shares": 10.0, "price": 760.0, "fee": 0.0, "tax": 0.0, "currency": "TWD", "note": "Taiwan opening balance"},
+    {"stock_code": "2330.TW", "trade_type": "BUY", "trade_date": date(2026, 3, 15), "shares": 5.0, "price": 800.0, "fee": 10.0, "tax": 0.0, "currency": "TWD", "note": "Second Taiwan lot"},
+    {"stock_code": "2330.TW", "trade_type": "SELL", "trade_date": date(2026, 4, 5), "shares": 3.0, "price": 845.0, "fee": 5.0, "tax": 2.0, "currency": "TWD", "note": "Profitable partial Taiwan sale"},
+    {"stock_code": "2317.TW", "trade_type": "OPENING_BALANCE", "trade_date": date(2026, 3, 2), "shares": 20.0, "price": 175.0, "fee": 0.0, "tax": 0.0, "currency": "TWD", "note": "Loss example opening balance"},
+    {"stock_code": "2317.TW", "trade_type": "SELL", "trade_date": date(2026, 4, 6), "shares": 4.0, "price": 168.0, "fee": 4.0, "tax": 1.0, "currency": "TWD", "note": "Losing Taiwan sale"},
+    {"stock_code": "AAPL", "trade_type": "OPENING_BALANCE", "trade_date": date(2026, 3, 3), "shares": 4.0, "price": 150.0, "fee": 0.0, "tax": 0.0, "currency": "USD", "note": "US opening balance"},
+    {"stock_code": "AAPL", "trade_type": "BUY", "trade_date": date(2026, 3, 20), "shares": 3.0, "price": 165.0, "fee": 6.0, "tax": 0.0, "currency": "USD", "note": "US accumulation lot"},
+    {"stock_code": "AAPL", "trade_type": "SELL", "trade_date": date(2026, 4, 8), "shares": 1.0, "price": 172.0, "fee": 1.0, "tax": 0.0, "currency": "USD", "note": "Profitable US sale"},
 ]
 
 FIXED_MOCK_PRICES = [
@@ -211,6 +217,7 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
         db.query(RecurringTransactionORM).filter(RecurringTransactionORM.user_id == demo_user.id).delete()
         db.query(BudgetORM).filter(BudgetORM.user_id == demo_user.id).delete()
         db.query(StockPriceAlertORM).filter(StockPriceAlertORM.user_id == demo_user.id).delete()
+        db.query(StockTradeORM).filter(StockTradeORM.user_id == demo_user.id).delete()
         db.query(StockHoldingORM).filter(StockHoldingORM.user_id == demo_user.id).delete()
         db.query(WatchlistORM).filter(WatchlistORM.user_id == demo_user.id).delete()
         db.query(StockPriceORM).filter(StockPriceORM.stock_code.in_([item["stock_code"] for item in mock_prices])).delete(
@@ -305,8 +312,22 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
                 )
             )
 
-        for item in MOCK_HOLDINGS:
-            db.add(StockHoldingORM(user_id=demo_user.id, **item))
+        for item in MOCK_TRADES:
+            db.add(
+                StockTradeORM(
+                    user_id=demo_user.id,
+                    stock_code=item["stock_code"],
+                    trade_type=item["trade_type"],
+                    trade_date=item["trade_date"],
+                    shares=item["shares"],
+                    price=item["price"],
+                    fee=item["fee"],
+                    tax=item["tax"],
+                    currency=item["currency"],
+                    note=item["note"],
+                    source="seed",
+                )
+            )
 
         for item in mock_prices:
             for history_row in _build_history_series(item):
@@ -314,6 +335,10 @@ def seed(reset: bool = False, relative_dates: bool = False) -> None:
             price_row = {key: value for key, value in item.items() if key != "previous_close"}
             db.add(StockPriceORM(**price_row))
 
+        db.commit()
+
+        for stock_code in sorted({item["stock_code"] for item in MOCK_TRADES}):
+            rebuild_stock_holding_projection(db, demo_user.id, stock_code)
         db.commit()
 
         print("Seed completed successfully.")

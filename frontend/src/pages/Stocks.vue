@@ -99,6 +99,32 @@
       </div>
     </section>
 
+    <RealizedPnlSummary
+      :summary="stockStore.tradeSummary"
+      :error="stockStore.tradeSummaryError"
+    />
+
+    <StockTradeForm
+      :model-value="tradeForm"
+      :saving="stockStore.tradesSaving"
+      :error="stockStore.tradeMutationError || actionError"
+      :editing-trade-id="editingTradeId"
+      @submit="handleSaveTrade"
+      @cancel="resetTradeForm"
+    />
+
+    <StockTradeHistory
+      :trades="stockStore.trades"
+      :filters="tradeFilters"
+      :loading="stockStore.tradesLoading"
+      :error="stockStore.tradeListError"
+      :deleting-ids="stockStore.tradesDeletingIds"
+      @apply:filters="handleTradeFilterChange"
+      @refresh="refreshTradeWorkspace"
+      @edit="startEditingTrade"
+      @delete="handleDeleteTrade"
+    />
+
     <section class="card">
       <div class="section-header">
         <h2>{{ t('stocks.controls') }}</h2>
@@ -372,6 +398,9 @@ import { useI18n } from 'vue-i18n'
 import ChartPanel from '@/components/ChartPanel.vue'
 import OnboardingCard from '@/components/OnboardingCard.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
+import RealizedPnlSummary from '@/components/stocks/RealizedPnlSummary.vue'
+import StockTradeForm from '@/components/stocks/StockTradeForm.vue'
+import StockTradeHistory from '@/components/stocks/StockTradeHistory.vue'
 import { useStockStore } from '@/stores/stockStore'
 import { formatCurrency as formatCurrencyValue } from '@/utils/formatters'
 
@@ -381,7 +410,19 @@ const isAdding = ref(false)
 const isCreatingAlert = ref(false)
 const newAlert = ref({ condition_type: 'above', target_price: null })
 const editingHoldingId = ref(null)
+const editingTradeId = ref(null)
 const holdingForm = ref({ stock_code: '', shares: null, average_cost: null, note: '' })
+const tradeForm = ref({
+  stock_code: '',
+  trade_type: 'BUY',
+  trade_date: '2026-07-19',
+  shares: null,
+  price: null,
+  fee: 0,
+  tax: 0,
+  note: ''
+})
+const tradeFilters = ref({ stock_code: '', trade_type: '', date_from: '', date_to: '' })
 const actionMessage = ref('')
 const actionError = ref('')
 const { t, locale } = useI18n()
@@ -569,15 +610,34 @@ const fundamentalsItems = computed(() => {
 async function refreshStockWorkspace(selectedCode = null) {
   await Promise.allSettled([
     stockStore.refreshPortfolioWorkspace(),
+    stockStore.refreshTradeWorkspace(tradeFilters.value),
     stockStore.fetchDashboard(selectedCode),
     stockStore.fetchFilterResults(),
     stockStore.listStockAlerts()
   ])
 }
 
+async function refreshTradeWorkspace() {
+  await stockStore.refreshTradeWorkspace(tradeFilters.value)
+}
+
 function resetHoldingForm() {
   editingHoldingId.value = null
   holdingForm.value = { stock_code: '', shares: null, average_cost: null, note: '' }
+}
+
+function resetTradeForm() {
+  editingTradeId.value = null
+  tradeForm.value = {
+    stock_code: '',
+    trade_type: 'BUY',
+    trade_date: '2026-07-19',
+    shares: null,
+    price: null,
+    fee: 0,
+    tax: 0,
+    note: ''
+  }
 }
 
 function holdingById(holdingId) {
@@ -597,6 +657,21 @@ function startEditingHolding(holdingId) {
     shares: holding.shares,
     average_cost: holding.average_cost,
     note: holding.note || ''
+  }
+}
+
+function startEditingTrade(trade) {
+  if (trade.trade_type === 'OPENING_BALANCE') return
+  editingTradeId.value = trade.id
+  tradeForm.value = {
+    stock_code: trade.stock_code,
+    trade_type: trade.trade_type,
+    trade_date: trade.trade_date,
+    shares: trade.shares,
+    price: trade.price,
+    fee: trade.fee,
+    tax: trade.tax,
+    note: trade.note || ''
   }
 }
 
@@ -680,6 +755,47 @@ async function handleDeleteHolding(holdingId) {
   } catch (error) {
     actionError.value = error.message || t('common.unknownError')
   }
+}
+
+async function handleSaveTrade(payload) {
+  if (!payload.stock_code || !payload.trade_date || !payload.shares || payload.price == null) return
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    if (editingTradeId.value) {
+      await stockStore.updateTrade(editingTradeId.value, payload, tradeFilters.value)
+      actionMessage.value = t('stocks.trades.updated')
+    } else {
+      await stockStore.createTrade(payload, tradeFilters.value)
+      actionMessage.value = t('stocks.trades.created')
+    }
+    resetTradeForm()
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleDeleteTrade(trade) {
+  if (trade.trade_type === 'OPENING_BALANCE') return
+  if (!window.confirm(t('stocks.trades.deleteConfirmation', { stockCode: trade.stock_code, date: trade.trade_date }))) {
+    return
+  }
+  actionMessage.value = ''
+  actionError.value = ''
+  try {
+    await stockStore.deleteTrade(trade.id, tradeFilters.value)
+    if (editingTradeId.value === Number(trade.id)) {
+      resetTradeForm()
+    }
+    actionMessage.value = t('stocks.trades.deleted')
+  } catch (error) {
+    actionError.value = error.message || t('common.unknownError')
+  }
+}
+
+async function handleTradeFilterChange(nextFilters) {
+  tradeFilters.value = nextFilters
+  await refreshTradeWorkspace()
 }
 
 async function handleAddWatchlist() {

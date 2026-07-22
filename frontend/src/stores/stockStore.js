@@ -6,6 +6,8 @@ import {
   normalizeFilterMetadata,
   normalizeFundamentalsFilterResult,
   normalizeStockHolding,
+  normalizeStockTrade,
+  normalizeStockTradeSummary,
   normalizeStockAiAnalysis,
   normalizeStockDashboard,
   normalizeStockAlert,
@@ -35,6 +37,14 @@ export const useStockStore = defineStore('stock', () => {
   const alertsError = ref(null)
   const holdings = ref([])
   const portfolio = ref(null)
+  const trades = ref([])
+  const tradeSummary = ref({ items: [] })
+  const tradesLoading = ref(false)
+  const tradesSaving = ref(false)
+  const tradesDeletingIds = ref([])
+  const tradeListError = ref(null)
+  const tradeSummaryError = ref(null)
+  const tradeMutationError = ref(null)
   const holdingsLoading = ref(false)
   const holdingsSaving = ref(false)
   const holdingsDeletingIds = ref([])
@@ -93,6 +103,39 @@ export const useStockStore = defineStore('stock', () => {
     }
   }
 
+  async function fetchTrades(filters = {}) {
+    tradesLoading.value = true
+    tradeListError.value = null
+    try {
+      const response = await stockApi.getStockTrades(filters)
+      trades.value = Array.isArray(response) ? response.map(normalizeStockTrade).filter(Boolean) : []
+      return trades.value
+    } catch (error) {
+      trades.value = []
+      tradeListError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      tradesLoading.value = false
+    }
+  }
+
+  async function fetchTradeSummary(filters = {}) {
+    tradeSummaryError.value = null
+    try {
+      const response = await stockApi.getStockTradeSummary(filters)
+      tradeSummary.value = normalizeStockTradeSummary(response)
+      return tradeSummary.value
+    } catch (error) {
+      tradeSummary.value = { items: [] }
+      tradeSummaryError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    }
+  }
+
+  async function refreshTradeWorkspace(filters = {}) {
+    await Promise.allSettled([fetchTrades(filters), fetchTradeSummary(filters), refreshPortfolioWorkspace()])
+  }
+
   async function refreshPortfolioWorkspace() {
     await Promise.allSettled([fetchHoldings(), fetchPortfolio()])
   }
@@ -110,6 +153,61 @@ export const useStockStore = defineStore('stock', () => {
       throw error
     } finally {
       holdingsSaving.value = false
+    }
+  }
+
+  async function createTrade(payload, filters = {}) {
+    tradesSaving.value = true
+    tradeMutationError.value = null
+    try {
+      const response = await stockApi.createStockTrade(payload)
+      const normalized = normalizeStockTrade(response)
+      await refreshTradeWorkspace(filters)
+      return normalized || response
+    } catch (error) {
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      tradesSaving.value = false
+    }
+  }
+
+  async function updateTrade(tradeId, payload, filters = {}) {
+    tradesSaving.value = true
+    tradeMutationError.value = null
+    try {
+      const response = await stockApi.updateStockTrade(tradeId, payload)
+      const normalized = normalizeStockTrade(response)
+      await refreshTradeWorkspace(filters)
+      return normalized || response
+    } catch (error) {
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      tradesSaving.value = false
+    }
+  }
+
+  function isTradeDeleting(id) {
+    return tradesDeletingIds.value.includes(Number(id))
+  }
+
+  async function deleteTrade(tradeId, filters = {}) {
+    const numericId = Number(tradeId)
+    if (!Number.isFinite(numericId) || isTradeDeleting(numericId)) {
+      return null
+    }
+    tradesDeletingIds.value.push(numericId)
+    tradeMutationError.value = null
+    try {
+      await stockApi.deleteStockTrade(numericId)
+      await refreshTradeWorkspace(filters)
+      return true
+    } catch (error) {
+      tradeMutationError.value = toErrorMessage(error, i18n.global.t('common.unknownError'))
+      throw error
+    } finally {
+      tradesDeletingIds.value = tradesDeletingIds.value.filter((id) => id !== numericId)
     }
   }
 
@@ -516,6 +614,14 @@ export const useStockStore = defineStore('stock', () => {
     alertsError,
     holdings,
     portfolio,
+    trades,
+    tradeSummary,
+    tradesLoading,
+    tradesSaving,
+    tradesDeletingIds,
+    tradeListError,
+    tradeSummaryError,
+    tradeMutationError,
     holdingsLoading,
     holdingsSaving,
     holdingsDeletingIds,
@@ -524,6 +630,9 @@ export const useStockStore = defineStore('stock', () => {
     fetchWatchlist,
     fetchHoldings,
     fetchPortfolio,
+    fetchTrades,
+    fetchTradeSummary,
+    refreshTradeWorkspace,
     refreshPortfolioWorkspace,
     fetchDashboard,
     fetchFilterResults,
@@ -536,6 +645,9 @@ export const useStockStore = defineStore('stock', () => {
     createHolding,
     updateHolding,
     deleteHolding,
+    createTrade,
+    updateTrade,
+    deleteTrade,
     checkStockAlerts,
     syncFundamentals,
     syncSingleFundamentals,
@@ -549,6 +661,7 @@ export const useStockStore = defineStore('stock', () => {
     isSingleSyncing,
     isItemSyncing,
     isHoldingDeleting,
+    isTradeDeleting,
     isIndicatorLoading,
     isAnalyzing,
     evaluateStock,

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.7.0-rc1"
 SUPPORTED_PYTHON_VERSIONS = {(3, 11), (3, 12)}
 DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 DEVELOPMENT_SECRET_KEY = "dev-only-change-me-in-production"

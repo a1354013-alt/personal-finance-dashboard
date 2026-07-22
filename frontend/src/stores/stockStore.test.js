@@ -3,6 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 
 vi.mock('@/api/stocks', () => ({
   getWatchlist: vi.fn(async () => []),
+  getStockHoldings: vi.fn(async () => []),
+  getStockPortfolio: vi.fn(async () => ({ holdings_count: 0, warnings: [], positions: [], currency_totals: [] })),
+  getStockTrades: vi.fn(async () => []),
+  getStockTradeSummary: vi.fn(async () => ({ items: [] })),
+  createStockTrade: vi.fn(async () => ({ id: 1, stock_code: 'AAPL', trade_type: 'BUY', trade_date: '2026-07-19', shares: 1, price: 100, fee: 0, tax: 0, currency: 'USD' })),
+  updateStockTrade: vi.fn(async () => ({ id: 1, stock_code: 'AAPL', trade_type: 'SELL', trade_date: '2026-07-19', shares: 1, price: 120, fee: 1, tax: 0, currency: 'USD' })),
+  deleteStockTrade: vi.fn(async () => ({})),
   getFilterResults: vi.fn(async () => [{ stock_code: 'AAPL', passed: false, fail_reasons: [], meta: { provider: 'x', ttl_hours: 24, is_stale: true } }]),
   getFilterMetadata: vi.fn(async () => ({ fundamentals_provider: 'yfinance', ttl_hours: 24, timeout_seconds: 8, message: 'ok' })),
   syncWatchlistFundamentals: vi.fn(async () => ([])),
@@ -75,10 +82,13 @@ import {
   analyzeWatchlistItem,
   checkStockAlerts,
   createStockAlert,
+  createStockTrade,
+  deleteStockTrade,
   deleteStockAlert,
   fetchStockIndicators,
   getFilterResults,
   listStockAlerts,
+  updateStockTrade,
   syncSingleFundamentals,
   syncWatchlistItem,
   syncWatchlistFundamentals,
@@ -214,5 +224,18 @@ describe('stockStore', () => {
     expect(deleteStockAlert).toHaveBeenCalledWith(1)
     expect(updated.is_active).toBe(false)
     expect(store.alerts).toEqual([])
+  })
+
+  it('creates, updates, and deletes stock trades', async () => {
+    setActivePinia(createPinia())
+    const store = useStockStore()
+
+    await store.createTrade({ stock_code: 'AAPL', trade_type: 'BUY', trade_date: '2026-07-19', shares: 1, price: 100 })
+    await store.updateTrade(1, { trade_type: 'SELL', price: 120 })
+    await store.deleteTrade(1)
+
+    expect(createStockTrade).toHaveBeenCalled()
+    expect(updateStockTrade).toHaveBeenCalledWith(1, { trade_type: 'SELL', price: 120 })
+    expect(deleteStockTrade).toHaveBeenCalledWith(1)
   })
 })

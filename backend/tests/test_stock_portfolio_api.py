@@ -112,7 +112,7 @@ def test_reject_duplicate_holding_for_same_user_and_stock(client):
         headers=headers,
         json={"stock_code": "AAPL", "shares": 1, "average_cost": 160},
     )
-    assert duplicate.status_code == 400
+    assert duplicate.status_code == 409
     assert "already exists" in duplicate.json()["detail"]
 
 
@@ -251,7 +251,7 @@ def test_update_holding_duplicate_error_names_target_and_preserves_original(clie
         headers=headers,
         json={"stock_code": "AAPL"},
     )
-    assert duplicate_update.status_code == 400
+    assert duplicate_update.status_code == 409
     assert "AAPL" in duplicate_update.json()["detail"]
     assert "MSFT" not in duplicate_update.json()["detail"]
 
