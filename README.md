@@ -354,7 +354,7 @@ npm run e2e:install-browser
 npm run e2e:seeded
 ```
 
-The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/.e2e/playwright-e2e.db`, signs in as `demo@example.com`, verifies separate TWD/USD portfolio summaries, creates/edits/deletes a missing-price holding, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path. Overrides must resolve inside `backend/.e2e/`, use a filename matching `playwright-e2e*.db`, and cannot point at normal databases such as `finance.db`, `test_smoke.db`, `production.db`, `audit.db`, or arbitrary names like `custom.db`. The full release verifier installs Playwright Chromium with `npm run e2e:install-browser` after `npm ci`; this uses Playwright's cache when the matching browser is already present. The test database, journal, WAL, and SHM files are deleted on cleanup.
+The smoke test starts isolated backend and frontend servers on `127.0.0.1:8001` and `127.0.0.1:5174`, resets only the validated SQLite database at `backend/.e2e/playwright-e2e.db`, signs in as `demo@example.com`, verifies authentication and protected-route redirection, checks separate TWD and USD portfolio summaries plus separate TWD and USD realized-P/L summaries, confirms seeded Trade History visibility, confirms Opening Balance rows stay read-only, creates a deterministic BUY, creates a valid SELL, verifies holding-projection changes, rejects oversells, deletes the SELL, deletes the BUY, confirms the original holding projection is restored, runs the existing legacy holding create/edit/delete smoke, and confirms logout redirects protected routes back to login. Normal `DATABASE_URL` is ignored by the E2E launcher; only `E2E_DATABASE_URL` can override the path. Overrides must resolve inside `backend/.e2e/`, use a filename matching `playwright-e2e*.db`, and cannot point at normal databases such as `finance.db`, `test_smoke.db`, `production.db`, `audit.db`, or arbitrary names like `custom.db`. The full release verifier installs Playwright Chromium with `npm run e2e:install-browser` after `npm ci`; this uses Playwright's cache when the matching browser is already present. The test database, journal, WAL, and SHM files are deleted on cleanup.
 
 ## Build
 
@@ -488,7 +488,7 @@ The current rate limiter is an in-memory, demo-level guard intended for a single
 
 ## Known Limitations / Roadmap
 
-- Multiple acquisition lots are not modeled yet; each user has one aggregated holding per stock code.
+- Multiple FIFO acquisition lots are reconstructed from `OPENING_BALANCE` and `BUY` trade history, while `stock_holdings` remains an aggregated materialized projection per user and stock code. Persisted lot-match inspection is not exposed yet, user-selectable tax-lot matching is not implemented, and LIFO or average-cost accounting are not supported.
 - Portfolio unrealized P/L depends on whichever latest cached price is available for each holding; when price data is missing, price-dependent fields are intentionally returned as `null` with warnings.
 - Portfolio totals are grouped by holding currency. FX conversion is not implemented yet, so mixed-currency portfolios are shown as separate currency totals and are not combined into one top-level number.
 - Taiwan stock prices are fetched through a replaceable provider interface; local tests use fakes and do not require external market-data access.

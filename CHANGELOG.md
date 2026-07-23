@@ -7,6 +7,13 @@
 - Added FIFO realized P/L handling, trade summary APIs, and compatibility guards that block direct holding edits after regular buy/sell activity begins.
 - Added focused stock-trade frontend components for trade entry, trade history, and realized P/L by currency.
 - Refreshed the demo seed with deterministic TWD and USD trade activity, profitable and losing sells, fees, taxes, and remaining open positions.
+- Enforced read-only Opening Balance rows once regular trade history is managed through the ledger and corrected filtered summary FIFO context handling.
+- Enforced one ledger currency per symbol so mixed-currency history cannot be recorded under the same stock code.
+- Remediated frontend dependency audit findings without changing the published `v1.7.0-rc1` package versions.
+- Added mojibake detection plus locale alias repairs for Traditional and Simplified Chinese import headers.
+- Added Traditional and Simplified Chinese import aliases for clearer CSV column recognition.
+- Made Vitest execution deterministic with the single-worker release configuration.
+- Expanded seeded Playwright coverage for Trade Ledger flows, oversell rejection, holding-projection restoration, and legacy holding smoke.
 - Updated application version metadata to `1.7.0-rc1`.
 
 ## v1.6.0
