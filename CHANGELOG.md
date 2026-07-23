@@ -8,6 +8,11 @@
 - Added FIFO realized P/L handling, trade summary APIs, and compatibility guards that block direct holding edits after regular buy/sell activity begins.
 - Added focused stock-trade frontend components for trade entry, trade history, and realized P/L by currency.
 - Refreshed the demo seed with deterministic TWD and USD trade activity, profitable and losing sells, fees, taxes, and remaining open positions.
+- Remediated the frontend dependency audit so the release gate reports zero moderate-or-higher npm vulnerabilities.
+- Added mojibake detection and locale repair coverage for encoded translation/import text.
+- Added readable Traditional and Simplified Chinese aliases for transaction import headers.
+- Made Vitest run deterministically with a single worker for the release gate.
+- Expanded seeded Playwright Trade Ledger coverage across summaries, trade visibility, read-only opening balances, buy/sell mutations, oversell rejection, deletion, projection restoration, legacy holdings compatibility, and logout.
 - Updated application version metadata to `1.7.0-rc1`.
 
 ## v1.6.0
